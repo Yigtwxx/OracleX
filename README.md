@@ -255,9 +255,11 @@ OPENAI_API_KEY="sk-proj-YOUR_OPENAI_KEY_HERE"
 # (Optional) For bypassing public rate limits on crypto data
 COINGECKO_API_KEY="CG-YOUR_KEY_HERE"
 
-# (Optional) Upcoming Database Integration
+# Required for auth, profiles, community feed, and chat history
 SUPABASE_URL="https://your-project.supabase.co"
-SUPABASE_KEY="your-anon-key"
+SUPABASE_KEY="your-publishable-anon-key"
+# Service-role key bypasses RLS — keep it secret, backend only
+SUPABASE_SERVICE_ROLE_KEY="your-service-role-secret-key"
 ```
 
 *Note: If `OPENAI_API_KEY` is omitted, the backend gracefully degradation falls back to basic regex ticker matching for the news feed, though accuracy drops significantly.*
@@ -302,7 +304,8 @@ We are actively executing the roadmap towards **v2.0**.
 - [x] **v0.5 (Foundation):** Dark-mode premium layout, UI component scaffolding, Next.js routing.
 - [x] **v1.0 (Data Convergence):** Integration of true real-time wrappers (CoinGecko, Yahoo Finance `quoteSummary`), caching layer implementation.
 - [x] **v1.2 (AI Genesis):** Activation of the `gpt-4o-mini` semantic extraction pipeline for news, implementation of complex Asset Detail dynamic views and Heatmap algorithms.
-- [ ] **v1.5 (Personalization):** Integration of Supabase Auth. enabling persistent user watchlists, portfolio allocation views, and custom dashboard layout saving.
+- [x] **v1.5 (Accounts):** Supabase Auth with RLS-backed persistence — user profiles, community feed, and chat history.
+- [ ] **v1.6 (Personalization):** Migration of watchlists and notes off JSON onto Supabase, portfolio allocation views, and custom dashboard layout saving.
 - [ ] **v2.0 (The Oracle):** Deployment of Solidity Oracles. AI price impact probabilities will be committed to Sepolia Testnet for absolute, immutable track-record tracking.
 
 ---
