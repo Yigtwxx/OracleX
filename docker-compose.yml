@@ -1,0 +1,53 @@
+# Oracle-X — production-shaped stack.
+#
+#   docker compose -f docker-compose.yml up --build      # production
+#   docker compose up --build                            # + dev override
+#
+# Config comes from the repo-root .env (copy .env.example first). Compose loads
+# it automatically for both ${VAR} interpolation and the backend's env_file.
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: oracle-x-backend
+    env_file: .env
+    environment:
+      # Ollama runs on the host, not in a container: on Apple Silicon a
+      # containerised Ollama is CPU-only and far too slow for the default model.
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3100,http://127.0.0.1:3100}
+    extra_hosts:
+      # Docker Desktop provides host.docker.internal automatically; this line
+      # makes the same name resolve on Linux hosts.
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8000:8000"
+    volumes:
+      # Chroma vector stores + runtime JSON (watchlist, analysis reports,
+      # liquidations). Everything under data/ is state, not source.
+      - backend-data:/app/data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Baked into the client bundle at build time, so these must be URLs the
+        # browser can reach — lib/api.ts and useWebSocketPrices.ts call the
+        # backend directly rather than through the Next.js rewrite proxy.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:8000/ws/prices}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    image: oracle-x-frontend
+    ports:
+      - "3100:3100"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  backend-data:
