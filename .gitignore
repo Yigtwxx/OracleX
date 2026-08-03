@@ -10,6 +10,11 @@ build/
 *.tsbuildinfo
 next-env.d.ts
 
+# Docker
+# Local-only Compose tweaks; docker-compose.override.yml itself IS committed
+# (it is the shared dev configuration).
+docker-compose.*.local.yml
+
 # Python
 __pycache__/
 *.py[cod]
@@ -17,13 +22,10 @@ __pycache__/
 *.so
 .Python
 venv/
+venv-win/
 env/
 .venv/
 ENV/
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
 *.egg-info/
 dist/
 
@@ -50,8 +52,11 @@ coverage/
 .pytest_cache/
 
 # Environment variables
+# Ignore every .env variant (root Compose config, backend/, frontend/) and
+# allow only the committed templates back in.
 .env
-.env*.local
+.env.*
+!.env.example
 
 # Misc
 *.local
