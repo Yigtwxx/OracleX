@@ -1,0 +1,40 @@
+# Development overrides — Compose loads this automatically alongside
+# docker-compose.yml. Source is bind-mounted and both servers hot-reload.
+#
+#   docker compose up --build                        # dev (this file applies)
+#   docker compose -f docker-compose.yml up --build   # production (skips it)
+
+services:
+  backend:
+    volumes:
+      # Live source, but keep data/ on the named volume so the bind mount
+      # doesn't shadow it with the host's (gitignored) copy.
+      - ./backend:/app
+      - backend-data:/app/data
+    command:
+      - uvicorn
+      - main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+
+  frontend:
+    build:
+      # Stop at the deps stage: no production build, just node_modules.
+      target: deps
+    # Separate tag: without it a dev build overwrites the production
+    # oracle-x-frontend image with the much larger deps-only stage.
+    image: oracle-x-frontend-dev
+    command: npm run dev
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:8000/ws/prices}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    volumes:
+      - ./frontend:/app
+      # Anonymous volume keeps the image's node_modules (built for linux)
+      # instead of the host's.
+      - /app/node_modules
