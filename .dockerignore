@@ -1,0 +1,42 @@
+# Secrets — never bake into an image layer.
+# config.py reads <backend>/.env, so a stray copy would ship the service-role key.
+**/.env
+**/.env.local
+**/.env*.local
+.env.docker
+
+# Runtime state — provided by the backend-data volume, not the image.
+backend/data/
+**/*.sqlite3
+
+# Python
+backend/venv/
+backend/.venv/
+backend/venv-win/
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+.ruff_cache/
+backend/requirements-dev.txt
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+**/*.tsbuildinfo
+
+# VCS, tooling, docs
+.git/
+.github/
+.gitignore
+docs/
+*.md
+supabase/
+start.sh
+start.bat
+
+# OS / editor
+**/.DS_Store
+.idea/
+.vscode/
+**/*.swp
