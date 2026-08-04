@@ -174,7 +174,7 @@ cleanup() {
     
     # Also kill any remaining processes on the ports as a safety net
     lsof -ti:8000 2>/dev/null | xargs kill -9 2>/dev/null
-    lsof -ti:3000 2>/dev/null | xargs kill -9 2>/dev/null
+    lsof -ti:3100 2>/dev/null | xargs kill -9 2>/dev/null
     
     echo ""
     echo -e "    ${GRAY}Thank you for using Oracle-X! 👋${NC}"
@@ -258,15 +258,15 @@ else
     print_status "success" "Port 8000 available"
 fi
 
-# Kill any existing process on port 3000 (Frontend)
-PORT_3000_PID=$(lsof -ti:3000 2>/dev/null)
-if [ ! -z "$PORT_3000_PID" ]; then
-    print_status "warning" "Port 3000 in use (PID: $PORT_3000_PID) - stopping..."
-    kill -9 $PORT_3000_PID 2>/dev/null
+# Kill any existing process on port 3100 (Frontend)
+PORT_3100_PID=$(lsof -ti:3100 2>/dev/null)
+if [ ! -z "$PORT_3100_PID" ]; then
+    print_status "warning" "Port 3100 in use (PID: $PORT_3100_PID) - stopping..."
+    kill -9 $PORT_3100_PID 2>/dev/null
     sleep 1
-    print_status "success" "Port 3000 freed"
+    print_status "success" "Port 3100 freed"
 else
-    print_status "success" "Port 3000 available"
+    print_status "success" "Port 3100 available"
 fi
 
 # ─────────────────────────────────────────────────────────────────
@@ -349,7 +349,7 @@ echo "    ║              🎉  ORACLE-X IS READY!  🎉                       
 echo "    ║                                                               ║"
 echo "    ╠═══════════════════════════════════════════════════════════════╣"
 echo -e "${NC}"
-print_url "Frontend" "http://localhost:3000"
+print_url "Frontend" "http://localhost:3100"
 print_url "Backend " "http://localhost:8000"
 print_url "API Docs" "http://localhost:8000/docs"
 echo -e "${GREEN}${BOLD}"
@@ -359,11 +359,11 @@ echo -e "${NC}"
 
 # Open browser
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    open http://localhost:3000 2>/dev/null
+    open http://localhost:3100 2>/dev/null
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    xdg-open http://localhost:3000 2>/dev/null || sensible-browser http://localhost:3000 2>/dev/null
+    xdg-open http://localhost:3100 2>/dev/null || sensible-browser http://localhost:3100 2>/dev/null
 elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
-    start http://localhost:3000 2>/dev/null
+    start http://localhost:3100 2>/dev/null
 fi
 
 echo ""
