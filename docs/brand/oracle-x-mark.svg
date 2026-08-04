@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 32 32" fill="none">
+  <!-- Oracle-X mark. Keep in sync with frontend/app/icon.svg,
+       frontend/components/ui/Logo.tsx and scripts/generate_brand_assets.py. -->
+  <rect width="32" height="32" rx="7" fill="#111114"/>
+  <g stroke="#e8e8ea" fill="none">
+    <g stroke-width="2.4">
+      <path d="M12.63 7.66A9 9 0 0 1 19.37 7.66"/>
+      <path d="M24.34 12.63A9 9 0 0 1 24.34 19.37"/>
+      <path d="M19.37 24.34A9 9 0 0 1 12.63 24.34"/>
+      <path d="M7.66 19.37A9 9 0 0 1 7.66 12.63"/>
+    </g>
+    <g stroke-width="2.1">
+      <path d="M7.09 7.09L24.91 24.91"/>
+      <path d="M24.91 7.09L7.09 24.91"/>
+    </g>
+  </g>
+</svg>
