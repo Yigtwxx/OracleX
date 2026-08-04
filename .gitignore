@@ -71,3 +71,7 @@ data/
 *.sqlite3
 *.bin
 *.pickle
+
+# Working design notes and implementation plans. Kept locally as a record of
+# how decisions were reached; not part of the published repo.
+docs/superpowers/
