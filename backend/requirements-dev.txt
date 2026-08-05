@@ -1,0 +1,26 @@
+# Development & test dependencies.
+#
+# Deliberately does NOT pull in requirements.txt: the runtime deps include
+# torch / chromadb / sentence-transformers (~1 GB), which the current test
+# suite does not need. CI installs only what the tests import, keeping the
+# backend job fast. For local work install both:
+#   pip install -r requirements.txt -r requirements-dev.txt
+
+# ── Runtime deps the tests actually import ───────────────────────────────────
+fastapi>=0.109.0
+pydantic>=2.5.3
+pydantic-settings>=2.1.0
+httpx>=0.26.0
+supabase>=2.0.0
+cryptography>=42.0.0
+
+# ── Test framework ───────────────────────────────────────────────────────────
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-mock>=3.12.0
+
+# ── HTTP mocking (httpx transport-level) ─────────────────────────────────────
+respx>=0.21.0
+
+# ── Lint / format (also enforced in CI and pre-commit) ───────────────────────
+ruff>=0.6.9
