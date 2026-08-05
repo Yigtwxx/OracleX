@@ -71,7 +71,7 @@ Standard keyword matching (regex) for financial news triggers massive false posi
 * **Per-Article Research Notes:** Clicking a headline starts a staged pipeline (`Gathering evidence → Judging price impact`) that fetches the **full article body** — with a hard timeout, a per-host circuit breaker, and paywall-stub rejection — merges it with technical levels and market context, and returns a verdict. Technical levels are copied verbatim from `technical_analysis_service`; the model is never asked to invent a price. Finished analyses are persisted and keyed by pipeline version, so a prompt edit retires the cache instead of serving stale reasoning forever.
 
 ### 3. The RAG Memory Stack (v1 → v5)
-Oracle-X remembers. A ChromaDB vector store with `all-MiniLM-L6-v2` embeddings turns every ingested article and price tick into queryable institutional memory.
+Oracle-X remembers. A ChromaDB vector store with `qwen3-embedding:0.6b` embeddings turns every ingested article and price tick into queryable institutional memory. Retrieval is three-stage: vector search fused with BM25 by reciprocal rank, a relevance floor calibrated per collection, then a `bge-reranker-v2-m3` cross-encoder that reads the query against each candidate. Measured on `backend/evals/golden_set.jsonl`, the cross-encoder alone moves recall@5 from 0.79 to 0.96.
 * **v1 — Outcome Memory** (`rag_service.py`): a single collection linking historical news to the price outcome that followed. Feeds the `/api/analyze` flow.
 * **v2 — Temporal Core** (`rag_v2_service.py`): the primary store, split into `historical_news`, `market_events`, and `price_history` collections with up to 365 days of indexed history and event correlation.
 * **v3 — Insights Agent:** answers *"why did BTC move on this date?"* — price-movement reasoning, historical news similarity, event-at-date lookup.
@@ -337,7 +337,8 @@ frontend/
 * **Local-first defaults.** With `LLM_PROVIDER=ollama`, headlines, portfolios and chat questions never leave the machine. `qwen3.6:35b-a3b` (MoE, ~3B active params) is the recommended default; `qwen3.5:9b` fits lighter hardware. `OLLAMA_KEEP_ALIVE` keeps the model resident so a quiet period isn't followed by a reload that times out every racing call.
 * **Prompts live in files.** `backend/prompts/**.md` with `{{placeholder}}` substitution — reviewable and tunable without touching Python.
 * **Graceful degradation.** Every LLM call has a fallback path, so the terminal stays usable with no provider at all — you lose AI scoring and chat, not market data.
-* **Embeddings** run separately through `sentence-transformers` (`all-MiniLM-L6-v2`), warmed at startup on CUDA / MPS / CPU depending on the host.
+* **Embeddings** run through the local Ollama daemon (`qwen3-embedding:0.6b`, 1024-dim, multilingual), warmed at startup. The cross-encoder reranker loads on CUDA / MPS / CPU depending on the host.
+* **The prompt is budgeted, not truncated.** Ollama cuts an over-long prompt from the front, and the system prompt renders first — so an overflow silently deletes the rules that forbid invented figures. `services/prompt_budget.py` fits the context to a token ceiling first, sacrificing the oldest conversation turns instead, and the hard constraints ride at the tail of the turn prompt where truncation cannot reach them.
 
 ---
 
