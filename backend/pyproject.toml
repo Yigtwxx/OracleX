@@ -1,0 +1,39 @@
+[tool.ruff]
+# Oracle-X backend — linting & formatting configuration.
+target-version = "py39"
+line-length = 100
+extend-exclude = ["venv", "data", "*.sqlite3"]
+
+[tool.ruff.lint]
+# Pragmatic, incrementally-tightenable rule set. F (pyflakes) catches real
+# bugs; the rest are style. Noisy/whitespace rules are deferred to the
+# formatter and can be enabled later by trimming `ignore`.
+#   E/W  pycodestyle   F  pyflakes   B  bugbear   UP  pyupgrade   C4  comprehensions
+select = ["E", "W", "F", "B", "UP", "C4"]
+ignore = [
+    "E501",   # line length — handled by the formatter, not enforced as an error
+    "E402",   # module import not at top — many intentional lazy imports
+    "W291",   # trailing whitespace — formatter territory
+    "W293",   # blank line with whitespace — formatter territory
+    "B008",   # function calls in arg defaults — FastAPI Depends pattern
+    "B904",   # raise-without-from — large stylistic backlog, defer
+    "B007",   # unused loop control variable
+    "UP006",  # non-PEP585 annotations (Dict->dict) — large churn, defer
+    "UP035",  # deprecated typing imports — large churn, defer
+    "F601",   # repeated dict key literal (identical values, harmless) — defer
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # re-exports
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# `rootdir`-relative imports so tests can `from services... import ...` the
+# same way the app does when uvicorn is launched from `backend/`.
+pythonpath = ["."]
+asyncio_mode = "auto"
+addopts = "-q --strict-markers"
