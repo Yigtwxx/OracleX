@@ -1,14 +1,52 @@
+# ── Web framework ────────────────────────────────────────────────────────────
 fastapi>=0.109.0
 uvicorn>=0.27.0
-python-dotenv>=1.0.0
-yfinance>=0.2.35
-feedparser>=6.0.10
-langchain>=0.1.0
-chromadb>=0.4.22
-sentence-transformers>=2.2.0
 pydantic>=2.5.3
+pydantic-settings>=2.1.0
+
+# ── Configuration ────────────────────────────────────────────────────────────
+python-dotenv>=1.0.0
+
+# ── HTTP / networking ────────────────────────────────────────────────────────
 httpx>=0.26.0
 websockets>=10.0
+# Retry/backoff for LLM provider calls (rate limits, transient 5xx).
+tenacity>=8.2.0
+# Replays a browser's TLS/HTTP2 fingerprint for the handful of upstreams that
+# fingerprint the handshake and answer 418 / "Too Many Requests" to ordinary
+# clients regardless of User-Agent — CNN's Fear & Greed feed and Yahoo Finance's
+# chart API. See services/http_client.get_json_impersonated. Not a browser: it
+# costs no more than a normal request.
+curl_cffi>=0.7.0
+
+# HTML parsing for article-body extraction (services/article_service.py). Both
+# already arrived transitively via yfinance; pinned explicitly because the news
+# pipeline depends on them directly and a yfinance change must not silently
+# remove them.
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# ── Market & financial data ──────────────────────────────────────────────────
+yfinance>=0.2.35
 ccxt>=4.0.0
+feedparser>=6.0.10
+
+# ── AI / RAG ─────────────────────────────────────────────────────────────────
+chromadb>=0.4.22
+# Bi-encoder embeddings on the "minilm" backend, and the cross-encoder reranker.
+# The default embedding backend is Ollama, which needs neither.
+sentence-transformers>=2.2.0
+# Lexical half of hybrid retrieval. Market questions are full of tickers, dates
+# and figures where an exact match beats semantic proximity, which is the one
+# thing embeddings are worst at.
+rank-bm25>=0.2.2
+
+# ── Search ───────────────────────────────────────────────────────────────────
+ddgs>=5.0.0
+
+# ── Infrastructure ───────────────────────────────────────────────────────────
 apscheduler>=3.10.4
 supabase>=2.0.0
+cachetools>=5.3.0
+# Encrypts per-user LLM API keys at rest (services/secret_box.py).
+cryptography>=42.0.0
