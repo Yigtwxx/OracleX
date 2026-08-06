@@ -2,8 +2,7 @@
 Oracle-X Shared Utilities
 Logging, shared state, and helper functions used across routers.
 """
-from typing import Optional, List
-from datetime import datetime, timedelta
+from typing import Optional
 from models.schemas import NewsItem
 
 
@@ -47,12 +46,14 @@ def log_result(label: str, value: str, color: str = Colors.WHITE):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# CONFIGURATION FLAGS
+# CONFIGURATION FLAGS (sourced from central config; re-exported for convenience)
 # ═══════════════════════════════════════════════════════════════════════════════
-# Set to True to use real API data
-USE_REAL_API = True
-# Set to True to use Ollama AI for analysis
-USE_OLLAMA_AI = True
+from config import settings
+
+# Use real API data instead of mock fixtures.
+USE_REAL_API = settings.USE_REAL_API
+# Master switch for the AI features, whichever provider is configured.
+USE_AI = settings.USE_AI
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
