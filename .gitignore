@@ -66,8 +66,12 @@ coverage/
 *.log
 logs/
 
-# ChromaDB / RAG Data
-data/
+# ChromaDB / RAG vector stores. A bare `data/` here matched every directory
+# named `data` at any depth, which silently swallowed backend/data/*.json too.
+# Ignore only the generated stores and their timestamped backups.
+backend/data/rag/
+backend/data/rag_v2/
+backend/data/*.bak-*/
 *.sqlite3
 *.bin
 *.pickle
