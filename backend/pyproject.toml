@@ -1,8 +1,16 @@
+[project]
+name = "oracle-x-backend"
+version = "0.1.0"
+# 3.11 is what CI has always run (.github/workflows/ci.yml); the local venv was
+# the one still on 3.9. Scrapling forces the issue — its current line needs
+# 3.10+, and staying below that would pin it to a frozen release.
+requires-python = ">=3.11"
+
 [tool.ruff]
 # Oracle-X backend — linting & formatting configuration.
-target-version = "py39"
+target-version = "py311"
 line-length = 100
-extend-exclude = ["venv", "data", "*.sqlite3"]
+extend-exclude = ["venv", "venv-py39", "data", "*.sqlite3"]
 
 [tool.ruff.lint]
 # Pragmatic, incrementally-tightenable rule set. F (pyflakes) catches real
@@ -20,6 +28,17 @@ ignore = [
     "B007",   # unused loop control variable
     "UP006",  # non-PEP585 annotations (Dict->dict) — large churn, defer
     "UP035",  # deprecated typing imports — large churn, defer
+    # Raising target-version to py311 makes these fire across the whole tree.
+    # They are the same modernisation backlog as UP006/UP035 above and are
+    # deferred for the same reason: a repo-wide rewrite of every annotation
+    # would bury the change that actually raised the target.
+    "UP007",  # Optional[X]/Union[X, Y] -> X | None / X | Y
+    "UP045",  # Optional[X] -> X | None (split out of UP007 in newer ruff)
+    # zip(..., strict=) — also unlocked by py311, but unlike the two above this
+    # is not cosmetic: `strict=True` raises where today the shorter side wins
+    # silently. Auditing 21 call sites for which ones may legitimately zip
+    # ragged sequences is its own task, not a side effect of raising the target.
+    "B905",
     "F601",   # repeated dict key literal (identical values, harmless) — defer
 ]
 
