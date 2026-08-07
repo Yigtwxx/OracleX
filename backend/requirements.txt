@@ -9,6 +9,9 @@ python-dotenv>=1.0.0
 
 # ── HTTP / networking ────────────────────────────────────────────────────────
 httpx>=0.26.0
+# Multipart form parsing. FastAPI needs it to accept UploadFile, which the
+# community image upload (POST /api/community/media) depends on.
+python-multipart>=0.0.9
 websockets>=10.0
 # Retry/backoff for LLM provider calls (rate limits, transient 5xx).
 tenacity>=8.2.0
@@ -43,6 +46,17 @@ rank-bm25>=0.2.2
 
 # ── Search ───────────────────────────────────────────────────────────────────
 ddgs>=5.0.0
+
+# ── Scraping ─────────────────────────────────────────────────────────────────
+# Rungs 2 and 3 of services/scrape_service.py: a replayed browser fingerprint
+# for publishers that answer 403 to plain clients, and a real browser for the
+# few hosts that serve a JavaScript shell with no prose in the HTML.
+#
+# The `fetchers` extra is what pulls in playwright/patchright; the base package
+# is just a parser. Browser *binaries* are a separate step and are not needed
+# unless SCRAPLING_ALLOW_BROWSER is on:
+#     ./venv/bin/scrapling install
+scrapling[fetchers]>=0.4.12
 
 # ── Infrastructure ───────────────────────────────────────────────────────────
 apscheduler>=3.10.4
