@@ -11766,6 +11766,12 @@
       "asset_type": "stock",
       "confident": true,
       "ts": "2026-08-07T10:55:40"
+    },
+    "5d078b62b1c9": {
+      "symbol": "OKX:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-07T10:59:29"
     }
   }
 }
