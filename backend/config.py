@@ -144,6 +144,21 @@ class Settings(BaseSettings):
     USE_REAL_API: bool = True
     USE_AI: bool = True
 
+    # Whether the model chooses which tools a chat turn runs. Off by default:
+    # the fixed plan is the production path until the planner prompt has been
+    # tuned against the local model actually serving chat, and a bad plan costs
+    # a whole turn. With it off `chat_planner` still runs and still returns the
+    # heuristic plan, so the code path is exercised either way.
+    CHAT_PLANNER_ENABLED: bool = False
+
+    # ── Scraping ────────────────────────────────────────────────────────────
+    # Whether the scrape ladder may launch a real browser for the handful of
+    # hosts that serve a JavaScript shell (see services/scrape_service.py).
+    # Costs a browser download via `scrapling install` and ~6-15s per page, so
+    # it is opt-in: with this off the ladder still runs, it just cannot read
+    # Reddit or X. CI leaves it off — no browser is installed there.
+    SCRAPLING_ALLOW_BROWSER: bool = False
+
     # ── CORS ────────────────────────────────────────────────────────────────
     # Comma-separated list of allowed origins for the frontend.
     CORS_ORIGINS: str = "http://localhost:3100,http://127.0.0.1:3100"
