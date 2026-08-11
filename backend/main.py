@@ -28,12 +28,14 @@ from services.liquidation_service import liquidation_service
 
 # Import all routers
 from routers import (
+    admin,
     news,
     llm as llm_router,
     market,
     liquidation,
     watchlist,
     home,
+    macro,
     analysis,
     rag,
     chat,
@@ -41,6 +43,7 @@ from routers import (
     exchanges,
     websocket,
     community,
+    ownership,
     system,
 )
 
@@ -81,6 +84,14 @@ async def lifespan(app: FastAPI):
     # --- Startup ---
     # Fail fast on missing credentials rather than 500-ing on first request.
     settings.validate_required()
+
+    # Not a fatal condition — the app serves fine with nobody administering it —
+    # but a typo in ADMIN_EMAILS locks the panel away silently, so say it out
+    # loud either way.
+    if settings.admin_emails:
+        logger.info("Admin panel enabled for %d address(es)", len(settings.admin_emails))
+    else:
+        logger.warning("ADMIN_EMAILS is empty — the admin panel is closed to everyone")
 
     # Declare the warm-up steps before running any of them, so the frontend's
     # boot gate can show the whole list from its very first poll.
@@ -192,6 +203,40 @@ async def lifespan(app: FastAPI):
             readiness.fail("heatmap", e)
 
     _spawn(_warm_heatmap())
+
+    # Build the macro board once at boot. It is ~26 upstream requests behind a
+    # single cache entry, so leaving it cold means the first visitor to /macro —
+    # or anyone loading the global ticker — pays for all of them at once.
+    async def _warm_macro_board():
+        readiness.start("macro")
+        try:
+            from services.macro_board_service import fetch_macro_board
+
+            await fetch_macro_board()
+            readiness.succeed("macro")
+        except Exception as e:
+            logger.warning("Macro board warm-up failed: %s", e)
+            readiness.fail("macro", e)
+
+    _spawn(_warm_macro_board())
+
+    # Build the ownership board if the stored one has aged out. The daily cron
+    # is the normal path; this only covers the cases it cannot — a fresh install
+    # before the first noon, or a machine that was off when noon passed. It is
+    # deliberately not an unconditional rebuild: the sources behind this board
+    # rate-limit hard, and a restart loop would exhaust the day's budget.
+    async def _warm_ownership():
+        readiness.start("ownership")
+        try:
+            from services.ownership.refresh import ensure_board
+
+            await ensure_board()
+            readiness.succeed("ownership")
+        except Exception as e:
+            logger.warning("Ownership warm-up failed: %s", e)
+            readiness.fail("ownership", e)
+
+    _spawn(_warm_ownership())
 
     # Warm the RAG embedding model in a background thread so the first AI
     # request never blocks the event loop downloading/loading it. Non-fatal:
@@ -336,6 +381,7 @@ def create_app() -> FastAPI:
     app.include_router(liquidation.router)  # /api/liquidations/*, /api/market/candles
     app.include_router(watchlist.router)  # /api/home/watchlist
     app.include_router(home.router)  # /api/home/*, /api/onchain/whales
+    app.include_router(macro.router)  # /api/macro/board
     app.include_router(
         analysis.router
     )  # /api/analysis/reports, /api/analysis/jobs, /api/analysis/notes
@@ -345,6 +391,12 @@ def create_app() -> FastAPI:
     app.include_router(exchanges.router)  # /api/exchanges, /api/multi-exchange, /api/arbitrage
     app.include_router(websocket.router)  # /ws/prices, /api/websocket/status
     app.include_router(community.router)  # /api/community/*
+    app.include_router(ownership.router)  # /api/ownership/board, /api/ownership/entities/*
+    app.include_router(ownership.admin_router)  # /api/admin/ownership/refresh
+    # Two objects: `/api/admin/me` answers any signed-in caller, everything else
+    # is behind a router-level require_admin.
+    app.include_router(admin.session_router)  # /api/admin/me
+    app.include_router(admin.router)  # /api/admin/*
     app.include_router(system.router)  # /api/system/readiness
 
     return app
