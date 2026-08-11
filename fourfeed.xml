@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+  <feed xmlns="http://www.w3.org/2005/Atom">
+    <author>
+      <email>webmaster@sec.gov</email>
+      <name>Webmaster</name>
+    </author>
+    <company-info>
+      <addresses>
+        <address type="mailing">
+          <city>CUPERTINO</city>
+          <state>CA</state>
+          <street1>ONE APPLE PARK WAY</street1>
+          <zip>95014</zip>
+        </address>
+        <address type="business">
+          <city>CUPERTINO</city>
+          <phone>(408) 996-1010</phone>
+          <state>CA</state>
+          <street1>ONE APPLE PARK WAY</street1>
+          <zip>95014</zip>
+        </address>
+      </addresses>
+      <assigned-sic>3571</assigned-sic>
+      <assigned-sic-desc>ELECTRONIC COMPUTERS</assigned-sic-desc>
+      <assigned-sic-href>https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&amp;SIC=3571&amp;owner=include&amp;count=10</assigned-sic-href>
+      <cik>0000320193</cik>
+      <cik-href>https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&amp;CIK=0000320193&amp;owner=include&amp;count=10</cik-href>
+      <conformed-name>Apple Inc.</conformed-name>
+      <fiscal-year-end>0926</fiscal-year-end>
+      <formerly-names count="3">
+        <names>
+          <date>2007-01-04</date>
+          <name>APPLE COMPUTER INC</name>
+        </names>
+        <names>
+          <date>1997-07-28</date>
+          <name>APPLE COMPUTER INC/ FA</name>
+        </names>
+        <names>
+          <date>2019-08-05</date>
+          <name>APPLE INC</name>
+        </names>
+      </formerly-names>
+      <state-location>CA</state-location>
+      <state-location-href>https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&amp;State=CA&amp;owner=include&amp;count=10</state-location-href>
+      <state-of-incorporation>CA</state-of-incorporation>
+    </company-info>
+    <entry>
+      <category label="form type" scheme="https://www.sec.gov/" term="4" />
+      <content type="text/xml">
+        <accession-number>0001140361-26-025622</accession-number>
+        <filing-date>2026-06-17</filing-date>
+        <filing-href>https://www.sec.gov/Archives/edgar/data/320193/000114036126025622/0001140361-26-025622-index.htm</filing-href>
+        <filing-type>4</filing-type>
+        <form-name>Statement of changes in beneficial ownership of securities</form-name>
+        <size>9 KB</size>
+      </content>
+      <id>urn:tag:sec.gov,2008:accession-number=0001140361-26-025622</id>
+      <link href="https://www.sec.gov/Archives/edgar/data/320193/000114036126025622/0001140361-26-025622-index.htm" rel="alternate" type="text/html" />
+      <summary type="html"> &lt;b&gt;Filed:&lt;/b&gt; 2026-06-17 &lt;b&gt;AccNo:&lt;/b&gt; 0001140361-26-025622 &lt;b&gt;Size:&lt;/b&gt; 9 KB</summary>
+      <title>4  - Statement of changes in beneficial ownership of securities</title>
+      <updated>2026-06-17T18:40:43-04:00</updated>
+    </entry>
+    <entry>
+      <category label="form type" scheme="https://www.sec.gov/" term="4" />
+      <content type="text/xml">
+        <accession-number>0001140361-26-025620</accession-number>
+        <filing-date>2026-06-17</filing-date>
+        <filing-href>https://www.sec.gov/Archives/edgar/data/320193/000114036126025620/0001140361-26-025620-index.htm</filing-href>
+        <filing-type>4</filing-type>
+        <form-name>Statement of changes in beneficial ownership of securities</form-name>
+        <size>10 KB</size>
+      </content>
+      <id>urn:tag:sec.gov,2008:accession-number=0001140361-26-025620</id>
+      <link href="https://www.sec.gov/Archives/edgar/data/320193/000114036126025620/0001140361-26-025620-index.htm" rel="alternate" type="text/html" />
+      <summary type="html"> &lt;b&gt;Filed:&lt;/b&gt; 2026-06-17 &lt;b&gt;AccNo:&lt;/b&gt; 0001140361-26-025620 &lt;b&gt;Size:&lt;/b&gt; 10 KB</summary>
+      <title>4  - Statement of changes in beneficial ownership of securities</title>
+      <updated>2026-06-17T18:30:15-04:00</updated>
+    </entry>
+    <entry>
+      <category label="form type" scheme="https://www.sec.gov/" term="4" />
+      <content type="text/xml">
+        <accession-number>0001140361-26-023363</accession-number>
+        <filing-date>2026-05-29</filing-date>
+        <filing-href>https://www.sec.gov/Archives/edgar/data/320193/000114036126023363/0001140361-26-023363-index.htm</filing-href>
+        <filing-type>4</filing-type>
+        <form-name>Statement of changes in beneficial ownership of securities</form-name>
+        <size>6 KB</size>
+      </content>
+      <id>urn:tag:sec.gov,2008:accession-number=0001140361-26-023363</id>
+      <link href="https://www.sec.gov/Archives/edgar/data/320193/000114036126023363/0001140361-26-023363-index.htm" rel="alternate" type="text/html" />
+      <summary type="html"> &lt;b&gt;Filed:&lt;/b&gt; 2026-05-29 &lt;b&gt;AccNo:&lt;/b&gt; 0001140361-26-023363 &lt;b&gt;Size:&lt;/b&gt; 6 KB</summary>
+      <title>4  - Statement of changes in beneficial ownership of securities</title>
+      <updated>2026-05-29T18:30:27-04:00</updated>
+    </entry>
+    <entry>
+      <category label="form type" scheme="https://www.sec.gov/" term="4" />
+      <content type="text/xml">
+        <accession-number>0001140361-26-020871</accession-number>
+        <filing-date>2026-05-12</filing-date>
+        <filing-href>https://www.sec.gov/Archives/edgar/data/320193/000114036126020871/0001140361-26-020871-index.htm</filing-href>
+        <filing-type>4</filing-type>
+        <form-name>Statement of changes in beneficial ownership of securities</form-name>
+        <size>4 KB</size>
+      </content>
+      <id>urn:tag:sec.gov,2008:accession-number=0001140361-26-020871</id>
+      <link href="https://www.sec.gov/Archives/edgar/data/320193/000114036126020871/0001140361-26-020871-index.htm" rel="alternate" type="text/html" />
+      <summary type="html"> &lt;b&gt;Filed:&lt;/b&gt; 2026-05-12 &lt;b&gt;AccNo:&lt;/b&gt; 0001140361-26-020871 &lt;b&gt;Size:&lt;/b&gt; 4 KB</summary>
+      <title>4  - Statement of changes in beneficial ownership of securities</title>
+      <updated>2026-05-12T18:31:29-04:00</updated>
+    </entry>
+    <entry>
+      <category label="form type" scheme="https://www.sec.gov/" term="4" />
+      <content type="text/xml">
+        <accession-number>0001140361-26-020298</accession-number>
+        <filing-date>2026-05-08</filing-date>
+        <filing-href>https://www.sec.gov/Archives/edgar/data/320193/000114036126020298/0001140361-26-020298-index.htm</filing-href>
+        <filing-type>4</filing-type>
+        <form-name>Statement of changes in beneficial ownership of securities</form-name>
+        <size>8 KB</size>
+      </content>
+      <id>urn:tag:sec.gov,2008:accession-number=0001140361-26-020298</id>
+      <link href="https://www.sec.gov/Archives/edgar/data/320193/000114036126020298/0001140361-26-020298-index.htm" rel="alternate" type="text/html" />
+      <summary type="html"> &lt;b&gt;Filed:&lt;/b&gt; 2026-05-08 &lt;b&gt;AccNo:&lt;/b&gt; 0001140361-26-020298 &lt;b&gt;Size:&lt;/b&gt; 8 KB</summary>
+      <title>4  - Statement of changes in beneficial ownership of securities</title>
+      <updated>2026-05-08T18:30:09-04:00</updated>
+    </entry>
+    <entry>
+      <category label="form type" scheme="https://www.sec.gov/" term="4" />
+      <content type="text/xml">
+        <accession-number>0001140361-26-017175</accession-number>
+        <filing-date>2026-04-27</filing-date>
+        <filing-href>https://www.sec.gov/Archives/edgar/data/320193/000114036126017175/0001140361-26-017175-index.htm</filing-href>
+        <filing-type>4</filing-type>
+        <form-name>Statement of changes in beneficial ownership of securities</form-name>
+        <size>4 KB</size>
+      </content>
+      <id>urn:tag:sec.gov,2008:accession-number=0001140361-26-017175</id>
+      <link href="https://www.sec.gov/Archives/edgar/data/320193/000114036126017175/0001140361-26-017175-index.htm" rel="alternate" type="text/html" />
+      <summary type="html"> &lt;b&gt;Filed:&lt;/b&gt; 2026-04-27 &lt;b&gt;AccNo:&lt;/b&gt; 0001140361-26-017175 &lt;b&gt;Size:&lt;/b&gt; 4 KB</summary>
+      <title>4  - Statement of changes in beneficial ownership of securities</title>
+      <updated>2026-04-27T18:30:44-04:00</updated>
+    </entry>
+    <entry>
+      <category label="form type" scheme="https://www.sec.gov/" term="4" />
+      <content type="text/xml">
+        <accession-number>0001140361-26-015421</accession-number>
+        <filing-date>2026-04-17</filing-date>
+        <filing-href>https://www.sec.gov/Archives/edgar/data/320193/000114036126015421/0001140361-26-015421-index.htm</filing-href>
+        <filing-type>4</filing-type>
+        <form-name>Statement of changes in beneficial ownership of securities</form-name>
+        <size>15 KB</size>
+      </content>
+      <id>urn:tag:sec.gov,2008:accession-number=0001140361-26-015421</id>
+      <link href="https://www.sec.gov/Archives/edgar/data/320193/000114036126015421/0001140361-26-015421-index.htm" rel="alternate" type="text/html" />
+      <summary type="html"> &lt;b&gt;Filed:&lt;/b&gt; 2026-04-17 &lt;b&gt;AccNo:&lt;/b&gt; 0001140361-26-015421 &lt;b&gt;Size:&lt;/b&gt; 15 KB</summary>
+      <title>4  - Statement of changes in beneficial ownership of securities</title>
+      <updated>2026-04-17T18:32:12-04:00</updated>
+    </entry>
+    <entry>
+      <category label="form type" scheme="https://www.sec.gov/" term="4" />
+      <content type="text/xml">
+        <accession-number>0001140361-26-015420</accession-number>
+        <filing-date>2026-04-17</filing-date>
+        <filing-href>https://www.sec.gov/Archives/edgar/data/320193/000114036126015420/0001140361-26-015420-index.htm</filing-href>
+        <filing-type>4</filing-type>
+        <form-name>Statement of changes in beneficial ownership of securities</form-name>
+        <size>10 KB</size>
+      </content>
+      <id>urn:tag:sec.gov,2008:accession-number=0001140361-26-015420</id>
+      <link href="https://www.sec.gov/Archives/edgar/data/320193/000114036126015420/0001140361-26-015420-index.htm" rel="alternate" type="text/html" />
+      <summary type="html"> &lt;b&gt;Filed:&lt;/b&gt; 2026-04-17 &lt;b&gt;AccNo:&lt;/b&gt; 0001140361-26-015420 &lt;b&gt;Size:&lt;/b&gt; 10 KB</summary>
+      <title>4  - Statement of changes in beneficial ownership of securities</title>
+      <updated>2026-04-17T18:30:34-04:00</updated>
+    </entry>
+    <entry>
+      <category label="form type" scheme="https://www.sec.gov/" term="4" />
+      <content type="text/xml">
+        <accession-number>0001140361-26-013192</accession-number>
+        <filing-date>2026-04-03</filing-date>
+        <filing-href>https://www.sec.gov/Archives/edgar/data/320193/000114036126013192/0001140361-26-013192-index.htm</filing-href>
+        <filing-type>4</filing-type>
+        <form-name>Statement of changes in beneficial ownership of securities</form-name>
+        <size>17 KB</size>
+      </content>
+      <id>urn:tag:sec.gov,2008:accession-number=0001140361-26-013192</id>
+      <link href="https://www.sec.gov/Archives/edgar/data/320193/000114036126013192/0001140361-26-013192-index.htm" rel="alternate" type="text/html" />
+      <summary type="html"> &lt;b&gt;Filed:&lt;/b&gt; 2026-04-03 &lt;b&gt;AccNo:&lt;/b&gt; 0001140361-26-013192 &lt;b&gt;Size:&lt;/b&gt; 17 KB</summary>
+      <title>4  - Statement of changes in beneficial ownership of securities</title>
+      <updated>2026-04-03T18:30:45-04:00</updated>
+    </entry>
+    <entry>
+      <category label="form type" scheme="https://www.sec.gov/" term="4" />
+      <content type="text/xml">
+        <accession-number>0001140361-26-013191</accession-number>
+        <filing-date>2026-04-03</filing-date>
+        <filing-href>https://www.sec.gov/Archives/edgar/data/320193/000114036126013191/0001140361-26-013191-index.htm</filing-href>
+        <filing-type>4</filing-type>
+        <form-name>Statement of changes in beneficial ownership of securities</form-name>
+        <size>14 KB</size>
+      </content>
+      <id>urn:tag:sec.gov,2008:accession-number=0001140361-26-013191</id>
+      <link href="https://www.sec.gov/Archives/edgar/data/320193/000114036126013191/0001140361-26-013191-index.htm" rel="alternate" type="text/html" />
+      <summary type="html"> &lt;b&gt;Filed:&lt;/b&gt; 2026-04-03 &lt;b&gt;AccNo:&lt;/b&gt; 0001140361-26-013191 &lt;b&gt;Size:&lt;/b&gt; 14 KB</summary>
+      <title>4  - Statement of changes in beneficial ownership of securities</title>
+      <updated>2026-04-03T18:30:43-04:00</updated>
+    </entry>
+    <id>https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&amp;CIK=0000320193</id>
+    <link href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&amp;CIK=0000320193&amp;type=4&amp;owner=include&amp;start=0&amp;count=10" rel="alternate" type="text/html" />
+    <link href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&amp;CIK=0000320193&amp;type=4&amp;owner=include&amp;start=0&amp;count=10&amp;output=atom" rel="self" type="application/atom+xml" />
+    <link href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&amp;CIK=0000320193&amp;type=4%25&amp;datea=&amp;dateb=&amp;owner=include&amp;count=10&amp;output=atom&amp;start=10" rel="next" type="application/atom+xml" />
+    <title>Apple Inc.  (0000320193)</title>
+    <updated>2026-08-07T07:48:54-04:00</updated>
+  </feed>
