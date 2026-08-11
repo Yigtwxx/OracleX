@@ -12,7 +12,7 @@ Usage:
 
 import os
 from functools import lru_cache
-from typing import List, Optional
+from typing import List, Optional, Set
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -162,6 +162,33 @@ class Settings(BaseSettings):
     # ── CORS ────────────────────────────────────────────────────────────────
     # Comma-separated list of allowed origins for the frontend.
     CORS_ORIGINS: str = "http://localhost:3100,http://127.0.0.1:3100"
+
+    # ── Admin ───────────────────────────────────────────────────────────────
+    # Comma-separated emails that get the admin panel, matched case-insensitively
+    # against the *verified* email on the caller's JWT.
+    #
+    # Adminship deliberately lives here rather than in a `profiles` column: the
+    # backend holds the service-role key and bypasses RLS, so anything stored in
+    # the database is one bug away from being self-grantable. An environment
+    # variable cannot be written by a request.
+    #
+    # Empty is the safe default — nobody is an admin.
+    ADMIN_EMAILS: str = ""
+
+    # ── Ownership board ─────────────────────────────────────────────────────
+    # A single daily rebuild, not a polling interval: every source behind this
+    # board publishes quarterly (13F), monthly (reserves) or on-event (Form 4,
+    # on-chain). Polling a filing hourly asks the same question ninety times and
+    # learns nothing, while spending rate limits that are shared process-wide.
+    OWNERSHIP_REFRESH_HOUR: int = 12
+    # "Noon" is a claim about a place. The container runs on UTC, so a naive
+    # hour would fire at 15:00 local through summer and 14:00 through winter.
+    OWNERSHIP_REFRESH_TIMEZONE: str = "Europe/Istanbul"
+    # SEC requires a declaring User-Agent with a contact address on every
+    # request and answers 403 without one; repeated violations are blocked by
+    # IP, which would take out the whole deployment. Empty disables the 13F and
+    # Form 4 providers rather than risking the ban.
+    SEC_USER_AGENT: str = ""
 
     # ── Background scheduler intervals (minutes) ────────────────────────────
     NEWS_FETCH_INTERVAL_MINUTES: int = 2
@@ -331,6 +358,17 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> List[str]:
         """CORS_ORIGINS parsed into a clean list of origins."""
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+    @property
+    def admin_emails(self) -> Set[str]:
+        """
+        ADMIN_EMAILS parsed into a set of lowercased addresses.
+
+        Read through this property at call time, never captured into a
+        module-level constant: tests monkeypatch `ADMIN_EMAILS`, and a cached
+        copy would also mean a restart is needed to change who is an admin.
+        """
+        return {e.strip().lower() for e in self.ADMIN_EMAILS.split(",") if e.strip()}
 
     @property
     def rag_outcome_horizons(self) -> List[int]:
