@@ -36,6 +36,7 @@ from routers import (
     watchlist,
     home,
     macro,
+    live,
     analysis,
     rag,
     chat,
@@ -382,6 +383,7 @@ def create_app() -> FastAPI:
     app.include_router(watchlist.router)  # /api/home/watchlist
     app.include_router(home.router)  # /api/home/*, /api/onchain/whales
     app.include_router(macro.router)  # /api/macro/board
+    app.include_router(live.router)  # /api/live/events, /api/live/streams, /api/live/tape
     app.include_router(
         analysis.router
     )  # /api/analysis/reports, /api/analysis/jobs, /api/analysis/notes
@@ -397,7 +399,7 @@ def create_app() -> FastAPI:
     # is behind a router-level require_admin.
     app.include_router(admin.session_router)  # /api/admin/me
     app.include_router(admin.router)  # /api/admin/*
-    app.include_router(system.router)  # /api/system/readiness
+    app.include_router(system.router)  # /api/system/readiness, /api/system/health
 
     return app
 
