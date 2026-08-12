@@ -1,386 +1,390 @@
 {
   "bitcoin": {
-    "fetched_at": 1786011873.039656,
+    "fetched_at": 1786492766.255431,
     "score_version": 3,
     "developer_score": 79.7,
     "github_commits": 108.0,
     "github_stars": 73168.0
   },
   "ethereum": {
-    "fetched_at": 1786011875.978179,
+    "fetched_at": 1786493693.0331159,
     "score_version": 3,
     "developer_score": 69.6,
     "github_commits": 41.0,
     "github_stars": 44422.0
   },
   "tether": {
-    "fetched_at": 1786012499.770619,
+    "fetched_at": 1786494729.8015769,
     "score_version": 3
   },
   "binancecoin": {
-    "fetched_at": 1786012502.758334,
+    "fetched_at": 1786494732.692062,
     "score_version": 3,
     "developer_score": 29.0,
     "github_commits": 0.0,
     "github_stars": 4250.0
   },
   "usd-coin": {
-    "fetched_at": 1786012506.584231,
+    "fetched_at": 1786497721.96435,
     "score_version": 3,
-    "developer_score": 23.1,
+    "developer_score": 23.2,
     "github_commits": 0.0,
-    "github_stars": 781.0
+    "github_stars": 784.0
   },
   "ripple": {
-    "fetched_at": 1786012509.926292,
+    "fetched_at": 1786497724.813652,
     "score_version": 3,
     "developer_score": 43.1,
     "github_commits": 4.0,
     "github_stars": 4384.0
   },
   "solana": {
-    "fetched_at": 1786012799.729447,
+    "fetched_at": 1786497727.639613,
     "score_version": 3,
     "developer_score": 77.1,
     "github_commits": 171.0,
     "github_stars": 11071.0
   },
   "tron": {
-    "fetched_at": 1786012802.960914,
+    "fetched_at": 1786497730.5377028,
     "score_version": 3,
     "developer_score": 54.4,
     "github_commits": 19.0,
     "github_stars": 3530.0
   },
   "figure-heloc": {
-    "fetched_at": 1786012806.0441668,
+    "fetched_at": 1786508660.970336,
     "score_version": 3
   },
   "hyperliquid": {
-    "fetched_at": 1786012809.3481238,
+    "fetched_at": 1786498760.4619288,
     "score_version": 3
   },
   "dogecoin": {
-    "fetched_at": 1786014019.995199,
+    "fetched_at": 1786498763.335603,
     "score_version": 3,
     "developer_score": 33.3,
     "github_commits": 0.0,
     "github_stars": 14334.0
   },
   "usds": {
-    "fetched_at": 1786014023.096468,
+    "fetched_at": 1786498766.2698612,
     "score_version": 3
   },
   "leo-token": {
-    "fetched_at": 1786014026.197095,
+    "fetched_at": 1786498769.12501,
     "score_version": 3
   },
   "rain": {
-    "fetched_at": 1786014315.5917299,
+    "fetched_at": 1786502360.52428,
     "score_version": 3
   },
   "zcash": {
-    "fetched_at": 1786014318.537015,
+    "fetched_at": 1786502363.376703,
     "score_version": 3,
     "developer_score": 60.3,
     "github_commits": 34.0,
     "github_stars": 4811.0
   },
   "cardano": {
-    "fetched_at": 1786014321.601768,
+    "fetched_at": 1786505221.786825,
     "score_version": 3,
     "developer_score": 28.6,
     "github_commits": 0.0,
     "github_stars": 3757.0
   },
   "monero": {
-    "fetched_at": 1786014616.10524,
+    "fetched_at": 1786505224.7561421,
     "score_version": 3,
     "developer_score": 31.4,
     "github_commits": 0.0,
     "github_stars": 8309.0
   },
   "whitebit": {
-    "fetched_at": 1786014619.168687,
+    "fetched_at": 1786505227.625131,
     "score_version": 3
   },
   "chainlink": {
-    "fetched_at": 1786014622.136517,
+    "fetched_at": 1786505230.50677,
     "score_version": 3,
     "developer_score": 68.9,
     "github_commits": 87.0,
     "github_stars": 5703.0
   },
   "stellar": {
-    "fetched_at": 1786014625.0712461,
+    "fetched_at": 1786507621.761576,
     "score_version": 3,
     "developer_score": 66.7,
     "github_commits": 86.0,
     "github_stars": 3118.0
   },
   "dai": {
-    "fetched_at": 1786014916.391213,
+    "fetched_at": 1786507624.859102,
     "score_version": 3
   },
   "canton-network": {
-    "fetched_at": 1786014919.707315,
+    "fetched_at": 1786507627.982522,
     "score_version": 3
   },
   "bitcoin-cash": {
-    "fetched_at": 1786014922.924625,
+    "fetched_at": 1786507630.888957,
     "score_version": 3
   },
   "usd1-wlfi": {
-    "fetched_at": 1786014926.1232169,
+    "fetched_at": 1786508663.869587,
     "score_version": 3
   },
   "ethena-usde": {
-    "fetched_at": 1786015349.282183,
+    "fetched_at": 1786508666.747135,
     "score_version": 3
   },
   "the-open-network": {
-    "fetched_at": 1786015352.5352,
+    "fetched_at": 1786508669.6187751,
     "score_version": 3,
-    "developer_score": 70.9,
-    "github_commits": 125.0,
-    "github_stars": 4111.0
+    "developer_score": 70.0,
+    "github_commits": 112.0,
+    "github_stars": 4116.0
   },
   "global-dollar": {
-    "fetched_at": 1786015355.5800068,
+    "fetched_at": 1786510322.006436,
     "score_version": 3,
     "developer_score": 10.2,
     "github_commits": 0.0,
     "github_stars": 18.0
   },
   "litecoin": {
-    "fetched_at": 1786015645.49791,
+    "fetched_at": 1786510325.1519392,
     "score_version": 3,
     "developer_score": 35.1,
     "github_commits": 1.0,
     "github_stars": 4266.0
   },
   "hedera-hashgraph": {
-    "fetched_at": 1786015648.4201899,
+    "fetched_at": 1786512260.451784,
     "score_version": 3
   },
   "hashnote-usyc": {
-    "fetched_at": 1786015651.323067,
+    "fetched_at": 1786512263.296862,
     "score_version": 3
   },
   "avalanche-2": {
-    "fetched_at": 1786015654.275124,
+    "fetched_at": 1786512266.132916,
     "score_version": 3
   },
   "shiba-inu": {
-    "fetched_at": 1786015944.9743109,
+    "fetched_at": 1786512268.992832,
     "score_version": 3
   },
   "sui": {
-    "fetched_at": 1786015947.978252,
+    "fetched_at": 1786514960.600254,
     "score_version": 3,
     "developer_score": 76.7,
     "github_commits": 219.0,
     "github_stars": 5403.0
   },
   "paypal-usd": {
-    "fetched_at": 1786015950.961056,
+    "fetched_at": 1786514963.473244,
     "score_version": 3
   },
   "blackrock-usd-institutional-digital-liquidity-fund": {
-    "fetched_at": 1786015953.875288,
+    "fetched_at": 1786514966.367676,
     "score_version": 3
   },
   "crypto-com-chain": {
-    "fetched_at": 1786016245.2598941,
+    "fetched_at": 1786514969.2246132,
     "score_version": 3,
     "developer_score": 27.8,
     "github_commits": 1.0,
     "github_stars": 523.0
   },
   "tether-gold": {
-    "fetched_at": 1786016248.4998112,
+    "fetched_at": 1786518860.7265558,
     "score_version": 3
   },
   "uniswap": {
-    "fetched_at": 1786087299.258358,
+    "fetched_at": 1786518863.733658,
     "score_version": 3,
     "developer_score": 29.6,
     "github_commits": 0.0,
-    "github_stars": 5019.0
+    "github_stars": 5020.0
   },
   "near": {
-    "fetched_at": 1786087302.29325,
+    "fetched_at": 1786518867.107583,
     "score_version": 3,
     "developer_score": 67.6,
     "github_commits": 103.0,
     "github_stars": 2590.0
   },
   "ondo-us-dollar-yield": {
-    "fetched_at": 1786087305.291067,
+    "fetched_at": 1786518869.9687629,
     "score_version": 3
   },
   "pax-gold": {
-    "fetched_at": 1786087590.436106,
+    "fetched_at": 1786519021.805578,
     "score_version": 3
   },
   "bittensor": {
-    "fetched_at": 1786087593.322995,
+    "fetched_at": 1786519024.797534,
     "score_version": 3,
-    "developer_score": 31.4,
-    "github_commits": 1.0,
-    "github_stars": 1467.0
+    "developer_score": 25.3,
+    "github_commits": 0.0,
+    "github_stars": 1468.0
   },
   "ondo-finance": {
-    "fetched_at": 1786087596.189152,
+    "fetched_at": 1786519027.6505768,
     "score_version": 3,
     "developer_score": 12.6,
     "github_commits": 0.0,
     "github_stars": 37.0
   },
   "okb": {
-    "fetched_at": 1786087599.076936,
+    "fetched_at": 1786519030.480577,
     "score_version": 3
   },
   "world-liberty-financial": {
-    "fetched_at": 1786087890.509459,
+    "fetched_at": 1786461424.6909409,
     "score_version": 3
   },
   "aster-2": {
-    "fetched_at": 1786087893.3703942,
+    "fetched_at": 1786461427.564734,
     "score_version": 3,
     "developer_score": 41.0,
     "github_commits": 17.0,
     "github_stars": 95.0
   },
   "htx-dao": {
-    "fetched_at": 1786087896.2327292,
+    "fetched_at": 1786461430.440044,
     "score_version": 3
   },
   "ripple-usd": {
-    "fetched_at": 1786087899.12784,
+    "fetched_at": 1786462460.988229,
     "score_version": 3
   },
   "usdd": {
-    "fetched_at": 1786088190.519967,
+    "fetched_at": 1786462463.852851,
     "score_version": 3
   },
   "memecore": {
-    "fetched_at": 1786088193.400079,
+    "fetched_at": 1786462466.7508988,
     "score_version": 3
   },
   "falcon-finance": {
-    "fetched_at": 1786088196.2753558,
+    "fetched_at": 1786462469.679353,
     "score_version": 3
   },
   "polkadot": {
-    "fetched_at": 1786088199.129463,
+    "fetched_at": 1786462621.502523,
     "score_version": 3
   },
   "aave": {
-    "fetched_at": 1786088490.470866,
+    "fetched_at": 1786462624.423994,
     "score_version": 3,
     "developer_score": 25.3,
     "github_commits": 0.0,
     "github_stars": 1438.0
   },
   "mantle": {
-    "fetched_at": 1786088493.416277,
+    "fetched_at": 1786462627.304936,
     "score_version": 3
   },
   "sky": {
-    "fetched_at": 1786088496.2656069,
+    "fetched_at": 1786462630.183109,
     "score_version": 3
   },
   "bfusd": {
-    "fetched_at": 1786088499.1348548,
+    "fetched_at": 1786477921.9724832,
     "score_version": 3
   },
   "morpho": {
-    "fetched_at": 1786088790.445066,
+    "fetched_at": 1786477924.8339279,
     "score_version": 3
   },
   "united-stables": {
-    "fetched_at": 1786088793.3253691,
+    "fetched_at": 1786477927.7114391,
     "score_version": 3
   },
   "pepe": {
-    "fetched_at": 1786088796.2052429,
+    "fetched_at": 1786479860.498849,
     "score_version": 3
   },
   "internet-computer": {
-    "fetched_at": 1786088799.080866,
+    "fetched_at": 1786479863.340735,
     "score_version": 3,
     "developer_score": 80.2,
     "github_commits": 567.0,
     "github_stars": 1399.0
   },
   "bitget-token": {
-    "fetched_at": 1786089090.3817348,
+    "fetched_at": 1786479866.1882172,
     "score_version": 3
   },
   "usdgo": {
-    "fetched_at": 1786089093.2507148,
+    "fetched_at": 1786479869.373701,
     "score_version": 3
   },
   "worldcoin-wld": {
-    "fetched_at": 1786089390.471643,
+    "fetched_at": 1786486760.454396,
     "score_version": 3
   },
   "ethereum-classic": {
-    "fetched_at": 1786089393.379471,
+    "fetched_at": 1786486763.298998,
     "score_version": 3,
     "developer_score": 24.4,
     "github_commits": 1.0,
     "github_stars": 195.0
   },
   "pi-network": {
-    "fetched_at": 1786089396.2445672,
+    "fetched_at": 1786489323.9490619,
     "score_version": 3,
     "developer_score": 26.5,
     "github_commits": 0.0,
-    "github_stars": 2032.0
+    "github_stars": 2035.0
   },
   "spiko-amundi-overnight-swap-fund-eur": {
-    "fetched_at": 1786089399.126703,
+    "fetched_at": 1786489327.0249448,
     "score_version": 3
   },
   "blockchain-capital": {
-    "fetched_at": 1786009467.7771552,
+    "fetched_at": 1786489329.9914281,
     "score_version": 3
   },
   "pump-fun": {
-    "fetched_at": 1786009470.743723,
+    "fetched_at": 1786489332.920702,
     "score_version": 3
   },
   "eutbl": {
-    "fetched_at": 1786009473.707037,
+    "fetched_at": 1786490360.494674,
     "score_version": 3,
     "developer_score": 9.6,
     "github_commits": 0.0,
     "github_stars": 15.0
   },
   "superstate-short-duration-us-government-securities-fund-ustb": {
-    "fetched_at": 1786011564.030045,
+    "fetched_at": 1786490363.3520908,
     "score_version": 3
   },
   "kucoin-shares": {
-    "fetched_at": 1786011566.933671,
+    "fetched_at": 1786490526.0109172,
     "score_version": 3
   },
   "ethena": {
-    "fetched_at": 1786011569.8529978,
+    "fetched_at": 1786490528.871715,
     "score_version": 3
   },
   "janus-henderson-anemoy-treasury-fund": {
-    "fetched_at": 1786011572.898664,
+    "fetched_at": 1786492760.483435,
     "score_version": 3
   },
   "just": {
-    "fetched_at": 1786011867.2018838,
+    "fetched_at": 1786470121.7662652,
     "score_version": 3
   },
   "quant-network": {
-    "fetched_at": 1786011870.109565,
+    "fetched_at": 1786492763.370024,
+    "score_version": 3
+  },
+  "polygon-ecosystem-token": {
+    "fetched_at": 1786434068.29773,
     "score_version": 3
   }
 }
