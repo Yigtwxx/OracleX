@@ -128,11 +128,31 @@ class Position(BaseModel):
 
 
 class AllocationSlice(BaseModel):
-    """One segment of the allocation bar."""
+    """
+    One segment of the allocation bar — a single holding, not a class.
 
+    Per holding rather than per asset class because a class-wide bar answers a
+    question nobody asked of a card: an entity holding 50% ETH, 30% BTC and 20%
+    cash draws two segments, and the two coins share one, which is the same
+    picture as holding only bitcoin.
+
+    `key`, `label` and `symbol` carry defaults so a board written by an older
+    build still validates on read. A cache from yesterday must not 503 the page;
+    it renders with class labels until the daily rebuild refills them.
+    """
+
+    # The position key, or the pooled-tail sentinel below.
+    key: str = ""
+    label: str = ""
+    symbol: str | None = None
     asset_class: AssetClass
     value_usd: float
     pct: float
+
+
+# The tail of small holdings, pooled into one segment. Named here because the
+# frontend colours this segment differently and must not guess at the string.
+POOLED_SLICE_KEY = "__other__"
 
 
 class Move(BaseModel):
@@ -185,6 +205,12 @@ class EntitySummary(BaseModel):
     subtitle: str | None = None
     category: Category
     country: str | None = None
+    # The company's own mark, when one identifies it. Filled on the way out of
+    # `board` rather than stored with the numbers: it is registry metadata, not
+    # something a refresh observed, and pinning it into the snapshot would leave
+    # a corrected logo waiting a day behind the next rebuild. None means the
+    # card draws a monogram — or, for a politician or a central bank, its flag.
+    logo_url: str | None = None
 
     total_value_usd: float | None = None
     positions_count: int = 0
