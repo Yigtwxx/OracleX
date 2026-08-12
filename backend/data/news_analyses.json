@@ -1529,5 +1529,251 @@
     },
     "stored_at": "2026-08-06T12:43:47.298952",
     "outcome": null
+  },
+  "0673a9f76673:1bb726cffee8": {
+    "news_id": "0673a9f76673",
+    "pipeline_version": "1bb726cffee8",
+    "analysis": {
+      "sentiment": "neutral",
+      "confidence": 0.45,
+      "reasoning": "The news item is a routine earnings guidance update from Maravai (ticker missing), which typically has low market impact unless it deviates significantly from consensus; however, the source article is unavailable and no specific ticker or price data for this company was provided in the dataset. Without knowing the stock's current valuation relative to these figures or its liquidity profile, I cannot assess materiality beyond a standard guidance update.",
+      "historical_context": "Risk Level: LOW | Time Horizon: Short-term (1-7 days). Key factors: Guidance update for EBITDA and Revenue, Missing ticker symbol prevents asset-specific analysis, Source article unavailable limiting depth of assessment. Expected impact: no material impact expected",
+      "technical_signals": null,
+      "prediction_hash": "dd7d1a7649d9484d87d4574ab7235b78212628f37e4759a229ea028398c02900",
+      "tx_hash": null,
+      "source": null,
+      "key_factors": [
+        "Guidance update for EBITDA and Revenue",
+        "Missing ticker symbol prevents asset-specific analysis",
+        "Source article unavailable limiting depth of assessment"
+      ],
+      "price_impact": "no material impact expected",
+      "risk_level": "low",
+      "time_horizon": "short-term",
+      "materiality": "routine",
+      "mechanism": "no mechanism identified",
+      "invalidation": "If Maravai is found to be a high-beta micro-cap with low float where this specific EBITDA range represents a >10% surprise relative to consensus estimates, the move could be significant.",
+      "regime_note": "The crypto market regime shows fear (Fear & Greed: 29) and negative breadth in major assets (-0.14% cap-weighted), suggesting risk-off sentiment that would dampen any positive reaction to a corporate earnings update unless it is an outlier event.",
+      "evidence": [
+        {
+          "claim": "The company provided specific financial guidance for the current year.",
+          "quote": "Maravai outlines $33M-$35M 2026 adjusted EBITDA outlook while maintaining $205M-$215M revenue range",
+          "direction": "neutral",
+          "weight": "primary"
+        },
+        {
+          "claim": "The source article containing the full context and market reaction data is not retrievable.",
+          "quote": null,
+          "direction": "neutral",
+          "weight": "context"
+        }
+      ],
+      "precedents": [],
+      "citations": [
+        {
+          "label": "Seeking Alpha",
+          "url": "https://seekingalpha.com/news/4628981-maravai-outlines-33m-35m-2026-adjusted-ebitda-outlook-while-maintaining-205m-215m-revenue?utm_source=feed_news_all&utm_medium=referral&feed_item_type=news",
+          "kind": "article"
+        }
+      ],
+      "coverage": {
+        "article_text": "summary-only",
+        "article_chars": 0,
+        "unavailable": [
+          "Source article",
+          "Historical precedent"
+        ]
+      },
+      "analysed_at": "2026-08-07T13:36:04.471791",
+      "duration_seconds": 25.5,
+      "model": "qwen3.6:35b-a3b",
+      "stages_run": [
+        "gathering",
+        "judging"
+      ]
+    },
+    "news": {
+      "id": "0673a9f76673",
+      "title": "Maravai outlines $33M-$35M 2026 adjusted EBITDA outlook while maintaining $205M-$215M revenue range",
+      "summary": "",
+      "source": "Seeking Alpha",
+      "symbol": null,
+      "asset_type": "stock",
+      "url": "https://seekingalpha.com/news/4628981-maravai-outlines-33m-35m-2026-adjusted-ebitda-outlook-while-maintaining-205m-215m-revenue?utm_source=feed_news_all&utm_medium=referral&feed_item_type=news",
+      "published_at": "2026-08-07 13:25:17"
+    },
+    "stored_at": "2026-08-07T13:36:04.471821",
+    "outcome": null
+  },
+  "f86226362f47:1bb726cffee8": {
+    "news_id": "f86226362f47",
+    "pipeline_version": "1bb726cffee8",
+    "analysis": {
+      "sentiment": "neutral",
+      "confidence": 0.45,
+      "reasoning": "The news item is a conceptual explanation of token utility (NIGHT vs DUST) rather than a material event like an exchange listing or partnership; without the full article text to confirm adoption metrics or technical integration, this remains routine educational content with no immediate price mechanism. The broader market regime shows flat sentiment (Fear & Greed 29) and negative breadth for relevant sectors (AI/Compute -2.30%), which dampens any potential speculative interest in a new utility model.",
+      "historical_context": "Risk Level: LOW | Time Horizon: Medium-term (1-4 weeks). Key factors: Educational content vs. material event, Missing source article body, Weak sector breadth for AI/Compute. Expected impact: no material impact expected",
+      "technical_signals": {
+        "rsi_signal": "Neutral",
+        "support_levels": [
+          "$0.01879",
+          "$0.01844"
+        ],
+        "resistance_levels": [
+          "$0.01924",
+          "$0.01946"
+        ],
+        "target_price": "$0.01908 - $0.01924"
+      },
+      "prediction_hash": "26253849f3c2ab92a811a2aca08d82027b5613159b83a7009e58a03798753f86",
+      "tx_hash": null,
+      "source": null,
+      "key_factors": [
+        "Educational content vs. material event",
+        "Missing source article body",
+        "Weak sector breadth for AI/Compute"
+      ],
+      "price_impact": "no material impact expected",
+      "risk_level": "low",
+      "time_horizon": "medium-term",
+      "materiality": "routine",
+      "mechanism": "no mechanism identified",
+      "invalidation": "If the unretrievable article body explicitly announces a live mainnet launch with immediate liquidity or a major exchange listing that forces buying pressure above $0.01924 resistance.",
+      "regime_note": "The backdrop is dampening, as indicated by the AI/Compute sector declining -2.30% and broad market breadth being weak at 85 advancing out of 250 coins (34.0%).",
+      "evidence": [
+        {
+          "claim": "The news item explains token mechanics without announcing a material event.",
+          "quote": "NIGHT generates DUST. DUST is the renewable network resource that powers transactions, while NIGHT remains the network's native utility and governance",
+          "direction": "neutral",
+          "weight": "primary"
+        },
+        {
+          "claim": "The source article body was not retrievable, limiting analysis to the headline.",
+          "quote": null,
+          "direction": "neutral",
+          "weight": "context"
+        }
+      ],
+      "precedents": [],
+      "citations": [
+        {
+          "label": "Tree of Alpha \u00b7 Twitter",
+          "url": "https://x.com/MidnightNtwrk/status/2085674615741747625",
+          "kind": "article"
+        }
+      ],
+      "coverage": {
+        "article_text": "summary-only",
+        "article_chars": 0,
+        "unavailable": [
+          "Source article",
+          "Historical precedent"
+        ]
+      },
+      "analysed_at": "2026-08-07T13:36:19.624728",
+      "duration_seconds": 33.5,
+      "model": "qwen3.6:35b-a3b",
+      "stages_run": [
+        "gathering",
+        "judging"
+      ]
+    },
+    "news": {
+      "id": "f86226362f47",
+      "title": "Midnight (@MidnightNtwrk): What makes Midnight different?\n\nMost networks burn or spend their native token to power transactions.\nMidnight doesn't.\n\nNIGHT generates DUST.\n\nDUST is the renewable network resource that powers transactions, while NIGHT remains the network's native utility and governance ",
+      "summary": "{'twitterId': '1676988055452778501', 'truthId': None, 'isReply': False, 'isRetweet': False, 'isQuote': False, 'isSelfReply': False}",
+      "source": "Tree of Alpha \u00b7 Twitter",
+      "symbol": "OKX:NIGHTUSDT",
+      "asset_type": "crypto",
+      "url": "https://x.com/MidnightNtwrk/status/2085674615741747625",
+      "published_at": "2026-08-07 13:29:13.382000"
+    },
+    "stored_at": "2026-08-07T13:36:19.624843",
+    "outcome": null
+  },
+  "80a381f13b6f:1bb726cffee8": {
+    "news_id": "80a381f13b6f",
+    "pipeline_version": "1bb726cffee8",
+    "analysis": {
+      "sentiment": "neutral",
+      "confidence": 0.5,
+      "reasoning": "The news confirms a regulatory license in Abu Dhabi to arrange deals for tokenized securities, which is an incremental strategic expansion rather than a near-term revenue driver or liquidity event. The article notes the company 'already established a footprint' and that this move sits alongside existing operations, indicating no new immediate cash flow mechanism.",
+      "historical_context": "Risk Level: LOW | Time Horizon: Long-term (1+ months). Key factors: Regulatory approval for tokenized securities custody, Strategic expansion into Abu Dhabi (ADGM), Lack of immediate revenue or volume data in the report. Expected impact: no material impact expected",
+      "technical_signals": {
+        "rsi_signal": "Neutral",
+        "support_levels": [
+          "$147.8800",
+          "$145.1400"
+        ],
+        "resistance_levels": [
+          "$164.9800",
+          "$173.7433"
+        ],
+        "target_price": "$143.8959 - $147.8800"
+      },
+      "prediction_hash": "48bbd09bf3b6ed25a1fdcfb16d50f518ef4d2c3a1927f8ca01ca7d1c4d052ecb",
+      "tx_hash": null,
+      "source": null,
+      "key_factors": [
+        "Regulatory approval for tokenized securities custody",
+        "Strategic expansion into Abu Dhabi (ADGM)",
+        "Lack of immediate revenue or volume data in the report"
+      ],
+      "price_impact": "no material impact expected",
+      "risk_level": "low",
+      "time_horizon": "long-term",
+      "materiality": "routine",
+      "mechanism": "no mechanism identified",
+      "invalidation": "If Coinbase discloses specific revenue targets or partnership volumes tied to this license in the same release.",
+      "regime_note": "The crypto market is in a defensive posture with Fear & Greed at 29 and median price changes negative (-0.10%), which dampens any potential bullish sentiment from strategic corporate news.",
+      "evidence": [
+        {
+          "claim": "Coinbase received regulatory approval to operate a tokenization hub in Abu Dhabi.",
+          "quote": "The company said Tuesday it received Financial Services Permission from the Financial Services Regulatory Authority (FSRA) of Abu Dhabi Global Market (ADGM), allowing it to arrange investment deals and provide custody for tokenized securities.",
+          "direction": "neutral",
+          "weight": "primary"
+        },
+        {
+          "claim": "The move is part of a broader trend but lacks specific financial impact details in the text.",
+          "quote": "Supporters see the technology as a way to make securities easier to transfer around the clock, settle trades near instantly, and eventually use them as collateral in onchain markets.",
+          "direction": "neutral",
+          "weight": "context"
+        }
+      ],
+      "precedents": [],
+      "citations": [
+        {
+          "label": "CoinDesk (full text read)",
+          "url": "https://www.coindesk.com/business/2026/08/11/coinbase-picks-abu-dhabi-for-its-global-tokenized-asset-push",
+          "kind": "article"
+        }
+      ],
+      "coverage": {
+        "article_text": "full",
+        "article_chars": 2710,
+        "unavailable": [
+          "Historical precedent"
+        ]
+      },
+      "analysed_at": "2026-08-11T14:25:59.553330",
+      "duration_seconds": 30.8,
+      "model": "qwen3.6:35b-a3b",
+      "stages_run": [
+        "gathering",
+        "judging"
+      ]
+    },
+    "news": {
+      "id": "80a381f13b6f",
+      "title": "Coinbase picks Abu Dhabi for its global tokenized asset push",
+      "summary": "",
+      "source": "CoinDesk",
+      "symbol": "NASDAQ:COIN",
+      "asset_type": "stock",
+      "url": "https://www.coindesk.com/business/2026/08/11/coinbase-picks-abu-dhabi-for-its-global-tokenized-asset-push",
+      "published_at": "2026-08-11 14:23:25"
+    },
+    "stored_at": "2026-08-11T14:25:59.553391",
+    "outcome": null
   }
 }
