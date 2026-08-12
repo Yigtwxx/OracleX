@@ -1,0 +1,16 @@
+[
+  {
+    "id": "40e27c55728b463baf40c5e80411e7e6",
+    "name": "Nasdaq",
+    "items": [
+      {
+        "symbol": "NVDA",
+        "type": "STOCK"
+      },
+      {
+        "symbol": "AAPL",
+        "type": "STOCK"
+      }
+    ]
+  }
+]
