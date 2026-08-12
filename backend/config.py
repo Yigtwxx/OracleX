@@ -184,6 +184,13 @@ class Settings(BaseSettings):
     # "Noon" is a claim about a place. The container runs on UTC, so a naive
     # hour would fire at 15:00 local through summer and 14:00 through winter.
     OWNERSHIP_REFRESH_TIMEZONE: str = "Europe/Istanbul"
+    # The daily rebuild above is the whole board. This one is only the sources
+    # that actually move between two of them: a coin price reprices a treasury
+    # continuously, a wallet balance changes when the wallet is used, and a
+    # Form 4 lands within two business days of the trade. Everything else is
+    # carried forward from the last full run rather than re-downloaded.
+    # 0 disables it and leaves the board on the daily cadence alone.
+    OWNERSHIP_LIVE_REFRESH_MINUTES: int = 20
     # SEC requires a declaring User-Agent with a contact address on every
     # request and answers 403 without one; repeated violations are blocked by
     # IP, which would take out the whole deployment. Empty disables the 13F and
@@ -194,6 +201,16 @@ class Settings(BaseSettings):
     NEWS_FETCH_INTERVAL_MINUTES: int = 2
     RAG_INDEX_INTERVAL_MINUTES: int = 30
     HEATMAP_REFRESH_INTERVAL_MINUTES: int = 5
+    # Live tab. The broadcast probe pulls a megabyte per channel and cannot be
+    # asked for less, so its interval is the one real cost lever the feature
+    # has — see the arithmetic in `live_stream_service`. Setting it to 0
+    # disables the probe entirely: the calendar keeps working and the player
+    # falls back to YouTube's own channel embed, which needs no probe at all.
+    LIVE_STREAM_PROBE_INTERVAL_MINUTES: int = 3
+    LIVE_EVENTS_REFRESH_INTERVAL_MINUTES: int = 15
+    # Smallest company whose earnings date earns a calendar row. Below roughly
+    # this the print moves one ticker rather than the tape.
+    LIVE_EARNINGS_MIN_MARKET_CAP: float = 50_000_000_000
 
     # ── Heatmap board ───────────────────────────────────────────────────────
     # How many assets the board resolves. Which ones is decided live from the
