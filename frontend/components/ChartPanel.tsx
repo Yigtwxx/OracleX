@@ -1,87 +1,95 @@
 'use client';
 
 import { useStore } from '@/store/useStore';
+import AssetTag from '@/components/ui/AssetTag';
 import { AdvancedRealTimeChart } from 'react-ts-tradingview-widgets';
 import { BarChart3, Maximize2, Settings, Bell } from 'lucide-react';
 
 export default function ChartPanel() {
-    const { chartSymbol, selectedNews, toggleAlertModal, priceAlerts } = useStore();
+  const { chartSymbol, selectedNews, toggleAlertModal, priceAlerts } = useStore();
 
-    const activeAlertsCount = priceAlerts.filter(a => a.isActive && a.symbol === chartSymbol).length;
+  const activeAlertsCount = priceAlerts.filter(
+    (a) => a.isActive && a.symbol === chartSymbol
+  ).length;
 
-    return (
-        <div className="flex flex-col h-full">
-            {/* Header - Fixed height to align with other panels */}
-            <div className="h-14 px-4 border-b border-oracle-border flex items-center justify-between bg-gradient-to-r from-oracle-dark via-oracle-dark to-teal/5">
-                <div className="flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-teal" />
-                    <h2 className="font-semibold bg-gradient-to-r from-white to-teal bg-clip-text text-transparent">The Chart</h2>
-                    <span className="text-xs text-gray-500 ml-1">{chartSymbol.split(':')[1] || chartSymbol}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                    {/* Alert Button */}
-                    <button
-                        onClick={() => toggleAlertModal(true)}
-                        className="p-2 rounded-lg hover:bg-amber-500/10 transition-colors relative"
-                        title="Set Price Alert"
-                    >
-                        <Bell className="w-4 h-4 text-gray-400 hover:text-amber-400" />
-                        {activeAlertsCount > 0 && (
-                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full text-[10px] font-bold text-black flex items-center justify-center">
-                                {activeAlertsCount}
-                            </span>
-                        )}
-                    </button>
-                    <button className="p-2 rounded-lg hover:bg-teal/10 transition-colors" title="Settings">
-                        <Settings className="w-4 h-4 text-gray-400 hover:text-teal" />
-                    </button>
-                    <button className="p-2 rounded-lg hover:bg-teal/10 transition-colors" title="Fullscreen">
-                        <Maximize2 className="w-4 h-4 text-gray-400 hover:text-teal" />
-                    </button>
-                </div>
-            </div>
-
-            {/* Active Symbol Banner */}
-            {selectedNews && (
-                <div className={`px-4 py-2 border-b flex items-center gap-2 ${selectedNews.asset_type === 'crypto'
-                    ? 'bg-crypto/10 border-crypto/30'
-                    : 'bg-stock/10 border-stock/30'
-                    }`}>
-                    <span className={`w-2 h-2 rounded-full animate-pulse ${selectedNews.asset_type === 'crypto' ? 'bg-crypto' : 'bg-stock'
-                        }`}></span>
-                    <span className={`text-sm font-medium ${selectedNews.asset_type === 'crypto' ? 'text-crypto' : 'text-stock'
-                        }`}>
-                        Viewing: {selectedNews.symbol.split(':')[1]}
-                    </span>
-                    <span className="text-xs text-gray-500 ml-2">
-                        — {selectedNews.title.slice(0, 50)}...
-                    </span>
-                </div>
-            )}
-
-            {/* Chart Area */}
-            <div className="flex-1 relative bg-[#0b0b15]">
-                <AdvancedRealTimeChart
-                    key={chartSymbol}
-                    symbol={chartSymbol}
-                    theme="dark"
-                    autosize
-                    interval="D"
-                    timezone="Etc/UTC"
-                    style="1"
-                    locale="en"
-                    enable_publishing={false}
-                    hide_top_toolbar={false}
-                    hide_legend={false}
-                    save_image={false}
-                    container_id={`tradingview_${chartSymbol.replace(':', '_')}`}
-                    copyrightStyles={{
-                        parent: {
-                            display: 'none',
-                        },
-                    }}
-                />
-            </div>
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header - Fixed height to align with other panels */}
+      <div className="h-10 shrink-0 px-4 border-b border-line flex items-center justify-between bg-surface">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="w-3.5 h-3.5 text-fg-muted" />
+          <h2 className="text-base font-semibold text-fg">Chart</h2>
+          <span className="text-xs font-mono text-fg-subtle">
+            {chartSymbol.split(':')[1] || chartSymbol}
+          </span>
         </div>
-    );
+        <div className="flex items-center gap-0.5">
+          <button
+            onClick={() => toggleAlertModal(true)}
+            className="p-1.5 rounded-md text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors relative"
+            title="Set price alert"
+          >
+            <Bell className="w-3.5 h-3.5" />
+            {activeAlertsCount > 0 && (
+              <span className="absolute top-0 right-0 min-w-[14px] h-3.5 px-1 bg-warn rounded-full text-2xs font-mono tabnum text-black flex items-center justify-center">
+                {activeAlertsCount}
+              </span>
+            )}
+          </button>
+          <button
+            className="p-1.5 rounded-md text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors"
+            title="Settings"
+          >
+            <Settings className="w-3.5 h-3.5" />
+          </button>
+          <button
+            className="p-1.5 rounded-md text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors"
+            title="Fullscreen"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Active Symbol Banner */}
+      {selectedNews && (
+        <div className="shrink-0 px-4 py-1.5 border-b border-line bg-surface-2 flex items-center gap-2 min-w-0">
+          <span className="shrink-0">
+            <AssetTag symbol={selectedNews.symbol} size="md" />
+          </span>
+          {/* An unattributed item leaves the chart on whatever was already
+              shown, so say so rather than letting the banner imply the chart
+              below belongs to this story. */}
+          {!selectedNews.symbol && (
+            <span className="text-xs text-fg-subtle shrink-0">no asset</span>
+          )}
+          <span className="text-xs text-fg-subtle truncate">{selectedNews.title}</span>
+        </div>
+      )}
+
+      {/* Chart Area */}
+      <div className="flex-1 min-h-0 relative bg-bg">
+        <AdvancedRealTimeChart
+          key={chartSymbol}
+          symbol={chartSymbol}
+          theme="dark"
+          autosize
+          interval="D"
+          timezone="Etc/UTC"
+          style="1"
+          locale="en"
+          enable_publishing={false}
+          hide_top_toolbar={false}
+          hide_legend={false}
+          save_image={false}
+          container_id={`tradingview_${chartSymbol.replace(':', '_')}`}
+          copyrightStyles={{
+            parent: {
+              display: 'none',
+            },
+          }}
+        />
+      </div>
+    </div>
+  );
 }

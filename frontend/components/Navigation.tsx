@@ -1,197 +1,329 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, type CSSProperties } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Zap, LayoutDashboard, BarChart3, ChevronDown, Bitcoin, LineChart, MessageCircle, Home, Layers, User, BrainCircuit, Users } from 'lucide-react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import {
+  LayoutDashboard,
+  BarChart3,
+  ChevronDown,
+  Bitcoin,
+  LineChart,
+  MessageCircleMore,
+  MessagesSquare,
+  Home,
+  Landmark,
+  Layers,
+  Gem,
+  Radio,
+  User,
+  BrainCircuit,
+  Users,
+  ShieldAlert,
+} from 'lucide-react';
+import Logo from '@/components/ui/Logo';
+import LiveStatusBadge from '@/components/LiveStatusBadge';
+import { useIsAdmin } from '@/hooks/useAdmin';
+import { useUnreadCount } from '@/hooks/useSocial';
+import { formatUnread } from '@/lib/social';
+
+interface NavItem {
+  key: string;
+  href: string;
+  label: string;
+  icon: typeof Home;
+  /** The tab's hue, as a `var(--nav-*)` reference rather than a Tailwind class.
+      `.nav-tab` reads it out of `--nav-tint` for the icon, the label and the
+      active underline; a class per state would have needed three verbatim
+      literals per tab, since Tailwind cannot generate `hover:text-nav-${key}`. */
+  tint: string;
+  /** Heatmap only: the label carries the board's own yellow→orange→red ramp,
+      which no single token can express. See `.nav-heat-label` in globals.css. */
+  labelClass?: string;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { key: 'home', href: '/', label: 'Home', icon: Home, tint: 'var(--nav-home)' },
+  {
+    key: 'dashboard',
+    href: '/dashboard',
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+    tint: 'var(--nav-dashboard)',
+  },
+  // Index 2 is not cosmetic: the bar renders slice(0, 2), then the Overview
+  // dropdown, then slice(2) — so this is what puts Macro directly beside the
+  // other market views rather than out past Chat.
+  { key: 'macro', href: '/macro', label: 'Macro', icon: Gem, tint: 'var(--nav-macro)' },
+  // Beside Macro rather than out past Chat: the two answer the same question a
+  // beat apart — Macro is what the world looks like, Live is what is happening
+  // to it right now.
+  { key: 'live', href: '/live', label: 'Live', icon: Radio, tint: 'var(--nav-live)' },
+  {
+    key: 'ownership',
+    href: '/ownership',
+    label: 'Ownership',
+    icon: Landmark,
+    tint: 'var(--nav-ownership)',
+  },
+  {
+    key: 'analysis',
+    href: '/analysis',
+    label: 'Analysis',
+    icon: BrainCircuit,
+    tint: 'var(--nav-analysis)',
+  },
+  {
+    key: 'chat',
+    href: '/chat',
+    label: 'Chat',
+    // MessageCircleMore, not MessageCircle: same bubble path, plus the three
+    // dots the typing gesture animates. Swapping back silently removes it.
+    icon: MessageCircleMore,
+    tint: 'var(--nav-chat)',
+  },
+  {
+    key: 'heatmap',
+    href: '/heatmap',
+    label: 'Heatmap',
+    icon: Layers,
+    tint: 'var(--nav-heatmap-2)',
+    labelClass: 'nav-heat-label',
+  },
+  {
+    key: 'community',
+    href: '/community',
+    label: 'Community',
+    icon: Users,
+    tint: 'var(--nav-community)',
+  },
+  // Between Community and Profile because that is the order of the question it
+  // answers: the board is everyone, this is the people on it, Profile is you.
+  {
+    key: 'social',
+    href: '/social',
+    label: 'Social',
+    // MessagesSquare, not MessageCircleMore — that bubble belongs to Chat, and
+    // two tabs sharing a glyph is two tabs nobody can tell apart at 14px.
+    icon: MessagesSquare,
+    tint: 'var(--nav-social)',
+  },
+  { key: 'profile', href: '/profile', label: 'Profile', icon: User, tint: 'var(--nav-profile)' },
+];
+
+// Kept out of NAV_ITEMS because it is conditional: only an admin ever sees it.
+// The tab is cosmetic — /admin renders "does not exist" and every route behind
+// it 403s — but there is no reason to show a door nobody else can open.
+const ADMIN_ITEM: NavItem = {
+  key: 'admin',
+  href: '/admin',
+  label: 'Admin',
+  // ShieldAlert rather than Shield: its first path is the same shield, and the
+  // two it adds are the exclamation the hover gesture draws inside it. Hidden
+  // at rest by globals.css, so this still reads as a plain shield until pointed
+  // at. Swapping back to Shield silently removes the gesture.
+  icon: ShieldAlert,
+  tint: 'var(--nav-admin)',
+};
+
+const DROPDOWN_CLOSE_DELAY_MS = 200;
+
+function resolveActiveKey(pathname: string): string {
+  if (pathname === '/') return 'home';
+  // Matched against the admin item too, or /admin would light up Home.
+  const match = [...NAV_ITEMS, ADMIN_ITEM].find(
+    (item) => item.href !== '/' && pathname.startsWith(item.href)
+  );
+  if (match) return match.key;
+  if (pathname.startsWith('/overview')) return 'overview';
+  return 'home';
+}
+
+// No colour classes here: `.nav-tab` owns the rest / hover / active colours so
+// that one `--nav-tint` per item drives all three (see globals.css).
+// Height derived from the track rather than repeated as a literal, so the bar's
+// height lives in exactly one place — the header. The extra pixel is what pairs
+// with `-mb-px`: the tab reaches one pixel past the track, onto the header's own
+// bottom border, and the negative margin keeps that pixel from growing the row.
+// At a flat `h-full` the two cancel to a half-pixel offset and the active
+// underline sits just shy of the header line instead of on it.
+const NAV_TAB_CLASS = [
+  'nav-tab flex items-center gap-2 h-[calc(100%_+_1px)] px-3 text-sm font-medium transition-colors whitespace-nowrap shrink-0',
+  'border-b-2 -mb-px',
+].join(' ');
+
+// Cast because `CSSProperties` has no index signature for custom properties —
+// React passes `--nav-tint` straight through to the inline style regardless.
+const tintStyle = (tint: string): CSSProperties => ({ '--nav-tint': tint }) as CSSProperties;
+
+function NavTab({
+  item,
+  isActive,
+  badge,
+}: {
+  item: NavItem;
+  isActive: boolean;
+  /** Unread count, rendered as a pill after the label. Empty string hides it. */
+  badge?: string;
+}) {
+  const { key, href, label, icon: Icon, tint, labelClass } = item;
+  return (
+    <Link
+      href={href}
+      // `data-active` rather than a conditional class: the underline and the two
+      // lit states are all one CSS rule keyed off it, and it doubles as the hook
+      // the heatmap gradient needs on the *label* while living on the link.
+      data-active={isActive}
+      // Which gesture the icon plays. On the link rather than the svg so the
+      // gesture rules can key off the tab's own `:hover`.
+      data-nav={key}
+      className={NAV_TAB_CLASS}
+      style={tintStyle(tint)}
+    >
+      <Icon className="w-3.5 h-3.5" />
+      <span className={labelClass}>{label}</span>
+      {badge && (
+        <span className="rounded-full bg-accent px-1.5 text-2xs font-semibold text-white">
+          {badge}
+        </span>
+      )}
+    </Link>
+  );
+}
 
 export default function Navigation() {
-    const pathname = usePathname();
-    const [showDropdown, setShowDropdown] = useState(false);
-    const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pathname = usePathname();
+  const { data: adminSession } = useIsAdmin();
+  // Polled every 20s and only while signed in; see hooks/useSocial.ts.
+  const { data: unread } = useUnreadCount();
+  const searchParams = useSearchParams();
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ left: 0, top: 0 });
+  const closeTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const triggerRef = useRef<HTMLDivElement>(null);
 
-    // Determine active tab from pathname
-    const getActiveTab = () => {
-        if (pathname === '/') return 'home';
-        if (pathname.startsWith('/dashboard')) return 'dashboard';
-        if (pathname.startsWith('/overview')) return 'overview';
-        if (pathname.startsWith('/analysis')) return 'analysis';
-        if (pathname.startsWith('/chat')) return 'chat';
-        if (pathname.startsWith('/heatmap')) return 'heatmap';
-        if (pathname.startsWith('/community')) return 'community';
-        if (pathname.startsWith('/profile')) return 'profile';
-        return 'home';
-    };
+  const activeKey = resolveActiveKey(pathname);
+  const overviewType = searchParams.get('type') === 'nasdaq' ? 'nasdaq' : 'crypto';
+  const isOverview = activeKey === 'overview';
 
-    const activeTab = getActiveTab();
+  const handleDropdownOpen = () => {
+    clearTimeout(closeTimeoutRef.current);
+    closeTimeoutRef.current = undefined;
+    // The nav scrolls horizontally, and `overflow-x` forces `overflow-y` to
+    // clip too — an absolutely positioned menu is cut off by the 56px bar.
+    // Positioning it fixed, against the trigger, keeps it outside that clip.
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (rect) {
+      setDropdownPos({ left: rect.left, top: rect.bottom });
+    }
+    setShowDropdown(true);
+  };
 
-    // Handle dropdown open with delay cancellation
-    const handleDropdownOpen = () => {
-        if (closeTimeoutRef.current) {
-            clearTimeout(closeTimeoutRef.current);
-            closeTimeoutRef.current = null;
-        }
-        setShowDropdown(true);
-    };
+  const handleDropdownClose = () => {
+    closeTimeoutRef.current = setTimeout(() => setShowDropdown(false), DROPDOWN_CLOSE_DELAY_MS);
+  };
 
-    // Handle dropdown close with delay
-    const handleDropdownClose = () => {
-        closeTimeoutRef.current = setTimeout(() => {
-            setShowDropdown(false);
-        }, 200); // 200ms delay before closing
-    };
+  const subItemClass = (isSelected: boolean): string =>
+    [
+      'w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors',
+      isSelected ? 'bg-surface-2 text-fg' : 'text-fg-muted hover:bg-surface-2 hover:text-fg',
+    ].join(' ');
 
-    return (
-        <header className="h-12 border-b border-oracle-border bg-gradient-to-r from-oracle-dark via-oracle-dark to-violet/5 backdrop-blur-md flex items-center px-6 sticky top-0 z-50">
-            {/* Logo - Left */}
-            <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet via-pink to-cyan flex items-center justify-center shadow-lg shadow-pink/20">
-                    <Zap className="w-4 h-4 text-white" />
+  return (
+    // 56px, not the 48px this started at: the hover gestures are clipped by the
+    // scroll track, and eight more pixels is what the tallest of them (the gem's
+    // rotated diagonal) needs to play out whole. Anything past this and the bar
+    // stops reading as a terminal chrome strip and starts eating the board.
+    <header className="h-14 shrink-0 border-b border-line bg-surface flex items-center px-4 sticky top-0 z-50">
+      <Link href="/" className="flex items-center gap-2 pr-4 shrink-0">
+        <Logo size={18} className="text-fg shrink-0" />
+        <span className="text-md font-semibold tracking-tight text-fg whitespace-nowrap">
+          Oracle-X
+        </span>
+      </Link>
+
+      {/* The tabs sit centred in the bar rather than tucked against the logo.
+          The centring lives on an inner `w-max mx-auto` track, not on
+          `justify-center` on the scroller: with `justify-center`, once the tabs
+          are wider than the bar the overflow spills equally in both directions
+          and the first tab ends up scrolled out of reach on the left, with no
+          way to scroll back to it. Auto margins collapse to zero at that point,
+          so a narrow window simply falls back to the old left-aligned, fully
+          scrollable row. */}
+      <nav className="nav-scroll flex-1 min-w-0 h-full">
+        <div className="flex items-center gap-1 h-full w-max mx-auto">
+          {NAV_ITEMS.slice(0, 2).map((item) => (
+            <NavTab
+              key={item.key}
+              item={item}
+              isActive={activeKey === item.key}
+              badge={item.key === 'social' ? formatUnread(unread ?? 0) : undefined}
+            />
+          ))}
+
+          <div
+            ref={triggerRef}
+            className="h-full"
+            onMouseEnter={handleDropdownOpen}
+            onMouseLeave={handleDropdownClose}
+          >
+            <Link
+              href="/overview?type=crypto"
+              className={NAV_TAB_CLASS}
+              data-active={isOverview}
+              data-nav="overview"
+              style={tintStyle('var(--nav-overview)')}
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>Overview</span>
+              <ChevronDown
+                className={`w-3 h-3 transition-transform ${showDropdown ? 'rotate-180' : ''}`}
+              />
+            </Link>
+
+            {showDropdown && (
+              <div
+                className="fixed pt-1 z-50"
+                style={{ left: dropdownPos.left, top: dropdownPos.top }}
+              >
+                <div className="w-44 py-1 bg-surface border border-line rounded-lg">
+                  <Link
+                    href="/overview?type=crypto"
+                    onClick={() => setShowDropdown(false)}
+                    className={subItemClass(isOverview && overviewType === 'crypto')}
+                  >
+                    <Bitcoin className="w-3.5 h-3.5 text-data-btc" />
+                    <span>Crypto</span>
+                  </Link>
+                  <Link
+                    href="/overview?type=nasdaq"
+                    onClick={() => setShowDropdown(false)}
+                    className={subItemClass(isOverview && overviewType === 'nasdaq')}
+                  >
+                    <LineChart className="w-3.5 h-3.5 text-data-eth" />
+                    <span>NASDAQ</span>
+                  </Link>
                 </div>
-                <h1 className="text-lg font-bold bg-gradient-to-r from-white via-pink to-cyan bg-clip-text text-transparent">
-                    Oracle-X
-                </h1>
-            </div>
+              </div>
+            )}
+          </div>
 
-            {/* Tab Navigation - Centered */}
-            <div className="flex-1 flex justify-center">
-                <div className="flex items-center gap-6">
-                    {/* Home Tab */}
-                    <Link
-                        href="/"
-                        className={`flex items-center gap-2 px-2 py-2 text-sm font-medium transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${activeTab === 'home'
-                            ? 'text-purple-400'
-                            : 'text-gray-400 hover:text-white'
-                            }`}
-                    >
-                        <Home className="w-4 h-4" />
-                        <span>Home</span>
-                    </Link>
+          {NAV_ITEMS.slice(2).map((item) => (
+            <NavTab
+              key={item.key}
+              item={item}
+              isActive={activeKey === item.key}
+              badge={item.key === 'social' ? formatUnread(unread ?? 0) : undefined}
+            />
+          ))}
 
-                    <Link
-                        href="/dashboard"
-                        className={`flex items-center gap-2 px-2 py-2 text-sm font-medium transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${activeTab === 'dashboard'
-                            ? 'text-cyan'
-                            : 'text-gray-400 hover:text-white'
-                            }`}
-                    >
-                        <LayoutDashboard className="w-4 h-4" />
-                        <span>Dashboard</span>
-                    </Link>
+          {adminSession?.is_admin && (
+            <NavTab item={ADMIN_ITEM} isActive={activeKey === ADMIN_ITEM.key} />
+          )}
+        </div>
+      </nav>
 
-                    {/* Overview Dropdown */}
-                    <div
-                        className="relative"
-                        onMouseEnter={handleDropdownOpen}
-                        onMouseLeave={handleDropdownClose}
-                    >
-                        <Link
-                            href="/overview?type=crypto"
-                            className={`flex items-center gap-2 px-2 py-2 text-sm font-medium transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${activeTab === 'overview'
-                                ? 'text-yellow-400'
-                                : 'text-gray-400 hover:text-white'
-                                }`}
-                        >
-                            <BarChart3 className="w-4 h-4" />
-                            <span>Overview</span>
-                            <ChevronDown className={`w-3 h-3 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
-                        </Link>
-
-                        {/* Dropdown Menu - using pt-2 for seamless hover area */}
-                        {showDropdown && (
-                            <div className="absolute top-full left-0 pt-2 z-50">
-                                <div className="w-48 py-2 bg-oracle-card border border-oracle-border rounded-lg shadow-xl shadow-black/50">
-                                    <Link
-                                        href="/overview?type=crypto"
-                                        onClick={() => setShowDropdown(false)}
-                                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${pathname === '/overview' && new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('type') !== 'nasdaq'
-                                            ? 'bg-violet/20 text-cyan'
-                                            : 'text-gray-300 hover:bg-oracle-border/50 hover:text-white'
-                                            }`}
-                                    >
-                                        <Bitcoin className="w-4 h-4 text-orange-400" />
-                                        <span>Crypto</span>
-                                    </Link>
-                                    <Link
-                                        href="/overview?type=nasdaq"
-                                        onClick={() => setShowDropdown(false)}
-                                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${pathname === '/overview' && new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('type') === 'nasdaq'
-                                            ? 'bg-violet/20 text-cyan'
-                                            : 'text-gray-300 hover:bg-oracle-border/50 hover:text-white'
-                                            }`}
-                                    >
-                                        <LineChart className="w-4 h-4 text-green-400" />
-                                        <span>NASDAQ</span>
-                                    </Link>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Analysis Tab */}
-                    <Link
-                        href="/analysis"
-                        className={`flex items-center gap-2 px-2 py-2 text-sm font-medium transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${activeTab === 'analysis'
-                            ? 'text-blue-400'
-                            : 'text-gray-400 hover:text-white'
-                            }`}
-                    >
-                        <BrainCircuit className="w-4 h-4" />
-                        <span>Analysis</span>
-                    </Link>
-
-                    {/* Chat Tab */}
-                    <Link
-                        href="/chat"
-                        className={`flex items-center gap-2 px-2 py-2 text-sm font-medium transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${activeTab === 'chat'
-                            ? 'text-pink'
-                            : 'text-gray-400 hover:text-white'
-                            }`}
-                    >
-                        <MessageCircle className="w-4 h-4" />
-                        <span>Chat</span>
-                    </Link>
-
-                    {/* Heatmap Tab */}
-                    <Link
-                        href="/heatmap"
-                        className={`flex items-center gap-2 px-2 py-2 text-sm font-medium transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${activeTab === 'heatmap'
-                            ? 'text-red-400'
-                            : 'text-gray-400 hover:text-white'
-                            }`}
-                    >
-                        <Layers className="w-4 h-4" />
-                        <span>Heatmap</span>
-                    </Link>
-
-                    {/* Community Tab */}
-                    <Link
-                        href="/community"
-                        className={`flex items-center gap-2 px-2 py-2 text-sm font-medium transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${activeTab === 'community'
-                            ? 'text-orange-400'
-                            : 'text-gray-400 hover:text-white'
-                            }`}
-                    >
-                        <Users className="w-4 h-4" />
-                        <span>Community</span>
-                    </Link>
-
-                    {/* Profile Tab */}
-                    <Link
-                        href="/profile"
-                        className={`flex items-center gap-2 px-2 py-2 text-sm font-medium transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${activeTab === 'profile'
-                            ? 'text-teal'
-                            : 'text-gray-400 hover:text-white'
-                            }`}
-                    >
-                        <User className="w-4 h-4" />
-                        <span>Profile</span>
-                    </Link>
-                </div>
-            </div>
-
-            {/* Right side */}
-            <span className="text-xs text-gray-500 hidden sm:inline">Financial Intelligence Terminal</span>
-        </header>
-    );
+      <LiveStatusBadge />
+    </header>
+  );
 }

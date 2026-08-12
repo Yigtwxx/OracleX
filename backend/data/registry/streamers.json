@@ -1,0 +1,206 @@
+{
+  "_comment": [
+    "Finance and markets streamers the Live tab reports the on-air status of.",
+    "",
+    "Every YouTube channel_id here was round-tripped through",
+    "https://www.youtube.com/feeds/videos.xml?channel_id=<id> and confirmed to",
+    "name the channel it claims to. Resolving an id by scraping a @handle page",
+    "is not sufficient on its own: that page can carry a *linked* channel's id,",
+    "and a wrong id fails silently — the streamer simply never reports as live.",
+    "Verify the same way before adding or changing an entry.",
+    "",
+    "Kick slugs are checked against https://kick.com/api/v2/channels/<slug>.",
+    "The list is short on purpose: Kick's finance category is genuinely thin,",
+    "and padding it with hundred-follower channels would cost a request each to",
+    "learn nothing. Kick's own category listing is not usable for discovery —",
+    "it ignores the category and returns the site-wide top streams.",
+    "",
+    "region: tr | global. focus: markets | crypto | broker | research."
+  ],
+  "streamers": [
+    {
+      "key": "ekoturk",
+      "name": "Ekotürk",
+      "platform": "youtube",
+      "channel_id": "UC0RSzZC8Rmu6tVsL93I8s9A",
+      "region": "tr",
+      "focus": "markets"
+    },
+    {
+      "key": "bloomberght",
+      "name": "BloombergHT",
+      "platform": "youtube",
+      "channel_id": "UCApLxl6oYQafxvykuoC2uxQ",
+      "region": "tr",
+      "focus": "markets"
+    },
+    {
+      "key": "apara",
+      "name": "A Para",
+      "platform": "youtube",
+      "channel_id": "UCzrGg6iyRDuUSnO0cQ5oLcA",
+      "region": "tr",
+      "focus": "markets"
+    },
+    {
+      "key": "foreks_haber",
+      "name": "Foreks Haber",
+      "platform": "youtube",
+      "channel_id": "UCBbRYu2nqeGGsRrKu5jh-Pw",
+      "region": "tr",
+      "focus": "markets"
+    },
+    {
+      "key": "devrim_akyil",
+      "name": "Devrim Akyıl",
+      "platform": "youtube",
+      "channel_id": "UCDou5HvsE1AgL8yXzijbfxg",
+      "region": "tr",
+      "focus": "markets"
+    },
+    {
+      "key": "anlatan_adam",
+      "name": "Anlatanadam",
+      "platform": "youtube",
+      "channel_id": "UCB2kQR7OweY_ABHmlfKsUIg",
+      "region": "tr",
+      "focus": "markets"
+    },
+    {
+      "key": "fintables",
+      "name": "Fintables",
+      "platform": "youtube",
+      "channel_id": "UC90if6X-swvZcLUpRlinHYA",
+      "region": "tr",
+      "focus": "research"
+    },
+    {
+      "key": "is_yatirim",
+      "name": "İş Yatırım",
+      "platform": "youtube",
+      "channel_id": "UCIju0kyYHAqQePXdGFjhLdA",
+      "region": "tr",
+      "focus": "broker"
+    },
+    {
+      "key": "gedik_yatirim",
+      "name": "Gedik Yatırım",
+      "platform": "youtube",
+      "channel_id": "UC_yOWQkGiQRJyyvltIdDDlw",
+      "region": "tr",
+      "focus": "broker"
+    },
+    {
+      "key": "meet_kevin",
+      "name": "Meet Kevin",
+      "platform": "youtube",
+      "channel_id": "UCUvvj5lwue7PspotMDjk5UA",
+      "region": "global",
+      "focus": "markets"
+    },
+    {
+      "key": "investing_com",
+      "name": "Investing.com",
+      "platform": "youtube",
+      "channel_id": "UCPYQ564F-6kEaiX1wwmzDNA",
+      "region": "global",
+      "focus": "markets"
+    },
+    {
+      "key": "benzinga",
+      "name": "Benzinga",
+      "platform": "youtube",
+      "channel_id": "UCqQs28K2zj2dOsc5NfXUKEg",
+      "region": "global",
+      "focus": "markets"
+    },
+    {
+      "key": "tastylive",
+      "name": "tastylive",
+      "platform": "youtube",
+      "channel_id": "UCLJiSMXJ9K-1AOTqIqdXJgQ",
+      "region": "global",
+      "focus": "broker"
+    },
+    {
+      "key": "interactive_brokers",
+      "name": "Interactive Brokers",
+      "platform": "youtube",
+      "channel_id": "UCbY1hA0wpRcbyjBLxI-dxvQ",
+      "region": "global",
+      "focus": "broker"
+    },
+    {
+      "key": "charles_schwab",
+      "name": "Charles Schwab",
+      "platform": "youtube",
+      "channel_id": "UCToe3dspZyw2L_JY-JmP3Mw",
+      "region": "global",
+      "focus": "broker"
+    },
+    {
+      "key": "real_vision",
+      "name": "Real Vision",
+      "platform": "youtube",
+      "channel_id": "UCGXWKlq1Oxr3ddEtmKhAkPg",
+      "region": "global",
+      "focus": "research"
+    },
+    {
+      "key": "blockworks",
+      "name": "Blockworks",
+      "platform": "youtube",
+      "channel_id": "UCgK_jxvgUZ7iJKlZUS3YvuA",
+      "region": "global",
+      "focus": "crypto"
+    },
+    {
+      "key": "coin_bureau",
+      "name": "Coin Bureau",
+      "platform": "youtube",
+      "channel_id": "UCqK_GSMbpiV8spgD3ZGloSw",
+      "region": "global",
+      "focus": "crypto"
+    },
+    {
+      "key": "crypto_banter",
+      "name": "Crypto Banter",
+      "platform": "youtube",
+      "channel_id": "UCN9Nj4tjXbVTLYWN0EKly_Q",
+      "region": "global",
+      "focus": "crypto"
+    },
+    {
+      "key": "invest_answers",
+      "name": "InvestAnswers",
+      "platform": "youtube",
+      "channel_id": "UClgJyzwGs-GyaNxUHcLZrkg",
+      "region": "global",
+      "focus": "crypto"
+    },
+    {
+      "key": "cryptocosta_kick",
+      "name": "CryptoCosta",
+      "platform": "kick",
+      "slug": "cryptocosta",
+      "region": "global",
+      "focus": "crypto"
+    },
+    {
+      "key": "ddfinance_kick",
+      "name": "DD Finance",
+      "platform": "kick",
+      "slug": "ddfinance",
+      "region": "global",
+      "focus": "markets"
+    },
+    {
+      "key": "crypto_banter_kick",
+      "name": "Crypto Banter",
+      "platform": "kick",
+      "slug": "cryptobanter",
+      "region": "global",
+      "focus": "crypto"
+    }
+  ]
+}

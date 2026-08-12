@@ -3,5 +3,5 @@
 import AnalysisPage from '@/components/AnalysisPage';
 
 export default function AnalysisRoute() {
-    return <AnalysisPage />;
+  return <AnalysisPage />;
 }

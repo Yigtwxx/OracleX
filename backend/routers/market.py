@@ -2,15 +2,19 @@
 Market Router
 Handles Fear & Greed Index, market overview (crypto + NASDAQ), global indices, and heatmap data.
 """
-from typing import Optional
-from fastapi import APIRouter, HTTPException
-import httpx
-import asyncio
 
-from models.schemas import FearGreedData, MarketOverview
+import logging
+
+from fastapi import APIRouter, HTTPException
+
+from models.schemas import FearGreedData, HeatmapData, MarketOverview
 from services.fear_greed_service import fetch_fear_greed_index
+from services.heatmap_service import fetch_heatmap_data
+from services.macro_board_service import fetch_macro_indices
 from services.market_overview_service import fetch_market_overview
 from services.stock_market_service import fetch_nasdaq_overview
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -19,7 +23,7 @@ router = APIRouter()
 async def get_fear_greed():
     """
     Get Crypto Fear & Greed Index from alternative.me API.
-    
+
     Values: 0-25 Extreme Fear, 26-46 Fear, 47-54 Neutral, 55-75 Greed, 76-100 Extreme Greed
     """
     data = await fetch_fear_greed_index()
@@ -28,123 +32,107 @@ async def get_fear_greed():
     return FearGreedData(**data)
 
 
+@router.get("/api/price/{symbol}")
+async def get_symbol_price(symbol: str):
+    """
+    Current price for one symbol, crypto or equity.
+
+    Exists so the browser does not call an exchange directly: the frontend used
+    to fetch Binance from the page, which fails outright on the networks where
+    Binance is blocked and also leaves the browser with no fallback. Routing it
+    through the backend reuses whichever upstream actually answers.
+
+    404 when no price could be resolved — never a placeholder number.
+    """
+    from services.price_service import resolve_price
+
+    resolved = await resolve_price(symbol)
+    if resolved:
+        return resolved
+
+    raise HTTPException(status_code=404, detail=f"No price available for {symbol}")
+
+
 @router.get("/api/market-overview", response_model=MarketOverview)
 async def get_market_overview():
     """
     Get market overview with top coin prices and global stats.
-    
-    Includes: BTC, ETH, BNB, SOL, XRP, ADA, DOGE, AVAX
+
+    Covers the top `TOP_COINS_COUNT` coins by market cap, resolved live from
+    CoinGecko — no fixed symbol list.
     """
     data = await fetch_market_overview()
     return MarketOverview(**data)
 
 
-@router.get("/api/nasdaq-overview")
+@router.get("/api/nasdaq-overview", response_model=MarketOverview)
 async def get_nasdaq_overview():
     """
     Get NASDAQ stock market overview with top stocks and Fear & Greed index.
-    
-    Includes: Top 50 NASDAQ stocks by market cap (AAPL, MSFT, GOOGL, etc.)
+
+    Covers the top `NASDAQ_TOP_COUNT` NASDAQ listings by market cap, resolved
+    live from the exchange screener — no fixed symbol list.
     """
     data = await fetch_nasdaq_overview()
-    return data
+    return MarketOverview(**data)
 
 
 @router.get("/api/market/indices")
 async def get_market_indices():
     """
-    Get global market indices (S&P 500, NASDAQ, Nikkei, FTSE, DAX, etc.)
-    
-    Returns real-time data from Yahoo Finance.
+    Global market indices (S&P 500, NASDAQ, Nikkei, FTSE, DAX, DXY, BIST, …).
+
+    Served from the macro board rather than its own fetch. This used to run an
+    uncached, plainly-headered request per index on every call — which Yahoo
+    rate-limits — and produced numbers that disagreed with the macro page by
+    minutes. Sharing the board's cache fixes both, and the response shape is
+    unchanged so the ticker did not have to move.
+
+    An empty list on a total outage, not a 503: this feeds a decorative ticker
+    strip that is allowed to render nothing.
     """
-    # Major global indices with their Yahoo Finance symbols
-    indices_config = [
-        {"symbol": "^GSPC", "name": "S&P 500", "region": "US"},
-        {"symbol": "^IXIC", "name": "NASDAQ", "region": "US"},
-        {"symbol": "^DJI", "name": "Dow Jones", "region": "US"},
-        {"symbol": "^FTSE", "name": "FTSE 100", "region": "UK"},
-        {"symbol": "^GDAXI", "name": "DAX", "region": "DE"},
-        {"symbol": "^N225", "name": "Nikkei 225", "region": "JP"},
-        {"symbol": "^HSI", "name": "Hang Seng", "region": "HK"},
-        {"symbol": "^STOXX50E", "name": "Euro Stoxx 50", "region": "EU"},
-        {"symbol": "^FCHI", "name": "CAC 40", "region": "FR"},
-        {"symbol": "^AXJO", "name": "ASX 200", "region": "AU"},
-    ]
-    
-    async def fetch_index(client: httpx.AsyncClient, idx: dict) -> Optional[dict]:
-        try:
-            # Use v8 chart API (v7 quote API is deprecated/unauthorized)
-            symbol = idx["symbol"]
-            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=2d"
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-                "Accept": "application/json"
-            }
-            
-            response = await client.get(url, headers=headers)
-            if response.status_code == 200:
-                data = response.json()
-                chart = data.get("chart", {})
-                results = chart.get("result", [])
-                
-                if results:
-                    meta = results[0].get("meta", {})
-                    current_price = meta.get("regularMarketPrice", 0)
-                    prev_close = meta.get("chartPreviousClose", 0) or meta.get("previousClose", 0) or current_price
-                    change_percent = ((current_price - prev_close) / prev_close * 100) if prev_close and current_price else 0
-                    
-                    return {
-                        "symbol": idx["symbol"],
-                        "name": idx["name"],
-                        "price": round(current_price, 2),
-                        "change_24h": round(change_percent, 2),
-                        "region": idx["region"]
-                    }
-        except Exception as e:
-            print(f"Failed to fetch {idx['name']}: {e}")
-        return None
-    
-    results = []
-    
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            # Fetch all indices in parallel
-            tasks = [fetch_index(client, idx) for idx in indices_config]
-            fetched = await asyncio.gather(*tasks, return_exceptions=True)
-            
-            for result in fetched:
-                if result and not isinstance(result, Exception):
-                    results.append(result)
-    except Exception as e:
-        print(f"Error fetching indices: {e}")
-    
-    # Return whatever real data we managed to fetch (may be partial)
-    return results
+        return await fetch_macro_indices()
+    except Exception as error:  # noqa: BLE001 — the ticker degrades to empty
+        logger.warning("Global indices unavailable: %s", error)
+        return []
 
 
-@router.get("/api/heatmap/data")
-async def get_heatmap_data():
-    """Get multi-metric heatmap data (price, volume, social, developer)."""
-    try:
-        from services.heatmap_service import fetch_heatmap_data
-        return await fetch_heatmap_data()
-    except Exception as e:
-        print(f"Error fetching heatmap data: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+@router.get("/api/heatmap/data", response_model=HeatmapData)
+async def get_heatmap_data(limit: int = 50, include_pegged: bool = False):
+    """
+    Multi-metric heatmap board: price change, volume, turnover, developer.
+
+    Answers 503 rather than an empty board when the data cannot be produced —
+    a blank grid served with a 200 is indistinguishable from a market where
+    nothing is listed, and the snapshot builder downstream cannot tell them
+    apart either. A board recovered from the stale cache comes back as a normal
+    200 carrying `stale: true` and its age.
+
+    `include_pegged` brings back stablecoins and wrapped assets, which are
+    filtered out by default: they read a flat ~0.00% every day and take the
+    largest tiles on the board while saying nothing about the market.
+    """
+    data = await fetch_heatmap_data(
+        limit=max(10, min(limit, 100)),
+        include_pegged=include_pegged,
+    )
+    if data is None:
+        raise HTTPException(status_code=503, detail="Heatmap data is temporarily unavailable")
+    return HeatmapData(**data)
 
 
 @router.get("/api/asset-detail/{symbol}")
 async def get_asset_detail(symbol: str, type: str = "crypto"):
     """
     Get detailed asset information.
-    
+
     - **crypto**: CoinGecko data (description, categories, links, ATH/ATL, supply)
     - **stock/nasdaq**: Yahoo Finance data (company info, sector, P/E, 52-week range)
     """
     from services.asset_detail_service import fetch_asset_detail
-    
+
     data = await fetch_asset_detail(symbol, type)
     if data is None:
         raise HTTPException(status_code=404, detail=f"Asset '{symbol}' not found")
     return data
-

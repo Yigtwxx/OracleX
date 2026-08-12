@@ -2,20 +2,216 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS
+   Colour carries meaning only: direction (up/down), status (warn), or asset
+   identity. Everything else is a neutral surface separated by a hairline.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :root {
-  --oracle-dark: #0a0a0f;
-  --oracle-darker: #050508;
-  --oracle-card: #12121a;
-  --oracle-border: #2a2a3a;
-  --oracle-accent: #8b5cf6;
-  --oracle-bullish: #22c55e;
-  --oracle-bearish: #ef4444;
-  --oracle-neutral: #f59e0b;
-  --crypto-orange: #f7931a;
-  --stock-blue: #3b82f6;
-  --cyan: #06b6d4;
-  --pink: #ec4899;
-  --teal: #14b8a6;
+  /* Surfaces */
+  --bg: #0a0a0c;
+  --surface: #111114;
+  --surface-2: #17171b;
+  /* Hairlines are white at low alpha, not a fixed grey. Two reasons: the old
+     #232328 / #34343b pair carried a blue tint that read as a colour on a large
+     panel, and being opaque they sat at a different contrast on every surface
+     level — nearly invisible on --surface-2. Compositing white instead keeps a
+     box edge at the same weight wherever it lands. Nudged up from an effective
+     1.20:1 to 1.38:1 against --surface: still a hairline, just findable.
+
+     Eased back from .12/.18 to .09/.14 once the app backdrop landed. Those
+     values were set against a flat --bg, where a panel edge had to carry the
+     whole separation on its own. With a tinted floor behind the panels the
+     edge is no longer the only thing distinguishing a card from what surrounds
+     it, and at the old weight every table rule and box outline read as drawn
+     rather than as a seam. */
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.14);
+
+  /* Text */
+  --fg: #e8e8ea;
+  --fg-muted: #9a9aa3;
+  --fg-subtle: #6b6b74;
+
+  /* Semantic */
+  --up: #22c55e;
+  --up-bg: rgba(34, 197, 94, 0.12);
+  --down: #ef4444;
+  --down-bg: rgba(239, 68, 68, 0.12);
+  --warn: #f59e0b;
+  --warn-bg: rgba(245, 158, 11, 0.12);
+  --accent: #2f6feb;
+  --accent-bg: rgba(47, 111, 235, 0.12);
+
+  /* Chat response mode. This is state, not decoration: the mode decides whether
+     Oracle runs a reasoning pass and whether it answers in 120 or 450 words, so
+     it earns a colour the same way direction and status do.
+
+     Three stops per mode rather than two, because one value cannot do both jobs
+     here. Navy dark enough to read as navy sits near --bg and disappears as a
+     label; a navy bright enough to label is no longer navy. So the mode carries
+     a lifted hue for ink and hairlines on a dark surface, and a deep solid for
+     the one control it fills — the send button, which then takes white.
+
+     Caveat worth knowing: concise borrows the hue of --down. On this page there
+     is no price to confuse it with, but a red fill on a primary button is read
+     as destructive by default, so it is used only where the mode is the
+     subject. */
+  --mode-concise: #f43f5e; /* on --surface 5.2:1 */
+  --mode-concise-bg: rgba(244, 63, 94, 0.12);
+  --mode-concise-solid: #be123c; /* on white 6.2:1 */
+  --mode-detailed: #7f96ff; /* on --surface 6.9:1 */
+  --mode-detailed-bg: rgba(127, 150, 255, 0.12);
+  --mode-detailed-solid: #1e3a8a; /* on white 10.4:1 */
+
+  /* Asset identity — used to label an entity, never as decoration */
+  --data-btc: #f7931a;
+  --data-eth: #627eea;
+
+  /* Metals. Identity again, on the same terms as BTC and ETH: the hue names the
+     instrument, never its direction — a gold row is this colour whether gold is
+     up or down, and the green/red still lives entirely on the delta beside it.
+
+     Silver, platinum and palladium are the same grey in life, so a literal
+     rendering would give three adjacent rows the same colour and identify
+     nothing. They are pulled apart along the hue wheel instead — steel blue,
+     cyan, lavender — far enough to be told apart in peripheral vision, which is
+     the only way a colour on a row of small text does any work at all.
+
+     None may be read as direction or status, which is what keeps them off green
+     and red. Gold sits near --warn and copper near --data-btc; neither of those
+     appears on the macro board, so no row can be mistaken for a warning. */
+  --data-gold: #ffc233;
+  --data-silver: #a9bdd4;
+  --data-platinum: #86dbe8;
+  --data-palladium: #c39bf0;
+  --data-copper: #ff8f52;
+
+  /* ── Backdrop light sources ──────────────────────────────────────────────
+     The two pools of light on the app floor, described once. Both the backdrop
+     that paints them (.app-backdrop::before) and the panel edges that catch
+     them (.surface::after) read the geometry from here, so the light and the
+     rims it lights cannot drift apart — move a pool and every edge follows.
+
+     Positions are in viewport space, which is the frame both layers resolve
+     them against: the backdrop is `position: fixed`, and the rim re-reads the
+     same gradient through `background-attachment: fixed`. */
+  --lit-a-shape: ellipse 68% 56% at 26% 40%;
+  --lit-a-hue: var(--accent);
+  --lit-b-shape: ellipse 58% 48% at 84% 84%;
+  --lit-b-hue: var(--data-btc);
+
+  /* Asset class — which of the two markets a feed row belongs to. Identity,
+     like the two above, so it gets a hue rather than a shade.
+
+     Neither hue may be read as direction or status, which rules out green,
+     red and amber: a green stripe beside a headline is a claim about the
+     price. Crypto reuses the orange this codebase already spends on Bitcoin;
+     equities take navy. Unattributed rows take the same grey as subtle text —
+     visible as a stripe, silent as a signal, which is the point.
+
+     The navy is lifted out of midnight for the same reason --mode-detailed is:
+     a true #1e3a8a sits at 1.8:1 against --surface, dimmer than the grey it has
+     to out-rank, so the "we don't know" rows would have shouted louder than the
+     stock ones. This stop clears 3.3:1 and still reads navy rather than as a
+     second --accent — the two never touch anyway, since selection colours the
+     other three edges. */
+  --asset-crypto: #f7931a;
+  --asset-stock: #3b5bdb;
+  --asset-unknown: #6b6b74;
+
+  /* Navigation identity — one hue per destination.
+     This is the one place in the app where colour labels a *place* rather than
+     a value, so it gets its own family instead of borrowing --up/--warn/--data-*.
+     Borrowing would have been the cheaper move and the wrong one: a green Home
+     tab and an amber Community tab would teach the eye that green means "good"
+     somewhere other than a delta, which is exactly the confusion the semantic
+     palette exists to prevent. Keeping them namespaced means a later change to
+     --warn cannot silently repaint a nav tab, and a nav tab can never be
+     mistaken for a signal by anyone reading the class name.
+
+     Hues are spaced roughly evenly around the wheel, because the whole point is
+     peripheral recognition — you should find "Macro" by its colour before you
+     read the word. Where the subject suggests a hue it takes it: the Gem icon
+     gets diamond cyan, the Landmark gets building stone, Shield gets red.
+     Every stop clears 4.5:1 on --surface so the label is readable at 12px, not
+     just the icon. */
+  --nav-home: #eab04a;
+  --nav-dashboard: #5b8def;
+  --nav-overview: #a78bfa;
+  --nav-macro: #7ddfe8;
+  /* Broadcast red — the one hue the subject names outright. It sits close to
+     --nav-admin, which is the trade accepted here: the admin tab only renders
+     for admins, so the two are almost never in the bar together. */
+  --nav-live: #ff4d4d;
+  --nav-ownership: #b0bac9;
+  --nav-analysis: #e879b8;
+  --nav-chat: #3ecfa0;
+  --nav-community: #a3d95c;
+  /* The widest genuine gap left in the tint wheel: Overview sits at 258° and
+     Analysis at 325°, so this purple-magenta is the one hue that reads as its
+     own tab beside both at 14px. */
+  --nav-social: #c77dff;
+  --nav-profile: #f3a683;
+  --nav-admin: #f4595f;
+
+  /* Heatmap is the one tab that cannot be a single stop: the board it opens is
+     a yellow→orange→red ramp, so the tab carries the ramp itself. Stop 2 is
+     what the icon and the active underline take, since a stroked icon and a 2px
+     rule are too thin to show a gradient — only the label is wide enough to. */
+  --nav-heatmap-1: #ffd23f;
+  --nav-heatmap-2: #ff9f1c;
+  --nav-heatmap-3: #f4595f;
+
+  /* Heatmap ramps. Colour genuinely encodes magnitude here, so every stop is
+     placed against three constraints at once.
+
+     1. Separation from --bg. A stop that does not read as a tile is not on the
+        board at all. Each ramp starts at L ~ 0.045 (1.8:1 against --bg) and
+        climbs to L ~ 0.26-0.33 (5.8-7.2:1), so the ramp is a ramp rather than
+        four shades of almost-black.
+
+     2. Symmetry. Up and down are luminance-matched step for step, so a -6% move
+        reads exactly as intense as a +6% one. Before this, --heat-up-4 sat at
+        L=0.411 against --heat-down-4's 0.229, which made every rally look
+        stronger than an equal sell-off — a distortion in the data, not just in
+        the styling.
+
+     3. Readable labels. A heat tile always carries text, so each stop is paired
+        with the ink that clears 4.5:1 on it: --fg on stops 1-3, --bg on the
+        brightest stop. That flip is deliberate, and it is declared alongside
+        the background in lib/heatmap-scale.ts so the two can never drift apart.
+        The old top stops carried --fg at 1.86:1 — the tiles showing the biggest
+        movers were the ones you could not read.
+
+     Corollary: never put --fg-muted or a low-opacity --fg on a heat tile.
+     Secondary text separates itself by size and weight instead. */
+  --heat-up-1: #134528; /* on --fg 9.0:1 */
+  --heat-up-2: #175e35; /* on --fg 6.4:1 */
+  --heat-up-3: #18763f; /* on --fg 4.6:1 */
+  --heat-up-4: #20b25d; /* on --bg 7.1:1 */
+  --heat-down-1: #66272a; /* on --fg 9.1:1 */
+  --heat-down-2: #932f34; /* on --fg 6.4:1 */
+  --heat-down-3: #bc353b; /* on --fg 4.6:1 */
+  --heat-down-4: #ff424c; /* on --bg 5.8:1 */
+
+  /* Single-hue sequential ramp for score metrics (no direction implied).
+     Luminance-matched to the diverging ramps above so the same tile reads with
+     the same weight whichever metric is selected. */
+  --heat-seq-1: #1f3b6e; /* on --fg 9.0:1 */
+  --heat-seq-2: #285099; /* on --fg 6.4:1 */
+  --heat-seq-3: #2f63c3; /* on --fg 4.7:1 */
+  --heat-seq-4: #4788ff; /* on --bg 5.9:1 */
+
+  /* Chart series — neutral-divergent, distinguishable without relying on hue
+     alone (lightness also steps) */
+  --chart-1: #7c8cf8;
+  --chart-2: #4db6ac;
+  --chart-3: #d9a441;
+  --chart-4: #b8836a;
+  --chart-5: #5b9bd5;
+  --chart-6: #8f9199;
 }
 
 * {
@@ -28,77 +224,1044 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  background-color: var(--oracle-darker);
-  color: #e5e5e5;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: var(--fg);
+}
+
+/* The base colour lives on the root element and nowhere else. In the root
+   stacking context a non-positioned block's background paints *after* the
+   negative-z-index layer, so a `background-color` on <body> would cover
+   .app-backdrop completely — the layer computes correctly, mounts correctly,
+   and is simply painted over. Leave this on <html> alone. */
+html {
+  background-color: var(--bg);
 }
 
 body {
-  background:
-    radial-gradient(ellipse 80% 80% at 50% -20%, rgba(139, 92, 246, 0.12), transparent),
-    radial-gradient(ellipse 60% 60% at 80% 50%, rgba(236, 72, 153, 0.05), transparent),
-    radial-gradient(ellipse 60% 60% at 20% 80%, rgba(6, 182, 212, 0.05), transparent),
-    var(--oracle-darker);
   min-height: 100vh;
 }
 
-/* Custom Scrollbar */
+/* Keyboard focus must always be visible */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCROLLBARS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+/* The nav's horizontal track. Not `.custom-scrollbar`: a 6px scrollbar gutter
+   there was two bugs at once. `overflow-x: auto` leaves `overflow-y` computed as
+   `auto` as well, so as soon as the tabs were wider than the bar the gutter cut
+   the visible track below the tabs' own height and the whole row could be
+   dragged up and down by those six pixels. Clipping the block axis pins it, and
+   dropping the gutter keeps the tabs' bottom border flush with the header's, so
+   the active underline lands on the line rather than above it. The row still
+   scrolls by wheel, trackpad and keyboard. */
+.nav-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Opt-in variant for scroll containers inside cards — thinner, only visible
+   while the container is hovered. */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
-::-webkit-scrollbar-track {
-  background: var(--oracle-dark);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--oracle-border);
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
   border-radius: 3px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--oracle-accent);
+.custom-scrollbar:hover {
+  scrollbar-color: var(--border) transparent;
 }
 
-/* Glass morphism card */
-.glass-card {
-  background: rgba(18, 18, 26, 0.8);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--oracle-border);
-  border-radius: 12px;
+.custom-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: var(--border);
 }
 
-/* Glow effects */
-.glow-accent {
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+/* ═══════════════════════════════════════════════════════════════════════════
+   TYPOGRAPHY UTILITIES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Numbers must not shift horizontally as they tick. */
+.tabnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
 }
 
-.glow-bullish {
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+/* Terminal micro-label: column headers, stat captions, section eyebrows. */
+.label {
+  font-size: 10px;
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-.glow-bearish {
-  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+/* The colour is split out at zero specificity so a `text-*` utility beside
+   `.label` actually takes effect. As a plain rule it tied with every Tailwind
+   colour class and won on source order, which silently discarded the class —
+   `:where()` still beats inheritance, so an unqualified label is unchanged. */
+:where(.label) {
+  color: var(--fg-muted);
 }
 
-/* News item hover animation */
+/* Metal sheen: a faint halo in the element's own colour, for the metal labels on
+   the macro board.
+ *
+ * `currentColor` is the whole point — one class serves gold, silver, platinum,
+ * palladium and copper, and each glows in its own hue because the shadow reads
+ * the colour the text already has. Two stacked shadows: a tight one that thickens
+ * the strokes so the hue reads at 13px, and a wide faint one for the halo. Kept
+ * off the numbers — a glowing price loses the crispness the whole terminal is
+ * built on.
+ *
+ * `prefers-reduced-motion` does not apply — nothing here animates — but the glow
+ * is dropped for anyone who has asked for reduced transparency, where a soft
+ * halo is exactly the effect being opted out of. */
+.metal-sheen {
+  text-shadow:
+    0 0 1px color-mix(in srgb, currentColor 55%, transparent),
+    0 0 12px color-mix(in srgb, currentColor 45%, transparent);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .metal-sheen {
+    text-shadow: none;
+  }
+}
+
+/* ── Navigation tabs ──────────────────────────────────────────────────────
+ * A tab's hue arrives as `--nav-tint`, set per item as an inline custom
+ * property. That indirection is the whole trick: with a Tailwind class per tab
+ * the rest state, the hover state and the underline would each need their own
+ * literal (`text-nav-macro`, `hover:text-nav-macro`, `border-nav-macro`) in the
+ * source, because Tailwind only generates classes it can read verbatim — a
+ * `hover:text-nav-${key}` template compiles to nothing at all. One variable
+ * carries all three states and adding a tab means adding one token.
+ *
+ * The bar rests grey and only pays out colour on hover or on the current tab.
+ * Ten hues lit at once is a fruit salad that identifies nothing; lit one at a
+ * time, the hue is a confirmation of where you are and where you are pointing. */
+.nav-tab {
+  color: var(--fg-muted);
+  border-bottom-color: transparent;
+}
+
+.nav-tab:hover,
+.nav-tab[data-active='true'] {
+  color: var(--nav-tint, var(--fg));
+}
+
+.nav-tab[data-active='true'] {
+  border-bottom-color: var(--nav-tint, var(--accent));
+}
+
+/* ── Navigation icon gestures ─────────────────────────────────────────────
+ * One short, one-shot gesture per tab, played on hover — the icon acts out what
+ * the destination is. They are deliberately not loops: a nav bar with something
+ * permanently moving in it is a distraction in a terminal that people leave open
+ * all day, and a gesture that ends is read as a response to *you* rather than as
+ * ambient decoration.
+ *
+ * Two constraints shape all of them, and breaking either is what would "bozmak"
+ * the bar rather than decorate it:
+ *
+ * 1. Transform and opacity only — never width, height, margin or padding. Those
+ *    would reflow the flex row and shove every tab to the right of the hovered
+ *    one sideways, on a bar that is already horizontally scrollable.
+ * 2. Small envelopes. The track is `overflow-x: auto`, and a scroller clips on
+ *    *both* axes whether you asked it to or not, so anything that grows past the
+ *    56px bar gets cut. The widest gesture here (Chat, scale 1.18) reaches ~17px
+ *    inside a 56px bar; the gem's rotated diagonal reaches ~20px. Both clear it.
+ *
+ * Sub-parts are addressed by `:nth-child`, which is a real dependency on
+ * lucide's icon definitions: these indices are the order of the paths in
+ * lucide-react 0.312. An icon-set upgrade that reorders a path retargets the
+ * animation — visibly wrong, but never broken layout. */
+/* An `<svg>` is a viewport, and a viewport clips: the UA stylesheet puts
+   `overflow: hidden` on every embedded one. Lucide draws to within a stroke's
+   width of the 24×24 canvas edge, so a gesture that carries a part outward has
+   it shaved off flat against that edge — Heatmap's top plate lifting 2.4 units,
+   Social's first bubble scaling toward the top-left corner, Chat's bubble at
+   1.18. It reads as the icon bouncing off an invisible line just above the bar.
+   There is no room to give inside the canvas; the fix is to stop clipping it.
+   Safe because the parts travel two or three units at most, into a 56px bar. */
+.nav-tab svg {
+  overflow: visible;
+}
+
+.nav-tab svg :is(path, rect, line, circle, polyline, polygon) {
+  /* Resolve child transforms against the 0 0 24 24 viewBox, so the origins
+     below can be written in the same coordinates as lucide's path data. */
+  transform-box: view-box;
+}
+
+/* Home — the door swings open and shuts again. Only the door moves; the house
+ * stays put, which is what makes it read as a door rather than as the whole
+ * icon wobbling. (This replaced a hop of the whole house: a building that jumps
+ * *and* opens its door is two gestures competing for the same 14 pixels.)
+ *
+ * The hinge is the point. `rotateY` about a vertical axis pinned to the left
+ * jamb — `transform-origin: 9px`, which is that jamb's own x in lucide's 24×24
+ * canvas — swings the far edge toward the viewer exactly as a door does. Rotate
+ * about the default centre instead and the door splits down the middle.
+ *
+ * The `perspective` is worth the extra function: without it the rotation is
+ * orthographic and collapses into a plain horizontal squash, which reads as the
+ * door shrinking rather than turning. Should a browser drop the 3D transform,
+ * that squash is the fallback — still legible, just flat. */
+@keyframes nav-fx-door {
+  0% {
+    transform: perspective(40px) rotateY(0deg);
+  }
+  38% {
+    transform: perspective(40px) rotateY(-64deg);
+  }
+  58% {
+    transform: perspective(40px) rotateY(-64deg);
+  }
+  100% {
+    transform: perspective(40px) rotateY(0deg);
+  }
+}
+.nav-tab[data-nav='home']:hover svg polyline:nth-child(2) {
+  transform-origin: 9px 17px;
+  animation: nav-fx-door 640ms ease-in-out;
+}
+
+/* Dashboard — the four panels load in, one after another. `fill-box` so each
+   tile scales about its own centre; against the viewBox they would all rush the
+   middle of the icon instead. */
+@keyframes nav-fx-tile {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  45% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+}
+.nav-tab[data-nav='dashboard']:hover svg rect {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.nav-tab[data-nav='dashboard']:hover svg rect:nth-child(1) {
+  animation: nav-fx-tile 440ms ease-in-out 0ms;
+}
+.nav-tab[data-nav='dashboard']:hover svg rect:nth-child(2) {
+  animation: nav-fx-tile 440ms ease-in-out 60ms;
+}
+.nav-tab[data-nav='dashboard']:hover svg rect:nth-child(3) {
+  animation: nav-fx-tile 440ms ease-in-out 120ms;
+}
+.nav-tab[data-nav='dashboard']:hover svg rect:nth-child(4) {
+  animation: nav-fx-tile 440ms ease-in-out 180ms;
+}
+
+/* Overview — the bars overshoot, undershoot, settle.
+ * Each bar is a zero-width vertical path, so its own fill-box has no width and
+ * `fill-box` origins get unreliable; the origins are pinned in viewBox
+ * coordinates to each bar's foot (y=17) instead, which is also what makes them
+ * grow *upward* from the axis rather than out of their middle. */
+@keyframes nav-fx-bar {
+  0% {
+    transform: scaleY(1);
+  }
+  35% {
+    transform: scaleY(1.3);
+  }
+  68% {
+    transform: scaleY(0.72);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+.nav-tab[data-nav='overview']:hover svg path:nth-child(2) {
+  transform-origin: 18px 17px;
+  animation: nav-fx-bar 560ms ease-in-out 0ms;
+}
+.nav-tab[data-nav='overview']:hover svg path:nth-child(3) {
+  transform-origin: 13px 17px;
+  animation: nav-fx-bar 560ms ease-in-out 70ms;
+}
+.nav-tab[data-nav='overview']:hover svg path:nth-child(4) {
+  transform-origin: 8px 17px;
+  animation: nav-fx-bar 560ms ease-in-out 140ms;
+}
+
+/* Macro — the gem spins on the spot like a top, point down throughout.
+ *
+ * The axis is what makes it a top rather than a cartwheel. `rotateY` turns the
+ * icon about the vertical axis through its centre, and a rotation about Y moves
+ * points in x and z only — y is untouched, so the gem's point cannot leave the
+ * bottom no matter where in the turn it is. The in-plane `rotate(360deg)` this
+ * replaces put the point at the top halfway through, which is a tumble.
+ *
+ * `perspective` before the rotation is what stops it reading as a flat squash:
+ * without it the two halves of the turn are indistinguishable, because an
+ * orthographic rotateY is just a horizontal scale. 64px is roughly 4.5× the
+ * icon's own width, close enough to exaggerate the near edge.
+ *
+ * One turn, on a decelerating curve so it spins up and runs down rather than
+ * stopping dead. The angle has to be a whole multiple of 360deg: the animation
+ * does not fill, so an end state of 540deg would snap the gem back through its
+ * mirror image the instant it finished. That is why "fewer turns" here means
+ * 720 → 360 and not something in between. */
+@keyframes nav-fx-spin-top {
+  from {
+    transform: perspective(64px) rotateY(0deg);
+  }
+  to {
+    transform: perspective(64px) rotateY(360deg);
+  }
+}
+.nav-tab[data-nav='macro']:hover svg {
+  animation: nav-fx-spin-top 980ms cubic-bezier(0.15, 0.6, 0.25, 1);
+}
+
+/* Live — the transmitter builds itself. The gesture is strictly sequential, and
+ * the order is the whole reading: the icon empties completely, the dot appears
+ * out of nothing, and only then do the rings arrive around it one after the
+ * other, inner then outer.
+ *
+ *   0ms    the icon is empty — dot and both rings absent
+ *   0-280  the dot springs in from nothing and settles
+ *   300    the inner ring arrives, expanding out of the dot
+ *   450    the outer ring follows it
+ *   800    the icon is whole again
+ *
+ * The dot emerges rather than pulsing. A blink starts at full size, so the icon
+ * was never actually empty and the dot read as reacting to something already
+ * there; starting it from `scale(0)` is what makes the three parts read as one
+ * thing assembling in order rather than as a flash followed by movement.
+ *
+ * The dot is the one part nothing overlaps: the 20ms of air after it settles is
+ * small, but with the dot still moving while the arcs did, the eye read one
+ * blurry expansion instead of a sequence.
+ *
+ * The two rings *do* overlap each other, and should — the outer leaves at 450ms
+ * while the inner is still travelling until 650ms. That 150ms stagger is what
+ * makes them read as one wave moving outward. Waiting for the inner to finish
+ * first would separate them into two unrelated pops.
+ *
+ * Each ring is a pair, not a single arc. lucide's Radio is five children in the
+ * order the wave travels — outer left, inner left, dot, inner right, outer
+ * right — so children 2 and 4 are one ring and 1 and 5 are the next. Firing the
+ * four arcs individually would read as a stutter: a radio wave leaves in every
+ * direction at once, and a left side that departed before the right one would
+ * look broken rather than staggered.
+ *
+ * Every part shares `transform-origin: 12px 12px`, the dot's own centre in
+ * lucide's canvas. That single origin is what makes it one wave instead of four
+ * arcs each growing about themselves — scale about the default per-element
+ * centre and each arc merely fattens in place.
+ *
+ * The envelope is free here: the rings start collapsed and settle at scale(1),
+ * which is the icon's own resting size, so nothing ever reaches past the bounds
+ * the bar already clips at. That is also why a ripple ends opaque rather than
+ * fading out — the finished frame *is* the rest state, so the gesture resolves
+ * into the icon instead of having to snap back to it.
+ *
+ * `backwards` fill is doing real work on every part, and it is what makes the
+ * empty first frame exist at all: it holds each element's 0% frame through its
+ * delay, and that frame is `opacity: 0`. Without it the rings would sit at full
+ * size while the dot appeared and then jump inward to start expanding — the
+ * wave arriving before it left. With it they are simply absent until their
+ * turn. The dot carries it too, so that even its own 0ms is empty. */
+@keyframes nav-fx-emerge {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes nav-fx-ripple {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.nav-tab[data-nav='live']:hover svg :is(path, circle) {
+  transform-origin: 12px 12px;
+}
+
+.nav-tab[data-nav='live']:hover svg circle:nth-child(3) {
+  animation: nav-fx-emerge 280ms cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
+}
+
+.nav-tab[data-nav='live']:hover svg path:nth-child(2),
+.nav-tab[data-nav='live']:hover svg path:nth-child(4) {
+  animation: nav-fx-ripple 350ms 300ms cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+}
+
+.nav-tab[data-nav='live']:hover svg path:nth-child(1),
+.nav-tab[data-nav='live']:hover svg path:nth-child(5) {
+  animation: nav-fx-ripple 350ms 450ms cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+}
+
+/* Ownership — the building drops into place from above, in the order you would
+ * actually put one up: the ground line, then the four columns left to right,
+ * then the pediment on top. lucide's Landmark happens to be exactly those six
+ * children in exactly that order, so the construction sequence is the icon's
+ * own path order with delays on it.
+ *
+ * `backwards` fill is what makes the stagger work rather than break it. Without
+ * it, a piece with a 230ms delay sits in its finished position for those 230ms
+ * and only then blinks out to fall — so the building would be fully drawn
+ * before it started assembling. `backwards` holds the 0% frame through the
+ * delay instead, which is off-canvas and transparent.
+ *
+ * Timing is `linear` on purpose: the acceleration is in the keyframe spacing
+ * (7 units over the first fifth, 10 over the next third) so the piece speeds up
+ * as it drops, and the two frames past 55% are the landing bounce. An eased
+ * curve on top of that would flatten both. */
+@keyframes nav-fx-fall {
+  0% {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-9px);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(1.4px);
+  }
+  78% {
+    transform: translateY(-0.7px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+.nav-tab[data-nav='ownership']:hover svg line:nth-child(1) {
+  animation: nav-fx-fall 380ms linear 0ms backwards;
+}
+.nav-tab[data-nav='ownership']:hover svg line:nth-child(2) {
+  animation: nav-fx-fall 380ms linear 90ms backwards;
+}
+.nav-tab[data-nav='ownership']:hover svg line:nth-child(3) {
+  animation: nav-fx-fall 380ms linear 140ms backwards;
+}
+.nav-tab[data-nav='ownership']:hover svg line:nth-child(4) {
+  animation: nav-fx-fall 380ms linear 190ms backwards;
+}
+.nav-tab[data-nav='ownership']:hover svg line:nth-child(5) {
+  animation: nav-fx-fall 380ms linear 240ms backwards;
+}
+.nav-tab[data-nav='ownership']:hover svg polygon:nth-child(6) {
+  animation: nav-fx-fall 380ms linear 350ms backwards;
+}
+
+/* Analysis — a signal runs out along each trace and lights the node at its end.
+ *
+ * The first version only pulsed the four nodes, and dimmed them to 0.35 as it
+ * did so. That was backwards: fading a 3-unit dot makes it harder to see, not
+ * easier, so the whole gesture read as a faint shimmer. Nothing dims here now —
+ * the trace thickens as the signal passes and the node flares to more than
+ * twice its size, both at full opacity.
+ *
+ * Each wire feeds exactly one node, which is what the pairing below encodes:
+ * child 2 ends at the node in child 9, child 5 at child 6, child 3 at child 7,
+ * child 4 at child 8. Fired top to bottom, so the sequence is read as travel
+ * rather than as four unrelated blinks.
+ *
+ * `stroke-width` is not a compositor property, so this repaints — on a 14px
+ * icon with nine paths that is nothing, and it is the only way to make a 2-unit
+ * line visibly carry something. It is deliberately *not* used on the nodes:
+ * their `scale` already scales the stroke, and animating both would compound.
+ *
+ * No fill mode despite the delays: every keyframe list starts and ends at the
+ * icon's resting values, so a waiting element already looks exactly like its 0%
+ * frame. */
+@keyframes nav-fx-brain {
+  0%,
+  100% {
+    stroke-width: 2;
+  }
+  45% {
+    stroke-width: 3;
+  }
+}
+@keyframes nav-fx-trace {
+  0%,
+  100% {
+    stroke-width: 2;
+  }
+  40% {
+    stroke-width: 3.6;
+  }
+}
+@keyframes nav-fx-fire {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(2.6);
+  }
+  68% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.nav-tab[data-nav='analysis']:hover svg path:nth-child(1) {
+  animation: nav-fx-brain 320ms ease-in-out 0ms;
+}
+/* Node origins are their own centres, in viewBox units. `fill-box` is no use
+   here — each node is a 1-unit circle that only reads as a dot because of its
+   2-unit stroke, so its fill box is a fraction of what you actually see. */
+.nav-tab[data-nav='analysis']:hover svg path:nth-child(2) {
+  animation: nav-fx-trace 280ms ease-in-out 100ms;
+}
+.nav-tab[data-nav='analysis']:hover svg path:nth-child(9) {
+  transform-origin: 18px 3px;
+  animation: nav-fx-fire 320ms ease-out 175ms;
+}
+.nav-tab[data-nav='analysis']:hover svg path:nth-child(5) {
+  animation: nav-fx-trace 280ms ease-in-out 230ms;
+}
+.nav-tab[data-nav='analysis']:hover svg path:nth-child(6) {
+  transform-origin: 20px 8px;
+  animation: nav-fx-fire 320ms ease-out 305ms;
+}
+.nav-tab[data-nav='analysis']:hover svg path:nth-child(3) {
+  animation: nav-fx-trace 280ms ease-in-out 360ms;
+}
+.nav-tab[data-nav='analysis']:hover svg path:nth-child(7) {
+  transform-origin: 16px 13px;
+  animation: nav-fx-fire 320ms ease-out 435ms;
+}
+.nav-tab[data-nav='analysis']:hover svg path:nth-child(4) {
+  animation: nav-fx-trace 280ms ease-in-out 490ms;
+}
+.nav-tab[data-nav='analysis']:hover svg path:nth-child(8) {
+  transform-origin: 20px 21px;
+  animation: nav-fx-fire 320ms ease-out 565ms;
+}
+
+/* Chat — the typing indicator: the three dots inside the bubble ride a wave,
+ * twice, while the bubble itself holds still.
+ *
+ * The tab renders MessageCircleMore rather than MessageCircle. Same bubble —
+ * lucide gives both the identical path under the same key — but it carries the
+ * three dots as separate children, and a gesture needs parts to move against
+ * something that does not. Plain MessageCircle is one path and can only be
+ * scaled or rotated as a whole, which is what the two attempts before this were
+ * (a rock, then a bounce) and why neither said "chat" specifically.
+ *
+ * Unlike Admin's warning the dots are not hidden at rest: a speech bubble with
+ * three dots in it is already a better chat icon than an empty one, and here the
+ * gesture is the *movement*, not the appearance.
+ *
+ * Two iterations rather than an infinite loop. Real typing indicators loop, but
+ * nothing else in this bar runs indefinitely, and a tab that keeps moving for as
+ * long as the pointer rests on it is the ambient distraction the rest of these
+ * gestures are shaped to avoid. Twice is enough to read as typing and then
+ * stop. */
+@keyframes nav-fx-typing {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  32% {
+    transform: translateY(-3px);
+  }
+  64% {
+    transform: translateY(0);
+  }
+}
+.nav-tab[data-nav='chat']:hover svg path:nth-child(2) {
+  animation: nav-fx-typing 340ms ease-in-out 0ms 2;
+}
+.nav-tab[data-nav='chat']:hover svg path:nth-child(3) {
+  animation: nav-fx-typing 340ms ease-in-out 90ms 2;
+}
+.nav-tab[data-nav='chat']:hover svg path:nth-child(4) {
+  animation: nav-fx-typing 340ms ease-in-out 180ms 2;
+}
+
+/* Heatmap — the stack fans apart and closes. Middle plate held still on
+   purpose: it is what the other two are seen to move against. */
+@keyframes nav-fx-lift {
+  45% {
+    transform: translateY(-2.4px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+@keyframes nav-fx-drop {
+  45% {
+    transform: translateY(2.4px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+.nav-tab[data-nav='heatmap']:hover svg path:nth-child(1) {
+  animation: nav-fx-lift 480ms ease-in-out;
+}
+.nav-tab[data-nav='heatmap']:hover svg path:nth-child(2) {
+  animation: nav-fx-drop 480ms ease-in-out;
+}
+
+/* Community — the two figures step apart. Children 1-2 are the front figure,
+   3-4 the one behind it. */
+@keyframes nav-fx-part-l {
+  45% {
+    transform: translateX(-1.7px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+@keyframes nav-fx-part-r {
+  45% {
+    transform: translateX(1.7px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+.nav-tab[data-nav='community']:hover svg > :is(path, circle):nth-child(-n + 2) {
+  animation: nav-fx-part-l 450ms ease-in-out;
+}
+.nav-tab[data-nav='community']:hover svg > path:nth-child(n + 3) {
+  animation: nav-fx-part-r 450ms ease-in-out;
+}
+
+/* Social — an exchange. One bubble speaks, the other answers.
+ *
+ * MessagesSquare is exactly two paths: the bubble up and to the left, and the
+ * one down and to the right behind it. That pair is the whole reason a gesture
+ * is available here — most icons in this bar cannot be taken apart into two
+ * things that mean something separately, and two bubbles that move *in turn*
+ * say "conversation" in a way no single motion of the pair does.
+ *
+ * Each pivots on its own tail rather than on the icon's centre. A speech bubble
+ * is anchored where it points; scaled about the middle of the 24×24 canvas both
+ * of them would inflate toward each other and read as a throb. The origins are
+ * the tail vertices straight out of lucide's path data — (2,15) for the first,
+ * (22,22) for the second — in the same canvas units the Home hinge uses.
+ *
+ * The stagger is the content of the gesture, not decoration on it: the second
+ * bubble starts as the first is settling, which is the rhythm of a reply. Run
+ * them together and it is two things popping at once, which is a notification,
+ * not a conversation.
+ *
+ * Each also nudges outward along its own diagonal — away from the pair, in the
+ * direction its tail points — so the two read as speaking past each other
+ * rather than at the same spot.
+ *
+ * One exchange, then still. Chat's typing gesture runs twice because typing is
+ * repetitive; a reply happens once, and nothing in this bar loops for as long
+ * as a pointer happens to rest on it. */
+@keyframes nav-fx-say-out {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  32% {
+    transform: translate(-1.2px, -1.2px) scale(1.1);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+@keyframes nav-fx-say-back {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  32% {
+    transform: translate(1.2px, 1.2px) scale(1.1);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+.nav-tab[data-nav='social']:hover svg path:nth-child(1) {
+  transform-origin: 2px 15px;
+  animation: nav-fx-say-out 400ms ease-in-out;
+}
+.nav-tab[data-nav='social']:hover svg path:nth-child(2) {
+  transform-origin: 22px 22px;
+  animation: nav-fx-say-back 400ms ease-in-out 240ms;
+}
+
+/* Profile — the avatar assembles: the shoulders rise first, then the head drops
+ * onto them. The lucide User icon is exactly two children in exactly this
+ * order, a body path and a head circle, which is what makes the gesture
+ * available at all — most of the icons in this bar cannot be taken apart into
+ * two things that mean something separately.
+ *
+ * `fill-box` on both, overriding the view-box default set at the top of this
+ * block: each part has to grow about its own geometry, not about the middle of
+ * the 24×24 canvas. The body's origin is its own foot so it rises rather than
+ * inflating, and the head's is its own centre so it lands as a ball. */
+@keyframes nav-fx-build-body {
+  0% {
+    opacity: 0;
+    transform: scaleY(0.15);
+  }
+  38% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+@keyframes nav-fx-build-head {
+  0%,
+  36% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  58% {
+    opacity: 1;
+    transform: scale(1.3);
+  }
+  76% {
+    opacity: 1;
+    transform: scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.nav-tab[data-nav='profile']:hover svg path:nth-child(1) {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: nav-fx-build-body 620ms ease-out;
+}
+.nav-tab[data-nav='profile']:hover svg circle:nth-child(2) {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nav-fx-build-head 620ms ease-out;
+}
+
+/* Admin — the shield draws a warning inside itself.
+ *
+ * The mark lives in the icon, not beside it. The first version placed it in the
+ * tab's left padding as a pair of pseudo-elements, which read as a stray speck
+ * twitching outside the shield rather than as part of it. Putting it inside
+ * means it has to sit in the shield's own coordinates, and hand-placing a CSS
+ * box there would mean pixel offsets derived from the 14px render size — they
+ * would all be wrong the moment the icon changed size.
+ *
+ * So the geometry comes from lucide instead: the tab renders ShieldAlert, whose
+ * first path is byte-identical to plain Shield (same path key) and whose other
+ * two children are the exclamation's stroke and dot, already positioned inside
+ * the shield. Hidden at rest, so the resting icon is still a plain shield; drawn
+ * on hover, stroke first and dot after.
+ *
+ * On hover, not on press. Press was the first attempt and it cannot work here:
+ * the tab links to /admin, so the click that starts the gesture also starts a
+ * navigation, and the draw is torn down with the render before the dot lands.
+ *
+ * Origins are given in viewBox units rather than `fill-box`, because both marks
+ * are degenerate boxes — the stroke is a zero-width vertical line and the dot is
+ * a 0.01-unit dash that only has size because of its round linecap. Neither has
+ * a fill box worth scaling about. */
+.nav-tab[data-nav='admin'] svg path:nth-child(n + 2) {
+  opacity: 0;
+}
+.nav-tab[data-nav='admin']:hover svg path:nth-child(2) {
+  /* Drawn downward from its top, the way it would be written. */
+  transform-origin: 12px 8px;
+  animation: nav-fx-bang-stroke 620ms ease-out forwards;
+}
+.nav-tab[data-nav='admin']:hover svg path:nth-child(3) {
+  transform-origin: 12px 16px;
+  animation: nav-fx-bang-dot 620ms ease-out forwards;
+}
+
+/* `forwards` on both: the warning holds for as long as the pointer is on the
+   tab and clears when it leaves, rather than drawing itself and immediately
+   fading out while you are still looking at it. */
+@keyframes nav-fx-bang-stroke {
+  0% {
+    opacity: 1;
+    transform: scaleY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+@keyframes nav-fx-bang-dot {
+  0%,
+  45% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(2.2);
+  }
+  86% {
+    opacity: 1;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Gestures are the first thing to go for anyone who has asked for less motion.
+   The tints in the block above stay — they are information, not animation. */
+@media (prefers-reduced-motion: reduce) {
+  .nav-tab svg,
+  .nav-tab svg * {
+    animation: none !important;
+  }
+  /* Admin's warning is hidden at rest and revealed *by* its animation, so
+     switching the animation off would hide it for good. Shown outright here
+     instead — the information survives, only the drawing of it is dropped. */
+  .nav-tab[data-nav='admin']:hover svg path:nth-child(n + 2) {
+    opacity: 1;
+  }
+}
+
+/* The Heatmap tab's label, painted with the ramp the page itself uses.
+ *
+ * Clipping a gradient to text is the only way to get three stops across seven
+ * characters: a stroked lucide icon takes `currentColor`, so putting this on the
+ * link would set the icon's stroke to `transparent` and delete it. Hence
+ * label-only, with the icon taking stop 2 through --nav-tint.
+ *
+ * `color: transparent` is what reveals the clipped background, which means a
+ * browser that drops the gradient renders an invisible word. `@supports` guards
+ * against exactly that — without it the failure mode is a missing tab, not a
+ * plain one. Scoped to the lit states for the same reason as the tints above:
+ * at rest the label is ordinary muted text. */
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .nav-tab:hover .nav-heat-label,
+  .nav-tab[data-active='true'] .nav-heat-label {
+    background-image: linear-gradient(
+      95deg,
+      var(--nav-heatmap-1) 0%,
+      var(--nav-heatmap-2) 52%,
+      var(--nav-heatmap-3) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMPONENT PRIMITIVES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* ── Lit rim ────────────────────────────────────────────────────────────────
+   A panel sitting in front of a lit floor with a uniformly neutral edge reads
+   as pasted on: the light stops dead at the card boundary. This puts the same
+   two pools back onto the hairline, so the edges facing a pool pick its hue up
+   and the edges facing away stay the plain neutral border.
+
+   The trick that makes it a *shared* light rather than a per-card decoration is
+   `background-attachment: fixed`: the gradient is resolved against the viewport,
+   not against this box, so a card in the lower right is lit orange and one at
+   26%/40% is lit blue — from one declaration, with no per-card knowledge of
+   where it landed. The mask then throws away everything but the 1px ring.
+
+   Alphas are the backdrop's own stops × 3, not new values. A hairline shows one
+   pixel of colour where the floor shows a whole region of it, so at the floor's
+   literal alpha the tint does not survive the width — measured on the Home grid
+   it was invisible at ×1.8 and read as a drawn highlight rather than as light
+   by ×5.5. Holding every stop to one multiplier is what keeps the promise that
+   the hue and the falloff are the pool's own and not a second decision.
+
+   The falloff is where the depth comes from, and it is why the curve is
+   front-loaded rather than linear. A card is wide enough to span a real slice
+   of the gradient, so a steep pool means its near edge samples the core and its
+   far edge samples the tail: one card, two visibly different edges, which is a
+   statement about which way it is facing. Flatten the curve and both edges come
+   back the same colour — a card wearing a tint instead of a card sitting in a
+   room. Same reason a card two panels away is left alone entirely: light that
+   reaches everything equally is not read as light.
+
+   Additive only — it paints over the existing border rather than replacing it,
+   so `hover:border-line-strong` and the semantic border overrides still read.
+   It also deliberately does not follow the backdrop's 48s drift: at ±2% the
+   two cannot visibly disagree, and matching it would put a fixed-attachment
+   repaint on an animation frame. */
+:where(.surface) {
+  position: relative;
+}
+
+/* Desktop only. iOS Safari resolves `background-attachment: fixed` as `scroll`,
+   which would size the gradient to each card and stamp the same blue blob on
+   every one of them — worse than no rim at all. */
+@media (min-width: 768px) {
+  .surface::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    /* Ring width. With border-box sizing the content box is inset by this much
+       on every side, which is exactly what the mask below keeps. */
+    padding: 1px;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        var(--lit-a-shape),
+        color-mix(in srgb, var(--lit-a-hue) 84%, transparent) 0%,
+        color-mix(in srgb, var(--lit-a-hue) 36%, transparent) 22%,
+        color-mix(in srgb, var(--lit-a-hue) 12%, transparent) 48%,
+        transparent 78%
+      ),
+      radial-gradient(
+        var(--lit-b-shape),
+        color-mix(in srgb, var(--lit-b-hue) 55.5%, transparent) 0%,
+        color-mix(in srgb, var(--lit-b-hue) 22.5%, transparent) 22%,
+        color-mix(in srgb, var(--lit-b-hue) 7.5%, transparent) 48%,
+        transparent 74%
+      );
+    background-attachment: fixed;
+    /* Two full-cover masks, one clipped to the content box, subtracted from
+       each other: what is left is the padding ring and nothing else. */
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+}
+
+/* News list row */
 .news-item {
-  transition: all 0.2s ease;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease;
 }
 
 .news-item:hover {
-  background: rgba(99, 102, 241, 0.1);
-  border-color: var(--oracle-accent);
-  transform: translateX(4px);
+  background: var(--surface-2);
+  border-color: var(--border-strong);
 }
 
 .news-item.selected {
-  background: rgba(99, 102, 241, 0.15);
-  border-left: 3px solid var(--oracle-accent);
+  background: var(--accent-bg);
 }
 
-/* Shimmer loading effect */
+/* The left edge names the market the headline belongs to. It used to carry the
+   selection instead, which duplicated a state the tinted background and the
+   accent border already said twice — so the one always-visible edge of the row
+   was spent on the one thing you could not miss.
+   `data-asset` is set from the resolved symbol, never from the feed the item
+   arrived on: see lib/asset-class.ts for why those are not the same question.
+   Attribute selectors outrank the `.border-accent` utility, so the stripe
+   survives selection. */
+.news-item[data-asset] {
+  border-left-width: 2px;
+  border-left-color: var(--asset-unknown);
+}
+
+.news-item[data-asset='crypto'] {
+  border-left-color: var(--asset-crypto);
+}
+
+.news-item[data-asset='stock'] {
+  border-left-color: var(--asset-stock);
+}
+
+/* Sentiment badges */
+.badge-bullish {
+  background: var(--up-bg);
+  border: 1px solid var(--up);
+  color: var(--up);
+}
+
+.badge-bearish {
+  background: var(--down-bg);
+  border: 1px solid var(--down);
+  color: var(--down);
+}
+
+.badge-neutral {
+  background: var(--warn-bg);
+  border: 1px solid var(--warn);
+  color: var(--warn);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOADING STATE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
@@ -110,24 +1273,83 @@ body {
 }
 
 .shimmer {
-  background: linear-gradient(90deg,
-      rgba(26, 26, 37, 0.8) 25%,
-      rgba(42, 42, 58, 0.8) 50%,
-      rgba(26, 26, 37, 0.8) 75%);
+  background: linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
 
-/* Pulse animation for live indicator */
-@keyframes live-pulse {
+/* Indeterminate progress: used while the backend has not answered once and
+   there is genuinely no progress to report. A bar parked at 0% reads as hung. */
+@keyframes boot-scan {
+  0% {
+    transform: translateX(-100%);
+  }
 
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+.animate-boot-scan {
+  animation: boot-scan 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-boot-scan {
+    animation: none;
+    transform: translateX(0);
+    width: 100%;
+    opacity: 0.35;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   REAL-TIME PRICE FEEDBACK
+   Functional, not decorative: a brief tint marks which cell just changed.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes flash-up {
+  0% {
+    background-color: var(--up-bg);
+  }
+
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes flash-down {
+  0% {
+    background-color: var(--down-bg);
+  }
+
+  100% {
+    background-color: transparent;
+  }
+}
+
+.price-flash-up {
+  animation: flash-up 0.5s ease-out;
+}
+
+.price-flash-down {
+  animation: flash-down 0.5s ease-out;
+}
+
+.price-cell {
+  font-variant-numeric: tabular-nums;
+  transition: color 0.15s ease;
+}
+
+/* Connection status — the one place a pulse is meaningful. */
+@keyframes live-pulse {
   0%,
   100% {
     opacity: 1;
   }
 
   50% {
-    opacity: 0.5;
+    opacity: 0.4;
   }
 }
 
@@ -135,80 +1357,432 @@ body {
   animation: live-pulse 2s ease-in-out infinite;
 }
 
-/* Sentiment badges */
-.badge-bullish {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
-  border: 1px solid rgba(16, 185, 129, 0.5);
-  color: #10b981;
-}
-
-.badge-bearish {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
-  border: 1px solid rgba(239, 68, 68, 0.5);
-  color: #ef4444;
-}
-
-.badge-neutral {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.1));
-  border: 1px solid rgba(245, 158, 11, 0.5);
-  color: #f59e0b;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════════
-   REAL-TIME PRICE FLASH ANIMATIONS
-   ═══════════════════════════════════════════════════════════════════════════════ */
-
-@keyframes flash-green {
-  0% {
-    background-color: rgba(34, 197, 94, 0.4);
-    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
-  }
-
-  100% {
-    background-color: transparent;
-    box-shadow: none;
-  }
-}
-
-@keyframes flash-red {
-  0% {
-    background-color: rgba(239, 68, 68, 0.4);
-    box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
-  }
-
-  100% {
-    background-color: transparent;
-    box-shadow: none;
-  }
-}
-
-.price-flash-up {
-  animation: flash-green 0.5s ease-out;
-}
-
-.price-flash-down {
-  animation: flash-red 0.5s ease-out;
-}
-
-/* Price cell transition for smooth updates */
-.price-cell {
-  transition: color 0.2s ease;
-}
-
-/* WebSocket connection indicator */
 .ws-connected {
-  color: #22c55e;
+  color: var(--up);
 }
 
 .ws-disconnected {
-  color: #ef4444;
+  color: var(--down);
 }
 
-/* Toast notification slide-in animation */
+/* ═══════════════════════════════════════════════════════════════════════════
+   APP BACKDROP
+   The gap between panels used to be flat --bg on every tab, which read as a
+   hole rather than as a surface. This is the one layer that fills it: fixed,
+   pointer-events: none, rendered once in ClientShell — so no page draws its
+   own copy and it never scrolls with a scroll container.
+
+   No texture — no grid, no noise, no particles. A repeating pattern behind a
+   data-dense terminal competes with the table rows sitting on top of it. Two
+   very dim pools of light instead, mixed from --accent and --data-btc rather
+   than written as raw rgba, so the floor tracks the palette if it moves.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.app-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  /* Clips the drifting child: a scaled fixed layer would otherwise be able to
+     push horizontal overflow. */
+  overflow: hidden;
+}
+
+/* Full-bleed rather than inset: every percentage below is then read against the
+   viewport, which is the frame the positions were chosen for. An inset box
+   rescales them — `18%` of a box that is 136% wide and starts at -18% lands at
+   6.5% of the screen, which is how both pools ended up hiding under the chrome
+   on the first pass. The drift only ever scales this box up, so no edge can be
+   pulled into view and no inset is needed to cover one. */
+.app-backdrop::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* Both pools sit inside the content band on purpose. The nav bar and the
+     ticker tape are opaque and eat the top ~80px, so a glow centred near the
+     top edge is a glow nobody ever sees.
+
+     They also stop well short of transparent at their own edge — the stop is at
+     78%, not 100%. What is visible of this layer on most tabs is a handful of
+     16px gutters between panels, and a gradient that spends its whole range
+     fading has nothing left by the time it reaches one.
+
+     Four stops, not three, and the middle one sits at 22% rather than halfway.
+     An evenly-spaced ramp reads as a flat wash of colour laid over the page —
+     it has a tint but no source. Front-loading the decay gives the pool a small
+     bright core and a long thin tail, which is what makes it read as light
+     arriving from somewhere: near the centre the colour is unmistakable, and a
+     third of the way out it is already most of the way gone. That gradient is
+     also the whole depth cue on the panel rims below, since their tint is this
+     curve resampled — a slow ramp there would tint every edge of a card about
+     equally and flatten the card back into the page. */
+  background:
+    radial-gradient(
+      var(--lit-a-shape),
+      color-mix(in srgb, var(--lit-a-hue) 28%, transparent) 0%,
+      color-mix(in srgb, var(--lit-a-hue) 12%, transparent) 22%,
+      color-mix(in srgb, var(--lit-a-hue) 4%, transparent) 48%,
+      transparent 78%
+    ),
+    radial-gradient(
+      var(--lit-b-shape),
+      color-mix(in srgb, var(--lit-b-hue) 18.5%, transparent) 0%,
+      color-mix(in srgb, var(--lit-b-hue) 7.5%, transparent) 22%,
+      color-mix(in srgb, var(--lit-b-hue) 2.5%, transparent) 48%,
+      transparent 74%
+    );
+  animation: app-backdrop-drift 48s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* Transform and opacity only, so the whole thing stays on the compositor. The
+   amplitude is deliberately below the threshold of noticing: this is not a
+   motion you watch, it is the reason the floor does not look dead after you
+   have had the tab open for an hour.
+
+   The base frame is already scaled past 1 so the translate at 50% always has
+   more slack than it needs — at every point in the cycle the grown margin is
+   wider than the offset, so the parent never has an uncovered edge to clip. */
+@keyframes app-backdrop-drift {
+  0%,
+  100% {
+    opacity: 0.88;
+    transform: translate3d(0, 0, 0) scale(1.02);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translate3d(2%, -1.5%, 0) scale(1.1);
+  }
+}
+
+/* The global reduce-motion rule collapses every animation to a single instant
+   pass; stating it here keeps the layer from landing on a half-drifted frame. */
+@media (prefers-reduced-motion: reduce) {
+  .app-backdrop::before {
+    animation: none;
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHAT MODE BACKDROP
+   The response mode is a claim about depth, so the backdrop makes it literally:
+   concise is light sitting on the surface, detailed is light coming from behind
+   the column. The particle field in ChatModeBackdrop.tsx carries the depth cues
+   — size, attenuation, parallax — and these two layers carry the tint and the
+   slow motion behind it.
+
+   Alphas are derived from the mode tokens with color-mix rather than written as
+   raw rgba, because a hand-copied channel is a copy that stops tracking the
+   token the first time someone changes it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.chat-backdrop-field {
+  /* Thinned where the message column sits and faded at the edges, so the field
+     never competes with a paragraph for the same pixels. */
+  --backdrop-mask: radial-gradient(
+    ellipse 52% 58% at 50% 50%,
+    rgba(0, 0, 0, 0.2) 0%,
+    rgba(0, 0, 0, 0.62) 48%,
+    #000 100%
+  );
+  -webkit-mask-image: var(--backdrop-mask);
+  mask-image: var(--backdrop-mask);
+}
+
+.chat-backdrop-well {
+  position: absolute;
+  inset: 0;
+  transition: opacity 500ms ease;
+}
+
+/* Concise: one lit band along the top edge, with a sweep travelling across it.
+   Every source of light is at the same depth — that is the whole statement. */
+.chat-backdrop-well[data-mode='concise'] {
+  background:
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--mode-concise) 19%, transparent) 0%,
+      transparent 28%
+    ),
+    linear-gradient(
+      to top,
+      color-mix(in srgb, var(--mode-concise) 8%, transparent) 0%,
+      transparent 14%
+    );
+}
+
+.chat-backdrop-well[data-mode='concise']::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 45%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--mode-concise) 11%, transparent),
+    transparent
+  );
+  animation: backdrop-sweep 7s linear infinite;
+}
+
+/* Detailed: light from far behind and far above the column, breathing on a slow
+   cycle. Nothing is placed at the surface. */
+.chat-backdrop-well[data-mode='detailed'] {
+  background:
+    radial-gradient(
+      ellipse 75% 60% at 50% 108%,
+      var(--mode-detailed-solid) 0%,
+      color-mix(in srgb, var(--mode-detailed-solid) 45%, transparent) 38%,
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 55% 45% at 50% -8%,
+      color-mix(in srgb, var(--mode-detailed) 30%, transparent) 0%,
+      transparent 70%
+    );
+  animation: backdrop-breathe 16s ease-in-out infinite;
+}
+
+@keyframes backdrop-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(322%);
+  }
+}
+
+@keyframes backdrop-breathe {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+/* Message entrance, keyed to the mode that produced it. Concise arrives flat
+   and fast; detailed rises out of the field with the focus resolving as it
+   lands, because that is where its answer came from. The class is frozen onto
+   the message when it is created — deriving it from the current mode would
+   replay every bubble's entrance the moment you touched the picker. */
+@keyframes msg-in-concise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes msg-in-detailed {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.965);
+    filter: blur(5px);
+  }
+
+  55% {
+    filter: blur(0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.msg-in-concise {
+  animation: msg-in-concise 170ms ease-out both;
+}
+
+.msg-in-detailed {
+  animation: msg-in-detailed 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* The pending bubble makes the same distinction while the answer is being
+   written: concise sweeps across a surface, detailed wells up from behind. */
+.pending-concise::after,
+.pending-detailed::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.pending-concise::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--mode-concise) 16%, transparent),
+    transparent
+  );
+  animation: pending-sweep 1.6s linear infinite;
+}
+
+.pending-detailed::after {
+  background: radial-gradient(
+    circle at 18px 50%,
+    color-mix(in srgb, var(--mode-detailed) 34%, transparent) 0%,
+    transparent 62%
+  );
+  animation: pending-well 2.8s ease-out infinite;
+}
+
+@keyframes pending-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes pending-well {
+  0% {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+
+  35% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
+
+/* Waiting indicator: a candle series that prints and then clears, on a loop.
+   Geometry comes from ThinkingCandles.tsx as custom properties; the timing
+   lives here. Each candle runs the same keyframe offset by its own delay, so
+   one keyframe produces both the staggered print and the staggered clear. */
+.thinking-candles {
+  display: flex;
+  align-items: flex-start;
+  gap: 3px;
+  height: 18px;
+}
+
+.thinking-candle {
+  position: relative;
+  width: 4px;
+  height: 100%;
+  transform-origin: center;
+  animation: candle-cycle 2.6s ease-in-out infinite both;
+}
+
+.thinking-candle.is-up {
+  color: var(--up);
+}
+
+.thinking-candle.is-down {
+  color: var(--down);
+}
+
+.thinking-candle::before {
+  content: '';
+  position: absolute;
+  top: var(--wick-top);
+  left: 50%;
+  width: 1px;
+  height: var(--wick-h);
+  margin-left: -0.5px;
+  background: currentcolor;
+  opacity: 0.65;
+}
+
+.thinking-candle::after {
+  content: '';
+  position: absolute;
+  top: var(--body-top);
+  right: 0;
+  left: 0;
+  height: var(--body-h);
+  background: currentcolor;
+  border-radius: 1px;
+}
+
+/* The hold either side of the transitions is what keeps the loop from reading
+   as a flicker: a candle is fully printed for roughly a third of the cycle. */
+@keyframes candle-cycle {
+  0%,
+  4% {
+    opacity: 0;
+    transform: scaleY(0.1);
+  }
+
+  17% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+
+  52% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+
+  67%,
+  100% {
+    opacity: 0;
+    transform: scaleY(0.1);
+  }
+}
+
+/* The global reduce-motion rule collapses every animation to a single instant
+   pass, which for a `both`-filled loop means it lands on the final frame —
+   opacity 0. Without this the indicator would simply not be there. */
+@media (prefers-reduced-motion: reduce) {
+  .thinking-candle {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* Chat step timeline.
+
+   Steps arrive one at a time while the turn runs, so each row fades up as it
+   is appended. Without it the list jumps by a row every few seconds and reads
+   as a rendering glitch rather than as progress. Deliberately shorter and
+   smaller-travel than the message entrance: this is a row inside a bubble, not
+   the bubble itself, and matching that animation would make the sub-list
+   compete with the answer. */
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.step-in {
+  animation: step-in 0.18s ease-out both;
+}
+
+/* Toast entrance */
 @keyframes slide-in-right {
   0% {
     opacity: 0;
-    transform: translateX(100%);
+    transform: translateX(12px);
   }
 
   100% {
@@ -218,5 +1792,15 @@ body {
 }
 
 .animate-slide-in-right {
-  animation: slide-in-right 0.3s ease-out;
+  animation: slide-in-right 0.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

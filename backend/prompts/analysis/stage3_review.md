@@ -58,6 +58,10 @@ soften a correct claim. If the draft is accurate in a section, leave it alone.
 
 ═══════════════════════════════════════════════════════════════
 
+{{rules}}
+
+═══════════════════════════════════════════════════════════════
+
 Output the corrected report in full, starting directly with
 `## Executive Summary`. Output nothing else — no change log, no commentary on
 your edits, no preamble.

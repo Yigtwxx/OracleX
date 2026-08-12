@@ -98,6 +98,8 @@ List the data feeds that were unavailable for this report and what could not be
 assessed as a result. Then state the two largest risks to the thesis above. Close
 with one line noting this is research commentary, not investment advice.
 
+{{rules}}
+
 ═══════════════════════════════════════════════════════════════
 
 Write the report now. Start directly with `## Executive Summary` — no title, no

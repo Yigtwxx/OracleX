@@ -40,6 +40,10 @@ Rules:
 - If a section has nothing to report, return an empty array — do not pad it.
 - Be skeptical. Routine price commentary is not a catalyst.
 
+{{rules}}
+
+═══════════════════════════════════════════════════════════════
+
 Respond with ONLY this JSON object and nothing else:
 
 {

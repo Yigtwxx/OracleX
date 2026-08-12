@@ -1,178 +1,178 @@
 {
   "bitcoin": {
-    "fetched_at": 1786492766.255431,
+    "fetched_at": 1786520821.595865,
     "score_version": 3,
     "developer_score": 79.7,
     "github_commits": 108.0,
     "github_stars": 73168.0
   },
   "ethereum": {
-    "fetched_at": 1786493693.0331159,
+    "fetched_at": 1786520824.426451,
     "score_version": 3,
     "developer_score": 69.6,
     "github_commits": 41.0,
     "github_stars": 44422.0
   },
   "tether": {
-    "fetched_at": 1786494729.8015769,
+    "fetched_at": 1786520827.370271,
     "score_version": 3
   },
   "binancecoin": {
-    "fetched_at": 1786494732.692062,
+    "fetched_at": 1786520830.272833,
     "score_version": 3,
     "developer_score": 29.0,
     "github_commits": 0.0,
     "github_stars": 4250.0
   },
   "usd-coin": {
-    "fetched_at": 1786497721.96435,
+    "fetched_at": 1786521046.2300391,
     "score_version": 3,
     "developer_score": 23.2,
     "github_commits": 0.0,
     "github_stars": 784.0
   },
   "ripple": {
-    "fetched_at": 1786497724.813652,
+    "fetched_at": 1786521049.1104589,
     "score_version": 3,
     "developer_score": 43.1,
     "github_commits": 4.0,
     "github_stars": 4384.0
   },
   "solana": {
-    "fetched_at": 1786497727.639613,
+    "fetched_at": 1786521051.981684,
     "score_version": 3,
     "developer_score": 77.1,
     "github_commits": 171.0,
     "github_stars": 11071.0
   },
   "tron": {
-    "fetched_at": 1786497730.5377028,
+    "fetched_at": 1786521054.841335,
     "score_version": 3,
     "developer_score": 54.4,
     "github_commits": 19.0,
     "github_stars": 3530.0
   },
   "figure-heloc": {
-    "fetched_at": 1786508660.970336,
+    "fetched_at": 1786530506.33727,
     "score_version": 3
   },
   "hyperliquid": {
-    "fetched_at": 1786498760.4619288,
+    "fetched_at": 1786521121.839486,
     "score_version": 3
   },
   "dogecoin": {
-    "fetched_at": 1786498763.335603,
+    "fetched_at": 1786521124.761667,
     "score_version": 3,
     "developer_score": 33.3,
     "github_commits": 0.0,
     "github_stars": 14334.0
   },
   "usds": {
-    "fetched_at": 1786498766.2698612,
+    "fetched_at": 1786521346.182733,
     "score_version": 3
   },
   "leo-token": {
-    "fetched_at": 1786498769.12501,
+    "fetched_at": 1786521349.034289,
     "score_version": 3
   },
   "rain": {
-    "fetched_at": 1786502360.52428,
+    "fetched_at": 1786524107.038323,
     "score_version": 3
   },
   "zcash": {
-    "fetched_at": 1786502363.376703,
+    "fetched_at": 1786524110.0166972,
     "score_version": 3,
     "developer_score": 60.3,
     "github_commits": 34.0,
     "github_stars": 4811.0
   },
   "cardano": {
-    "fetched_at": 1786505221.786825,
+    "fetched_at": 1786526860.299621,
     "score_version": 3,
     "developer_score": 28.6,
     "github_commits": 0.0,
     "github_stars": 3757.0
   },
   "monero": {
-    "fetched_at": 1786505224.7561421,
+    "fetched_at": 1786527506.484683,
     "score_version": 3,
     "developer_score": 31.4,
     "github_commits": 0.0,
     "github_stars": 8309.0
   },
   "whitebit": {
-    "fetched_at": 1786505227.625131,
+    "fetched_at": 1786527509.415725,
     "score_version": 3
   },
   "chainlink": {
-    "fetched_at": 1786505230.50677,
+    "fetched_at": 1786527512.369052,
     "score_version": 3,
     "developer_score": 68.9,
     "github_commits": 87.0,
     "github_stars": 5703.0
   },
   "stellar": {
-    "fetched_at": 1786507621.761576,
+    "fetched_at": 1786530206.5642219,
     "score_version": 3,
     "developer_score": 66.7,
     "github_commits": 86.0,
     "github_stars": 3118.0
   },
   "dai": {
-    "fetched_at": 1786507624.859102,
+    "fetched_at": 1786530209.609235,
     "score_version": 3
   },
   "canton-network": {
-    "fetched_at": 1786507627.982522,
+    "fetched_at": 1786530212.529957,
     "score_version": 3
   },
   "bitcoin-cash": {
-    "fetched_at": 1786507630.888957,
+    "fetched_at": 1786530215.561929,
     "score_version": 3
   },
   "usd1-wlfi": {
-    "fetched_at": 1786508663.869587,
+    "fetched_at": 1786530509.2659981,
     "score_version": 3
   },
   "ethena-usde": {
-    "fetched_at": 1786508666.747135,
+    "fetched_at": 1786530512.19227,
     "score_version": 3
   },
   "the-open-network": {
-    "fetched_at": 1786508669.6187751,
+    "fetched_at": 1786530515.089089,
     "score_version": 3,
-    "developer_score": 70.0,
-    "github_commits": 112.0,
-    "github_stars": 4116.0
+    "developer_score": 69.6,
+    "github_commits": 107.0,
+    "github_stars": 4118.0
   },
   "global-dollar": {
-    "fetched_at": 1786510322.006436,
+    "fetched_at": 1786532159.043539,
     "score_version": 3,
     "developer_score": 10.2,
     "github_commits": 0.0,
     "github_stars": 18.0
   },
   "litecoin": {
-    "fetched_at": 1786510325.1519392,
+    "fetched_at": 1786532161.915124,
     "score_version": 3,
     "developer_score": 35.1,
     "github_commits": 1.0,
     "github_stars": 4266.0
   },
   "hedera-hashgraph": {
-    "fetched_at": 1786512260.451784,
+    "fetched_at": 1786533958.923452,
     "score_version": 3
   },
   "hashnote-usyc": {
-    "fetched_at": 1786512263.296862,
+    "fetched_at": 1786533961.7824068,
     "score_version": 3
   },
   "avalanche-2": {
-    "fetched_at": 1786512266.132916,
+    "fetched_at": 1786533964.6034958,
     "score_version": 3
   },
   "shiba-inu": {
-    "fetched_at": 1786512268.992832,
+    "fetched_at": 1786534258.951314,
     "score_version": 3
   },
   "sui": {
@@ -242,145 +242,145 @@
     "score_version": 3
   },
   "world-liberty-financial": {
-    "fetched_at": 1786461424.6909409,
+    "fetched_at": 1786519160.548762,
     "score_version": 3
   },
   "aster-2": {
-    "fetched_at": 1786461427.564734,
+    "fetched_at": 1786519163.378573,
     "score_version": 3,
     "developer_score": 41.0,
     "github_commits": 17.0,
     "github_stars": 95.0
   },
   "htx-dao": {
-    "fetched_at": 1786461430.440044,
+    "fetched_at": 1786519321.9890718,
     "score_version": 3
   },
   "ripple-usd": {
-    "fetched_at": 1786462460.988229,
+    "fetched_at": 1786519324.902047,
     "score_version": 3
   },
   "usdd": {
-    "fetched_at": 1786462463.852851,
+    "fetched_at": 1786519327.74084,
     "score_version": 3
   },
   "memecore": {
-    "fetched_at": 1786462466.7508988,
+    "fetched_at": 1786519330.640848,
     "score_version": 3
   },
   "falcon-finance": {
-    "fetched_at": 1786462469.679353,
+    "fetched_at": 1786519460.5072992,
     "score_version": 3
   },
   "polkadot": {
-    "fetched_at": 1786462621.502523,
+    "fetched_at": 1786519463.39171,
     "score_version": 3
   },
   "aave": {
-    "fetched_at": 1786462624.423994,
+    "fetched_at": 1786519466.229106,
     "score_version": 3,
     "developer_score": 25.3,
     "github_commits": 0.0,
     "github_stars": 1438.0
   },
   "mantle": {
-    "fetched_at": 1786462627.304936,
+    "fetched_at": 1786519469.0963619,
     "score_version": 3
   },
   "sky": {
-    "fetched_at": 1786462630.183109,
+    "fetched_at": 1786519621.71926,
     "score_version": 3
   },
   "bfusd": {
-    "fetched_at": 1786477921.9724832,
+    "fetched_at": 1786519627.6053061,
     "score_version": 3
   },
   "morpho": {
-    "fetched_at": 1786477924.8339279,
+    "fetched_at": 1786519630.661927,
     "score_version": 3
   },
   "united-stables": {
-    "fetched_at": 1786477927.7114391,
+    "fetched_at": 1786519760.4664981,
     "score_version": 3
   },
   "pepe": {
-    "fetched_at": 1786479860.498849,
+    "fetched_at": 1786519763.310783,
     "score_version": 3
   },
   "internet-computer": {
-    "fetched_at": 1786479863.340735,
+    "fetched_at": 1786519766.155563,
     "score_version": 3,
     "developer_score": 80.2,
     "github_commits": 567.0,
     "github_stars": 1399.0
   },
   "bitget-token": {
-    "fetched_at": 1786479866.1882172,
+    "fetched_at": 1786519769.021497,
     "score_version": 3
   },
   "usdgo": {
-    "fetched_at": 1786479869.373701,
+    "fetched_at": 1786519921.6641269,
     "score_version": 3
   },
   "worldcoin-wld": {
-    "fetched_at": 1786486760.454396,
+    "fetched_at": 1786519924.770487,
     "score_version": 3
   },
   "ethereum-classic": {
-    "fetched_at": 1786486763.298998,
+    "fetched_at": 1786520060.5201862,
     "score_version": 3,
     "developer_score": 24.4,
     "github_commits": 1.0,
     "github_stars": 195.0
   },
   "pi-network": {
-    "fetched_at": 1786489323.9490619,
+    "fetched_at": 1786520063.369199,
     "score_version": 3,
     "developer_score": 26.5,
     "github_commits": 0.0,
     "github_stars": 2035.0
   },
   "spiko-amundi-overnight-swap-fund-eur": {
-    "fetched_at": 1786489327.0249448,
+    "fetched_at": 1786520066.2518778,
     "score_version": 3
   },
   "blockchain-capital": {
-    "fetched_at": 1786489329.9914281,
+    "fetched_at": 1786520069.153934,
     "score_version": 3
   },
   "pump-fun": {
-    "fetched_at": 1786489332.920702,
+    "fetched_at": 1786520223.419391,
     "score_version": 3
   },
   "eutbl": {
-    "fetched_at": 1786490360.494674,
+    "fetched_at": 1786520226.6401489,
     "score_version": 3,
     "developer_score": 9.6,
     "github_commits": 0.0,
     "github_stars": 15.0
   },
   "superstate-short-duration-us-government-securities-fund-ustb": {
-    "fetched_at": 1786490363.3520908,
+    "fetched_at": 1786520501.588539,
     "score_version": 3
   },
   "kucoin-shares": {
-    "fetched_at": 1786490526.0109172,
+    "fetched_at": 1786520504.4460428,
     "score_version": 3
   },
   "ethena": {
-    "fetched_at": 1786490528.871715,
+    "fetched_at": 1786520571.5951319,
     "score_version": 3
   },
   "janus-henderson-anemoy-treasury-fund": {
-    "fetched_at": 1786492760.483435,
+    "fetched_at": 1786520575.112545,
     "score_version": 3
   },
   "just": {
-    "fetched_at": 1786470121.7662652,
+    "fetched_at": 1786519624.649796,
     "score_version": 3
   },
   "quant-network": {
-    "fetched_at": 1786492763.370024,
+    "fetched_at": 1786520577.989027,
     "score_version": 3
   },
   "polygon-ecosystem-token": {

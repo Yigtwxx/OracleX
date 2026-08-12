@@ -2,294 +2,457 @@
 
 import { useState } from 'react';
 import { useStore } from '@/store/useStore';
-import { verifyOnChain } from '@/lib/api';
+import { useNewsAnalysis, useNewsAnalysisJob } from '@/hooks/queries';
+import StageChecklist from '@/components/analysis/StageChecklist';
 import {
-    Brain,
-    TrendingUp,
-    TrendingDown,
-    Minus,
-    Shield,
-    ExternalLink,
-    Loader2,
-    History,
-    Target,
-    Sparkles,
-    CheckCircle2,
-    LinkIcon,
-    Activity
+  Activity,
+  AlertTriangle,
+  Brain,
+  ChevronDown,
+  ExternalLink,
+  FileText,
+  Gauge,
+  History,
+  Minus,
+  ShieldAlert,
+  Target,
+  TrendingDown,
+  TrendingUp,
 } from 'lucide-react';
+import type { EvidenceItem, NewsAnalysis, PrecedentAnalogy } from '@/lib/api';
+
+type Sentiment = 'bullish' | 'bearish' | 'neutral';
+
+const SENTIMENT_STYLE: Record<Sentiment, { text: string; bg: string; border: string }> = {
+  bullish: { text: 'text-up', bg: 'bg-up-bg', border: 'border-up' },
+  bearish: { text: 'text-down', bg: 'bg-down-bg', border: 'border-down' },
+  neutral: { text: 'text-warn', bg: 'bg-warn-bg', border: 'border-warn' },
+};
+
+/**
+ * How much weight the item itself carries, before any judgement about
+ * direction. A routine item is the common case, not a failure to analyse.
+ */
+const MATERIALITY_STYLE: Record<string, string> = {
+  extraordinary: 'bg-down-bg text-down',
+  significant: 'bg-warn-bg text-warn',
+  routine: 'bg-surface-2 text-fg-muted',
+  noise: 'bg-surface-2 text-fg-subtle',
+};
+
+const HORIZON_LABELS: Record<string, string> = {
+  immediate: 'Immediate (minutes to hours)',
+  'short-term': 'Short term (1–7 days)',
+  'medium-term': 'Medium term (1–4 weeks)',
+  'long-term': 'Long term (1+ months)',
+};
+
+function sentimentIcon(sentiment: string) {
+  if (sentiment === 'bullish') return <TrendingUp className="w-4 h-4" />;
+  if (sentiment === 'bearish') return <TrendingDown className="w-4 h-4" />;
+  return <Minus className="w-4 h-4" />;
+}
+
+function directionClass(direction: string): string {
+  if (direction === 'bullish') return 'bg-up-bg text-up';
+  if (direction === 'bearish') return 'bg-down-bg text-down';
+  return 'bg-surface-2 text-fg-muted';
+}
+
+function formatPct(value: number | undefined): string {
+  if (value === undefined || Number.isNaN(value)) return '—';
+  return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+}
+
+function Section({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: typeof Target;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="surface p-4">
+      <div className="flex items-center gap-2 mb-2.5">
+        <Icon className="w-3.5 h-3.5 text-fg-muted" />
+        <h4 className="label">{title}</h4>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** One claim behind the verdict, expandable to the line that supports it. */
+function EvidenceRow({ item }: { item: EvidenceItem }) {
+  const [open, setOpen] = useState(false);
+  const hasQuote = !!item.quote;
+
+  return (
+    <div className="py-2 first:pt-0 last:pb-0">
+      <div className="flex items-start gap-2">
+        <span
+          className={`shrink-0 mt-0.5 px-1.5 py-0.5 rounded text-2xs font-semibold uppercase ${directionClass(
+            item.direction
+          )}`}
+        >
+          {item.direction}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-base text-fg-muted leading-relaxed">{item.claim}</p>
+          {hasQuote && (
+            <button
+              onClick={() => setOpen((v) => !v)}
+              className="flex items-center gap-1 mt-1 text-sm text-fg-subtle hover:text-fg transition-colors"
+              aria-expanded={open}
+            >
+              <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+              {open ? 'Hide source line' : 'Show source line'}
+            </button>
+          )}
+          {hasQuote && open && (
+            <blockquote className="mt-1.5 pl-2.5 border-l-2 border-line text-sm text-fg-subtle italic leading-relaxed">
+              “{item.quote}”
+            </blockquote>
+          )}
+        </div>
+        {item.weight === 'primary' && (
+          <span className="shrink-0 mt-0.5 text-2xs text-fg-subtle uppercase tracking-wide">
+            key
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A past event this item resembles.
+ *
+ * The `surprised` badge is the reason this section exists: an approval followed
+ * by a lower price, or a lawsuit followed by a higher one, is the most useful
+ * thing retrieval can surface — and it used to reach only the model.
+ */
+function PrecedentCard({ precedent }: { precedent: PrecedentAnalogy }) {
+  const horizons = Object.entries(precedent.horizons)
+    .map(([days, pct]) => [Number(days), pct] as const)
+    .filter(([days]) => !Number.isNaN(days))
+    .sort((a, b) => a[0] - b[0]);
+
+  return (
+    <div className="py-2.5 first:pt-0 last:pb-0">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-base text-fg leading-snug">{precedent.title}</p>
+        <span className="shrink-0 text-sm text-fg-subtle tabnum font-mono">
+          {Math.round(precedent.similarity * 100)}%
+        </span>
+      </div>
+
+      <p className="text-sm text-fg-subtle mt-0.5">
+        {[precedent.date, precedent.symbol].filter(Boolean).join(' · ') || 'date unknown'}
+      </p>
+
+      {horizons.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-1.5">
+          {horizons.map(([days, pct]) => (
+            <span
+              key={days}
+              className={`px-1.5 py-0.5 rounded text-sm font-mono tabnum ${
+                pct >= 0 ? 'bg-up-bg text-up' : 'bg-down-bg text-down'
+              }`}
+            >
+              {days}d {formatPct(pct)}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {precedent.surprised && (
+        <p className="mt-1.5 text-sm text-warn leading-relaxed">
+          The market did the opposite of what the headline implied
+          {precedent.apparentSentiment && precedent.durableDirection
+            ? ` — read as ${precedent.apparentSentiment}, settled ${precedent.durableDirection}.`
+            : '.'}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function OraclePanel() {
-    const { selectedNews, analysis, isLoadingAnalysis } = useStore();
-    const [isVerifying, setIsVerifying] = useState(false);
-    const [txHash, setTxHash] = useState<string | null>(null);
+  const { selectedNews, analysisJobIds } = useStore();
+  const newsId = selectedNews?.id;
 
-    const handleVerifyOnChain = async () => {
-        if (!analysis?.prediction_hash) return;
+  const jobId = newsId ? analysisJobIds[newsId] : undefined;
+  const { data: job } = useNewsAnalysisJob(jobId);
+  // Keyed by news id, so a late response for a previously selected item cannot
+  // render here. This is the race fix — not a guard, a shape.
+  const { data: analysis } = useNewsAnalysis(newsId);
 
-        setIsVerifying(true);
-        try {
-            const result = await verifyOnChain(analysis.prediction_hash);
-            setTxHash(result.txHash);
-        } catch (error) {
-            console.error('Verification failed:', error);
-        } finally {
-            setIsVerifying(false);
-        }
-    };
+  const sentiment = (analysis?.sentiment ?? 'neutral') as Sentiment;
+  const style = SENTIMENT_STYLE[sentiment] ?? SENTIMENT_STYLE.neutral;
 
-    const getSentimentIcon = (sentiment: string) => {
-        switch (sentiment) {
-            case 'bullish':
-                return <TrendingUp className="w-5 h-5" />;
-            case 'bearish':
-                return <TrendingDown className="w-5 h-5" />;
-            default:
-                return <Minus className="w-5 h-5" />;
-        }
-    };
+  const jobFailed = job?.status === 'error';
+  const running = job?.status === 'queued' || job?.status === 'running';
+  // The verdict is shown as soon as it exists, even while a later stage is
+  // still auditing it.
+  const auditing = running && !!analysis;
 
-    const getSentimentColor = (sentiment: string) => {
-        switch (sentiment) {
-            case 'bullish':
-                return 'text-oracle-bullish';
-            case 'bearish':
-                return 'text-oracle-bearish';
-            default:
-                return 'text-oracle-neutral';
-        }
-    };
+  return (
+    <div className="flex flex-col h-full">
+      <div className="h-10 shrink-0 px-4 border-b border-line flex items-center gap-2 bg-surface">
+        <Brain className="w-3.5 h-3.5 text-fg-muted" />
+        <h2 className="text-base font-semibold text-fg">Oracle</h2>
+      </div>
 
-    const getTheme = (sentiment: string) => {
-        switch (sentiment) {
-            case 'bullish':
-                return {
-                    text: 'text-oracle-bullish',
-                    border: 'border-oracle-bullish/30',
-                    bg: 'bg-oracle-bullish/10',
-                    icon: 'text-oracle-bullish',
-                    glow: 'glow-bullish'
-                };
-            case 'bearish':
-                return {
-                    text: 'text-oracle-bearish',
-                    border: 'border-oracle-bearish/30',
-                    bg: 'bg-oracle-bearish/10',
-                    icon: 'text-oracle-bearish',
-                    glow: 'glow-bearish'
-                };
-            default:
-                return {
-                    text: 'text-oracle-neutral',
-                    border: 'border-oracle-neutral/30',
-                    bg: 'bg-oracle-neutral/10',
-                    icon: 'text-oracle-neutral',
-                    glow: ''
-                };
-        }
-    };
-
-    const theme = analysis ? getTheme(analysis.sentiment) : getTheme('neutral');
-
-    return (
-        <div className="flex flex-col h-full">
-            {/* Header - Fixed height to align with other panels */}
-            <div className="h-14 px-4 border-b border-oracle-border flex items-center gap-2 bg-gradient-to-r from-oracle-dark via-oracle-dark to-pink/5">
-                <Brain className="w-5 h-5 text-pink" />
-                <h2 className="font-semibold bg-gradient-to-r from-white to-pink bg-clip-text text-transparent">The Oracle</h2>
-                <Sparkles className="w-4 h-4 text-pink ml-1 animate-pulse" />
+      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3">
+        {!selectedNews ? (
+          <div className="h-full flex flex-col items-center justify-center text-center px-6">
+            <Brain className="w-6 h-6 text-fg-subtle mb-3" />
+            <h3 className="text-md text-fg-muted mb-1.5">Select a news item</h3>
+            <p className="text-base text-fg-subtle leading-relaxed">
+              Click any article in the Feed to get a research note: what the source actually says,
+              the mechanism, the market backdrop and what happened after similar events.
+            </p>
+          </div>
+        ) : jobFailed && !analysis ? (
+          <div className="h-full flex flex-col items-center justify-center text-center px-6">
+            <AlertTriangle className="w-6 h-6 text-down mb-3" />
+            <h3 className="text-md text-fg mb-1.5">Analysis failed</h3>
+            <p className="text-sm text-fg-subtle font-mono leading-relaxed break-words">
+              {job?.error}
+            </p>
+          </div>
+        ) : analysis ? (
+          <AnalysisBody
+            analysis={analysis}
+            title={selectedNews.title}
+            style={style}
+            auditing={auditing}
+          />
+        ) : (
+          /* Selected but nothing to show yet: the cached note is being read, the
+             job is being started, or it is running. All three are the same thing
+             to the reader — work in progress — and collapsing them avoids a
+             blank panel in the gap between the click and the first job poll. */
+          <div className="space-y-3">
+            <div className="surface p-3">
+              <p className="label mb-1">Analysing</p>
+              <p className="text-base text-fg line-clamp-2">{selectedNews.title}</p>
             </div>
+            {job?.stages?.length ? (
+              <StageChecklist
+                stages={job.stages}
+                stageIndex={job.stageIndex}
+                elapsedSeconds={job.elapsedSeconds}
+                dense
+              />
+            ) : (
+              <p className="px-2 text-base text-fg-subtle">Starting analysis…</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                {!selectedNews ? (
-                    // Empty State
-                    <div className="h-full flex flex-col items-center justify-center text-center px-6">
-                        <div className="w-16 h-16 rounded-2xl bg-oracle-card border border-oracle-border flex items-center justify-center mb-4">
-                            <Brain className="w-8 h-8 text-gray-600" />
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-400 mb-2">
-                            Select a News Item
-                        </h3>
-                        <p className="text-sm text-gray-500 leading-relaxed">
-                            Click on any news article in The Feed to receive AI-powered sentiment analysis with blockchain verification.
-                        </p>
-                    </div>
-                ) : isLoadingAnalysis ? (
-                    // Loading State
-                    <div className="h-full flex flex-col items-center justify-center">
-                        <div className="relative">
-                            <div className="w-20 h-20 rounded-full border-4 border-oracle-card border-t-oracle-accent animate-spin"></div>
-                            <Brain className="w-8 h-8 text-oracle-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                        </div>
-                        <p className="mt-6 text-gray-400 animate-pulse">Analyzing with RAG + LLM...</p>
-                        <p className="text-sm text-gray-500 mt-2">Retrieving historical context...</p>
-                    </div>
-                ) : analysis ? (
-                    // Analysis Results
-                    <div className="space-y-4">
-                        {/* Selected Article */}
-                        <div className="p-3 rounded-lg bg-oracle-card/50 border border-oracle-border">
-                            <p className="text-xs text-gray-500 mb-1">Analyzing:</p>
-                            <p className="text-sm text-white font-medium line-clamp-2">
-                                {selectedNews.title}
-                            </p>
-                        </div>
+function AnalysisBody({
+  analysis,
+  title,
+  style,
+  auditing,
+}: {
+  analysis: NewsAnalysis;
+  title: string;
+  style: { text: string; bg: string; border: string };
+  auditing: boolean;
+}) {
+  const materialityClass =
+    MATERIALITY_STYLE[analysis.materiality ?? ''] ?? 'bg-surface-2 text-fg-muted';
+  const technical = analysis.technical_signals;
 
-                        {/* Sentiment Card */}
-                        <div className={`p-4 rounded-xl border ${theme.bg} ${theme.border} ${theme.glow}`}>
-                            <div className="flex items-center justify-between mb-3">
-                                <div className={`flex items-center gap-2 ${theme.text}`}>
-                                    {getSentimentIcon(analysis.sentiment)}
-                                    <span className="text-lg font-bold capitalize">{analysis.sentiment}</span>
-                                </div>
-                                <span className={`badge-${analysis.sentiment} px-3 py-1 rounded-full text-sm font-semibold`}>
-                                    {Math.round(analysis.confidence * 100)}% Confidence
-                                </span>
-                            </div>
-                        </div>
+  return (
+    <div className="space-y-3">
+      <div className="surface p-3">
+        <p className="label mb-1">Analysing</p>
+        <p className="text-base text-fg line-clamp-2">{title}</p>
+      </div>
 
-                        {/* Reasoning */}
-                        <div className={`p-4 rounded-xl bg-oracle-card border border-oracle-border`}>
-                            <div className="flex items-center gap-2 mb-3">
-                                <Target className={`w-4 h-4 ${theme.icon}`} />
-                                <h4 className={`font-medium ${theme.text}`}>Analysis</h4>
-                            </div>
-                            <p className="text-sm text-gray-300 leading-relaxed">
-                                {analysis.reasoning}
-                            </p>
-                        </div>
-
-                        {/* Historical Context */}
-                        <div className={`p-4 rounded-xl bg-oracle-card border border-oracle-border`}>
-                            <div className="flex items-center gap-2 mb-3">
-                                <History className={`w-4 h-4 ${theme.icon}`} />
-                                <h4 className={`font-medium ${theme.text}`}>Historical Context</h4>
-                            </div>
-                            <p className="text-sm text-gray-300 leading-relaxed">
-                                {analysis.historical_context}
-                            </p>
-                        </div>
-
-                        {/* Technical Analysis */}
-                        {analysis.technical_signals && (
-                            <div className={`p-4 rounded-xl bg-oracle-card border border-oracle-border`}>
-                                <div className="flex items-center gap-2 mb-3">
-                                    <Activity className={`w-4 h-4 ${theme.icon}`} />
-                                    <h4 className={`font-medium ${theme.text}`}>Technical Analysis</h4>
-                                </div>
-                                <div className="space-y-3">
-                                    {/* RSI */}
-                                    <div className="flex justify-between items-center text-sm border-b border-white/5 pb-2">
-                                        <span className="text-gray-400">RSI Signal</span>
-                                        <span className="text-white font-medium">{analysis.technical_signals.rsi_signal}</span>
-                                    </div>
-
-                                    {/* Supports */}
-                                    <div className="text-sm">
-                                        <span className="text-gray-400 block mb-1">Support Levels</span>
-                                        <div className="flex gap-2">
-                                            {analysis.technical_signals.support_levels.map((level, i) => (
-                                                <span key={i} className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs font-mono">
-                                                    {level}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Resistances */}
-                                    <div className="text-sm">
-                                        <span className="text-gray-400 block mb-1">Resistance Levels</span>
-                                        <div className="flex gap-2">
-                                            {analysis.technical_signals.resistance_levels.map((level, i) => (
-                                                <span key={i} className="px-2 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-mono">
-                                                    {level}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Target */}
-                                    {analysis.technical_signals.target_price && (
-                                        <div className="mt-2 pt-2 border-t border-white/5">
-                                            <span className="text-xs text-gray-500 block mb-1">Target Price</span>
-                                            <span className={`font-mono font-bold ${theme.text}`}>
-                                                {analysis.technical_signals.target_price}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Trading Signals - Multi Timeframe */}
-                        <div className={`p-4 rounded-xl bg-oracle-card border border-oracle-border`}>
-                            <div className="flex items-center gap-2 mb-4">
-                                <TrendingUp className={`w-4 h-4 ${theme.icon}`} />
-                                <h4 className={`font-medium ${theme.text}`}>Trading Signals</h4>
-                            </div>
-
-                            <div className="space-y-3">
-                                {/* Short Term */}
-                                <div className="flex items-center justify-between p-3 rounded-lg bg-oracle-darker border border-oracle-border">
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-medium text-white">Kısa Vadeli</span>
-                                        <span className="text-xs text-gray-500">1-7 Gün</span>
-                                    </div>
-                                    <span className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase ${analysis.sentiment === 'bullish'
-                                        ? 'bg-oracle-bullish/20 text-oracle-bullish border border-oracle-bullish/30'
-                                        : analysis.sentiment === 'bearish'
-                                            ? 'bg-oracle-bearish/20 text-oracle-bearish border border-oracle-bearish/30'
-                                            : 'bg-oracle-neutral/20 text-oracle-neutral border border-oracle-neutral/30'
-                                        }`}>
-                                        {analysis.sentiment === 'bullish' ? '🟢 BUY' :
-                                            analysis.sentiment === 'bearish' ? '🔴 SELL' : '🟡 HOLD'}
-                                    </span>
-                                </div>
-
-                                {/* Medium Term */}
-                                <div className="flex items-center justify-between p-3 rounded-lg bg-oracle-darker border border-oracle-border">
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-medium text-white">Orta Vadeli</span>
-                                        <span className="text-xs text-gray-500">1-4 Hafta</span>
-                                    </div>
-                                    <span className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase ${analysis.confidence >= 0.7 && analysis.sentiment === 'bullish'
-                                        ? 'bg-oracle-bullish/20 text-oracle-bullish border border-oracle-bullish/30'
-                                        : analysis.confidence >= 0.7 && analysis.sentiment === 'bearish'
-                                            ? 'bg-oracle-bearish/20 text-oracle-bearish border border-oracle-bearish/30'
-                                            : 'bg-oracle-neutral/20 text-oracle-neutral border border-oracle-neutral/30'
-                                        }`}>
-                                        {analysis.confidence >= 0.7 && analysis.sentiment === 'bullish' ? '🟢 BUY' :
-                                            analysis.confidence >= 0.7 && analysis.sentiment === 'bearish' ? '🔴 SELL' : '🟡 HOLD'}
-                                    </span>
-                                </div>
-
-                                {/* Long Term */}
-                                <div className="flex items-center justify-between p-3 rounded-lg bg-oracle-darker border border-oracle-border">
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-medium text-white">Uzun Vadeli</span>
-                                        <span className="text-xs text-gray-500">1-6 Ay</span>
-                                    </div>
-                                    <span className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase ${analysis.confidence >= 0.8 && analysis.sentiment === 'bullish'
-                                        ? 'bg-oracle-bullish/20 text-oracle-bullish border border-oracle-bullish/30'
-                                        : analysis.confidence >= 0.8 && analysis.sentiment === 'bearish'
-                                            ? 'bg-oracle-bearish/20 text-oracle-bearish border border-oracle-bearish/30'
-                                            : 'bg-oracle-neutral/20 text-oracle-neutral border border-oracle-neutral/30'
-                                        }`}>
-                                        {analysis.confidence >= 0.8 && analysis.sentiment === 'bullish' ? '🟢 BUY' :
-                                            analysis.confidence >= 0.8 && analysis.sentiment === 'bearish' ? '🔴 SELL' : '🟡 HOLD'}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Disclaimer */}
-                            <p className="text-[10px] text-gray-600 mt-3 text-center italic">
-                                Bu sinyaller yatırım tavsiyesi değildir.
-                            </p>
-                        </div>
-                    </div>
-                ) : null}
-            </div>
+      {/* Verdict */}
+      <div className={`p-3 rounded-lg border ${style.bg} ${style.border}`}>
+        <div className="flex items-center justify-between gap-3">
+          <div className={`flex items-center gap-2 ${style.text}`}>
+            {sentimentIcon(analysis.sentiment)}
+            <span className="text-md font-semibold capitalize">{analysis.sentiment}</span>
+          </div>
+          <span className={`text-base font-mono tabnum ${style.text}`}>
+            {Math.round(analysis.confidence * 100)}% confidence
+          </span>
         </div>
-    );
+
+        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+          {analysis.materiality && (
+            <span
+              className={`px-1.5 py-0.5 rounded text-2xs font-semibold uppercase ${materialityClass}`}
+            >
+              {analysis.materiality}
+            </span>
+          )}
+          {analysis.timeHorizon && (
+            <span className="px-1.5 py-0.5 rounded bg-surface-2 text-fg-muted text-2xs">
+              {HORIZON_LABELS[analysis.timeHorizon] ?? analysis.timeHorizon}
+            </span>
+          )}
+          {auditing && (
+            <span className="px-1.5 py-0.5 rounded bg-surface-2 text-fg-subtle text-2xs">
+              auditing…
+            </span>
+          )}
+        </div>
+
+        {/* No model was reachable, so this verdict is a keyword count over the
+            headline — say so rather than letting it read as analysis. */}
+        {analysis.source === 'keyword-fallback' && (
+          <p className="mt-2 pt-2 border-t border-line text-sm text-fg-subtle">
+            Keyword fallback — no AI provider was reachable
+          </p>
+        )}
+      </div>
+
+      {analysis.mechanism && (
+        <Section title="Mechanism" icon={Target}>
+          <p className="text-base text-fg leading-relaxed">{analysis.mechanism}</p>
+        </Section>
+      )}
+
+      <Section title="Analysis" icon={FileText}>
+        <p className="text-base text-fg-muted leading-relaxed">{analysis.reasoning}</p>
+      </Section>
+
+      {analysis.evidence.length > 0 && (
+        <Section title="Evidence" icon={FileText}>
+          <div className="divide-y divide-line">
+            {analysis.evidence.map((item, i) => (
+              <EvidenceRow key={i} item={item} />
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {analysis.regimeNote && (
+        <Section title="Market Backdrop" icon={Gauge}>
+          <p className="text-base text-fg-muted leading-relaxed">{analysis.regimeNote}</p>
+        </Section>
+      )}
+
+      {analysis.precedents.length > 0 && (
+        <Section title="Precedent" icon={History}>
+          <div className="divide-y divide-line">
+            {analysis.precedents.slice(0, 3).map((precedent, i) => (
+              <PrecedentCard key={i} precedent={precedent} />
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {analysis.invalidation && (
+        <Section title="What would make this wrong" icon={ShieldAlert}>
+          <p className="text-base text-fg-muted leading-relaxed">{analysis.invalidation}</p>
+        </Section>
+      )}
+
+      {technical && (
+        <Section title="Technical Analysis" icon={Activity}>
+          <div className="space-y-2.5">
+            <div className="flex justify-between items-center border-b border-line pb-2">
+              <span className="text-base text-fg-muted">RSI signal</span>
+              <span className="text-base text-fg">{technical.rsi_signal || '—'}</span>
+            </div>
+
+            <div>
+              <span className="label block mb-1">Support levels</span>
+              <div className="flex flex-wrap gap-1.5">
+                {technical.support_levels?.length ? (
+                  technical.support_levels.map((level, i) => (
+                    <span
+                      key={i}
+                      className="px-1.5 py-0.5 rounded bg-up-bg text-up text-sm font-mono tabnum"
+                    >
+                      {level}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-sm text-fg-subtle">None below current price</span>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <span className="label block mb-1">Resistance levels</span>
+              <div className="flex flex-wrap gap-1.5">
+                {technical.resistance_levels?.length ? (
+                  technical.resistance_levels.map((level, i) => (
+                    <span
+                      key={i}
+                      className="px-1.5 py-0.5 rounded bg-down-bg text-down text-sm font-mono tabnum"
+                    >
+                      {level}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-sm text-fg-subtle">None above current price</span>
+                )}
+              </div>
+            </div>
+
+            {technical.target_price && (
+              <div className="pt-2 border-t border-line">
+                <span className="label block mb-1">Target price</span>
+                <span className={`text-md font-mono tabnum ${style.text}`}>
+                  {technical.target_price}
+                </span>
+              </div>
+            )}
+          </div>
+        </Section>
+      )}
+
+      {analysis.citations.length > 0 && (
+        <Section title="Sources" icon={ExternalLink}>
+          <ul className="space-y-1.5">
+            {analysis.citations.map((citation, i) => (
+              <li key={i}>
+                <a
+                  href={citation.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-1.5 text-base text-accent hover:underline"
+                >
+                  <ExternalLink className="w-3 h-3 shrink-0 mt-1" />
+                  <span className="min-w-0 break-words">{citation.label}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {/* Always rendered: a verdict built on a headline alone must not look
+          like one built on the full article and four feeds. */}
+      <div className="px-1 pb-1 text-sm text-fg-subtle leading-relaxed">
+        {analysis.coverage.articleText === 'full'
+          ? `Read the full article (${analysis.coverage.articleChars.toLocaleString()} characters).`
+          : 'Full article could not be read — this is based on the headline and feed summary.'}
+        {analysis.coverage.unavailable.length > 0 && (
+          <>
+            {' '}
+            {analysis.coverage.unavailable.length} feed(s) unavailable:{' '}
+            {analysis.coverage.unavailable.join(', ')}.
+          </>
+        )}
+      </div>
+    </div>
+  );
 }

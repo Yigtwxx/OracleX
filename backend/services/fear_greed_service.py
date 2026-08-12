@@ -1,10 +1,11 @@
 """Fear and Greed Index service using alternative.me API."""
+
 import logging
-import httpx
 from datetime import datetime
 from typing import Optional
 
 from services.cache import home_cache
+from services.http_client import get_json
 
 logger = logging.getLogger(__name__)
 
@@ -22,35 +23,29 @@ async def fetch_fear_greed_index() -> Optional[dict]:
         return cached
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            # Get current value and last 7 days for trend
-            response = await client.get(
-                "https://api.alternative.me/fng/",
-                params={"limit": 7}
-            )
-            response.raise_for_status()
-            data = response.json()
+        # Get current value and last 7 days for trend
+        data = await get_json("https://api.alternative.me/fng/", params={"limit": 7})
 
-            if data.get("data"):
-                current = data["data"][0]
-                history = data["data"][:7]
+        if data.get("data"):
+            current = data["data"][0]
+            history = data["data"][:7]
 
-                result = {
-                    "value": int(current["value"]),
-                    "classification": current["value_classification"],
-                    "timestamp": datetime.fromtimestamp(int(current["timestamp"])).isoformat(),
-                    "history": [
-                        {
-                            "value": int(h["value"]),
-                            "classification": h["value_classification"],
-                            "date": datetime.fromtimestamp(int(h["timestamp"])).strftime("%Y-%m-%d")
-                        }
-                        for h in history
-                    ]
-                }
+            result = {
+                "value": int(current["value"]),
+                "classification": current["value_classification"],
+                "timestamp": datetime.fromtimestamp(int(current["timestamp"])).isoformat(),
+                "history": [
+                    {
+                        "value": int(h["value"]),
+                        "classification": h["value_classification"],
+                        "date": datetime.fromtimestamp(int(h["timestamp"])).strftime("%Y-%m-%d"),
+                    }
+                    for h in history
+                ],
+            }
 
-                home_cache.set(_CACHE_KEY, result, CACHE_DURATION_SECONDS)
-                return result
+            home_cache.set(_CACHE_KEY, result, CACHE_DURATION_SECONDS)
+            return result
     except Exception as e:
         logger.error("Error fetching Fear & Greed Index: %s", e)
 

@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "_comment": [
+    "Figures copied by hand out of published reports, for the things no API serves.",
+    "",
+    "Every row MUST carry `source_url` and `as_of` or it is rejected at load time —",
+    "see services/ownership/providers/manual.py. A hand-typed number with no filing",
+    "behind it cannot be told apart from an invented one, and this page's entire",
+    "claim is that each figure is checkable.",
+    "",
+    "`group` is what an entity points at via sources.manual.group in",
+    "ownership_entities.json. Several rows may share a group.",
+    "",
+    "Rows retire themselves: past 18 months they are shown with a 'Last reported'",
+    "note, past 36 months they stop being served and the cell reverts to Unknown.",
+    "That is deliberate — unmaintained data is worse than absent data, because it",
+    "still looks like a measurement.",
+    "",
+    "Cash figures below are the balance-sheet 'cash and cash equivalents' line from",
+    "each company's most recent 10-Q, read via SEC XBRL companyconcept. They do NOT",
+    "include short-term investments, marketable securities or restricted cash."
+  ],
+  "positions": [
+    {
+      "group": "strategy-cash",
+      "key": "cash:USD",
+      "label": "Cash & cash equivalents",
+      "asset_class": "cash",
+      "quantity": 1711837000.0,
+      "quantity_unit": "USD",
+      "value_usd": 1711837000.0,
+      "as_of": "2026-06-30",
+      "source_label": "10-Q Q2 2026",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/0001050446/000105044626000044/0001050446-26-000044-index.htm",
+      "note": "Balance-sheet cash only; excludes the bitcoin held as a treasury asset."
+    },
+    {
+      "group": "tesla-cash",
+      "key": "cash:USD",
+      "label": "Cash & cash equivalents",
+      "asset_class": "cash",
+      "quantity": 15219000000.0,
+      "quantity_unit": "USD",
+      "value_usd": 15219000000.0,
+      "as_of": "2026-06-30",
+      "source_label": "10-Q Q2 2026",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/0001318605/000162828026049270/0001628280-26-049270-index.htm",
+      "note": "Excludes short-term investments, which Tesla reports on a separate line."
+    },
+    {
+      "group": "coinbase-cash",
+      "key": "cash:USD",
+      "label": "Cash & cash equivalents",
+      "asset_class": "cash",
+      "quantity": 8614065000.0,
+      "quantity_unit": "USD",
+      "value_usd": 8614065000.0,
+      "as_of": "2026-06-30",
+      "source_label": "10-Q Q2 2026",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/0001679788/000167978826000088/0001679788-26-000088-index.htm",
+      "note": "Corporate cash. Customer fiat held in custody is a separate liability."
+    },
+    {
+      "group": "mara-cash",
+      "key": "cash:USD",
+      "label": "Cash & cash equivalents",
+      "asset_class": "cash",
+      "quantity": 421274000.0,
+      "quantity_unit": "USD",
+      "value_usd": 421274000.0,
+      "as_of": "2026-06-30",
+      "source_label": "10-Q Q2 2026",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/0001507605/000150760526000022/0001507605-26-000022-index.htm",
+      "note": "Balance-sheet cash only; excludes the mined bitcoin held on the balance sheet."
+    }
+  ]
+}

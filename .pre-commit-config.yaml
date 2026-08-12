@@ -1,0 +1,36 @@
+# Oracle-X — pre-commit hooks
+# Install once:  pip install pre-commit && pre-commit install
+# Run on all files:  pre-commit run --all-files
+exclude: '^(frontend/node_modules|backend/venv|backend/data|.*/\.next)/'
+
+repos:
+  # ── General hygiene ─────────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+
+  # ── Backend: Ruff lint + format (uses backend/pyproject.toml) ───────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        name: ruff (backend lint)
+        args: ["--fix"]
+        files: ^backend/.*\.py$
+      - id: ruff-format
+        name: ruff (backend format)
+        files: ^backend/.*\.py$
+
+  # ── Frontend: Prettier (formats only changed/staged files) ──────────────────
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        files: ^frontend/.*\.(ts|tsx|js|jsx|json|css|md)$
+        exclude: ^frontend/(package-lock\.json|public/)

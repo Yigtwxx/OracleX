@@ -1,87 +1,127 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { FundingRate } from '@/lib/api';
-import { Flame, Clock } from 'lucide-react';
+import Panel, { PanelSkeleton } from '@/components/ui/Panel';
 
 interface FundingRatesProps {
-    data: FundingRate[];
-    isLoading: boolean;
+  data: FundingRate[];
+  isLoading: boolean;
+}
+
+function useCountdown(nextFundingTimeMs: number | undefined) {
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    if (!nextFundingTimeMs) {
+      setTimeLeft('--:--');
+      return;
+    }
+
+    const update = () => {
+      const diff = nextFundingTimeMs - Date.now();
+      if (diff <= 0) {
+        setTimeLeft('0m');
+        return;
+      }
+      const hours = Math.floor(diff / 3600000);
+      const minutes = Math.floor((diff % 3600000) / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setTimeLeft(
+        `${hours}h ${minutes.toString().padStart(2, '0')}m ${seconds.toString().padStart(2, '0')}s`
+      );
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [nextFundingTimeMs]);
+
+  return timeLeft;
 }
 
 export default function FundingRates({ data, isLoading }: FundingRatesProps) {
-    if (isLoading) {
-        return (
-            <div className="h-[300px] w-full bg-oracle-card/50 rounded-xl border border-oracle-border/50 animate-pulse"></div>
-        );
-    }
+  // 4h and 8h perpetuals are mixed in the same table, so their settlement times
+  // differ — the header counts down to whichever lands first.
+  const nextFunding = data.length
+    ? Math.min(...data.map((item) => item.next_funding_time))
+    : undefined;
+  const countdown = useCountdown(nextFunding);
 
-    return (
-        <div className="bg-oracle-card rounded-xl border border-oracle-border overflow-hidden flex flex-col h-full">
-            <div className="p-4 border-b border-oracle-border bg-oracle-dark/50 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <Flame className="w-4 h-4 text-orange-400" />
-                    <h3 className="font-semibold text-white">Funding Rates (Real-time)</h3>
-                </div>
-                <div className="text-xs text-gray-500 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    Next funding in: 4h 12m
-                </div>
-            </div>
+  if (isLoading) return <PanelSkeleton />;
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <table className="w-full text-sm">
-                    <thead className="bg-oracle-dark/30 text-xs text-gray-500 sticky top-0 backdrop-blur-sm z-10">
-                        <tr>
-                            <th className="px-4 py-3 text-left font-medium">Symbol</th>
-                            <th className="px-4 py-3 text-right font-medium">Rate (8h)</th>
-                            <th className="px-4 py-3 text-right font-medium">APR</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-oracle-border/50">
-                        {[...data].sort((a, b) => {
-                            const priority = ['BTC', 'ETH'];
-                            const aIndex = priority.indexOf(a.symbol);
-                            const bIndex = priority.indexOf(b.symbol);
+  return (
+    <Panel
+      title="Funding Rates"
+      action={
+        <span className="text-xs text-fg-subtle">
+          Next funding <span className="font-mono tabnum text-fg-muted">{countdown}</span>
+        </span>
+      }
+      footnote="Positive rate: longs pay shorts (bullish sentiment) · Est. APR extrapolates the current rate · Extreme: |rate| ≥ 0.05%"
+    >
+      <table className="w-full">
+        <thead className="sticky top-0 z-10 bg-surface-2">
+          <tr>
+            <th className="label px-4 py-1.5 text-left">Symbol</th>
+            <th className="label px-4 py-1.5 text-right">Rate</th>
+            <th className="label px-4 py-1.5 text-right">Est. APR</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {/* Backend orders this: the fixed core block by market cap, then any
+              outlier that cleared the extreme threshold, by funding intensity. */}
+          {data.map((item) => {
+            const isPositive = item.rate > 0;
+            // Saturates just past the 0.05% extreme threshold, so an outlier
+            // reads as a full bar while ordinary rates stay visibly short.
+            const intensity = Math.min(Math.abs(item.rate) * 20000, 100);
 
-                            if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-                            if (aIndex !== -1) return -1;
-                            if (bIndex !== -1) return 1;
-
-                            return 0; // Maintain original order for others
-                        }).map((item) => {
-                            const isPositive = item.rate > 0;
-                            const intensity = Math.min(Math.abs(item.rate) * 5000, 100); // Visual intensity
-
-                            return (
-                                <tr key={item.symbol} className="hover:bg-white/5 transition-colors">
-                                    <td className="px-4 py-3 font-medium text-white">{item.symbol}</td>
-                                    <td className="px-4 py-3 text-right">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <span className={`${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                                                {item.rate_formatted}
-                                            </span>
-                                            {/* Heatmap-like bar */}
-                                            <div className="w-16 h-1 bg-gray-800 rounded-full overflow-hidden">
-                                                <div
-                                                    className={`h-full ${isPositive ? 'bg-green-500' : 'bg-red-500'}`}
-                                                    style={{ width: `${intensity}%`, marginLeft: isPositive ? '0' : 'auto' }}
-                                                />
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-right text-gray-400">
-                                        {(item.rate * 3 * 365 * 100).toFixed(2)}%
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
-
-            <div className="p-3 bg-oracle-dark/30 border-t border-oracle-border text-[10px] text-gray-500 text-center">
-                Positive rate: Longs pay Shorts (Bullish sentiment)
-            </div>
-        </div>
-    );
+            return (
+              <tr key={item.symbol} className="hover:bg-surface-2 transition-colors">
+                <td className="px-4 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base text-fg">{item.symbol}</span>
+                    {item.is_extreme && (
+                      <span
+                        className={`text-2xs px-1.5 py-px rounded ${isPositive ? 'bg-up-bg text-up' : 'bg-down-bg text-down'}`}
+                      >
+                        EXTREME
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-2">
+                  <div className="flex items-center justify-end gap-2">
+                    {/* The rate is per settlement period, and those differ by pair. */}
+                    <span className="text-2xs font-mono tabnum text-fg-subtle">
+                      {item.interval_hours}h
+                    </span>
+                    <span
+                      className={`text-base font-mono tabnum ${isPositive ? 'text-up' : 'text-down'}`}
+                    >
+                      {item.rate_formatted}
+                    </span>
+                    <div className="w-12 h-1 bg-line rounded-full overflow-hidden">
+                      <div
+                        className={`h-full ${isPositive ? 'bg-up' : 'bg-down'}`}
+                        style={{
+                          width: `${intensity}%`,
+                          marginLeft: isPositive ? '0' : 'auto',
+                        }}
+                      />
+                    </div>
+                  </div>
+                </td>
+                {/* Not a quoted APR — the current rate held constant for a year. */}
+                <td className="px-4 py-2 text-right text-base font-mono tabnum text-fg-muted">
+                  {(item.rate * (24 / item.interval_hours) * 365 * 100).toFixed(2)}%
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </Panel>
+  );
 }

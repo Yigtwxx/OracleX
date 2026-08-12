@@ -2,162 +2,162 @@
   "bitcoin": {
     "sector": "Proof of Work",
     "peg_type": null,
-    "fetched_at": 1786492766.2555
+    "fetched_at": 1786520821.595943
   },
   "ethereum": {
     "sector": "Smart Contracts",
     "peg_type": null,
-    "fetched_at": 1786493693.0331562
+    "fetched_at": 1786520824.426496
   },
   "tether": {
     "sector": "Stablecoin",
     "peg_type": "stablecoin",
-    "fetched_at": 1786494729.801645
+    "fetched_at": 1786520827.370304
   },
   "binancecoin": {
     "sector": "Exchange",
     "peg_type": null,
-    "fetched_at": 1786494732.692101
+    "fetched_at": 1786520830.272856
   },
   "usd-coin": {
     "sector": "Stablecoin",
     "peg_type": "stablecoin",
-    "fetched_at": 1786497721.964472
+    "fetched_at": 1786521046.2301838
   },
   "ripple": {
     "sector": "Smart Contracts",
     "peg_type": null,
-    "fetched_at": 1786497724.8138392
+    "fetched_at": 1786521049.110563
   },
   "solana": {
     "sector": "Smart Contracts",
     "peg_type": null,
-    "fetched_at": 1786497727.639831
+    "fetched_at": 1786521051.9818199
   },
   "tron": {
     "sector": "Smart Contracts",
     "peg_type": null,
-    "fetched_at": 1786497730.537807
+    "fetched_at": 1786521054.84144
   },
   "figure-heloc": {
     "sector": "RWA",
     "peg_type": null,
-    "fetched_at": 1786508660.9704041
+    "fetched_at": 1786530506.3372989
   },
   "whitebit": {
     "sector": "Exchange",
     "peg_type": null,
-    "fetched_at": 1786505227.625165
+    "fetched_at": 1786527509.415777
   },
   "hyperliquid": {
     "sector": "DeFi",
     "peg_type": null,
-    "fetched_at": 1786498760.461969
+    "fetched_at": 1786521121.839552
   },
   "dogecoin": {
     "sector": "Meme",
     "peg_type": null,
-    "fetched_at": 1786498763.335648
+    "fetched_at": 1786521124.761684
   },
   "usds": {
     "sector": "Stablecoin",
     "peg_type": "stablecoin",
-    "fetched_at": 1786498766.269921
+    "fetched_at": 1786521346.1828249
   },
   "leo-token": {
     "sector": "Exchange",
     "peg_type": null,
-    "fetched_at": 1786498769.1250272
+    "fetched_at": 1786521349.0343192
   },
   "rain": {
     "sector": "DeFi",
     "peg_type": null,
-    "fetched_at": 1786502360.52432
+    "fetched_at": 1786524107.038368
   },
   "zcash": {
     "sector": "Privacy",
     "peg_type": null,
-    "fetched_at": 1786502363.37678
+    "fetched_at": 1786524110.01679
   },
   "cardano": {
     "sector": "Smart Contracts",
     "peg_type": null,
-    "fetched_at": 1786505221.786901
+    "fetched_at": 1786526860.299652
   },
   "monero": {
     "sector": "Privacy",
     "peg_type": null,
-    "fetched_at": 1786505224.756242
+    "fetched_at": 1786527506.484714
   },
   "chainlink": {
     "sector": "Oracle",
     "peg_type": null,
-    "fetched_at": 1786505230.50703
+    "fetched_at": 1786527512.3692281
   },
   "stellar": {
     "sector": "RWA",
     "peg_type": null,
-    "fetched_at": 1786507621.761653
+    "fetched_at": 1786530206.564276
   },
   "dai": {
     "sector": "DeFi",
     "peg_type": "stablecoin",
-    "fetched_at": 1786507624.859137
+    "fetched_at": 1786530209.609298
   },
   "canton-network": {
     "sector": "Privacy",
     "peg_type": null,
-    "fetched_at": 1786507627.9826
+    "fetched_at": 1786530212.530014
   },
   "bitcoin-cash": {
     "sector": "Proof of Work",
     "peg_type": null,
-    "fetched_at": 1786507630.8890219
+    "fetched_at": 1786530215.56195
   },
   "usd1-wlfi": {
     "sector": "Stablecoin",
     "peg_type": "stablecoin",
-    "fetched_at": 1786508663.869656
+    "fetched_at": 1786530509.2660291
   },
   "ethena-usde": {
     "sector": "Stablecoin",
     "peg_type": "stablecoin",
-    "fetched_at": 1786508666.747242
+    "fetched_at": 1786530512.1923761
   },
   "the-open-network": {
     "sector": "Smart Contracts",
     "peg_type": null,
-    "fetched_at": 1786508669.618963
+    "fetched_at": 1786530515.089159
   },
   "global-dollar": {
     "sector": "Stablecoin",
     "peg_type": "stablecoin",
-    "fetched_at": 1786510322.0065322
+    "fetched_at": 1786532159.043595
   },
   "litecoin": {
     "sector": "Privacy",
     "peg_type": null,
-    "fetched_at": 1786510325.151963
+    "fetched_at": 1786532161.915157
   },
   "hedera-hashgraph": {
     "sector": "Smart Contracts",
     "peg_type": null,
-    "fetched_at": 1786512260.4518569
+    "fetched_at": 1786533958.923519
   },
   "hashnote-usyc": {
     "sector": "RWA",
     "peg_type": null,
-    "fetched_at": 1786512263.296928
+    "fetched_at": 1786533961.782479
   },
   "avalanche-2": {
     "sector": "Smart Contracts",
     "peg_type": null,
-    "fetched_at": 1786512266.133111
+    "fetched_at": 1786533964.603621
   },
   "shiba-inu": {
     "sector": "Meme",
     "peg_type": null,
-    "fetched_at": 1786512268.9928682
+    "fetched_at": 1786534258.951357
   },
   "sui": {
     "sector": "Smart Contracts",
@@ -222,157 +222,157 @@
   "world-liberty-financial": {
     "sector": "Stablecoin",
     "peg_type": "stablecoin",
-    "fetched_at": 1786461424.691029
+    "fetched_at": 1786519160.5488052
   },
   "aster-2": {
     "sector": "DeFi",
     "peg_type": null,
-    "fetched_at": 1786461427.564824
+    "fetched_at": 1786519163.3786309
   },
   "htx-dao": {
     "sector": "Exchange",
     "peg_type": null,
-    "fetched_at": 1786461430.440083
+    "fetched_at": 1786519321.989109
   },
   "ripple-usd": {
     "sector": "Stablecoin",
     "peg_type": "stablecoin",
-    "fetched_at": 1786462460.988297
+    "fetched_at": 1786519324.902117
   },
   "usdd": {
     "sector": "Stablecoin",
     "peg_type": "stablecoin",
-    "fetched_at": 1786462463.852886
+    "fetched_at": 1786519327.740881
   },
   "memecore": {
     "sector": "Meme",
     "peg_type": null,
-    "fetched_at": 1786462466.750923
+    "fetched_at": 1786519330.640872
   },
   "falcon-finance": {
     "sector": "Stablecoin",
     "peg_type": "stablecoin",
-    "fetched_at": 1786462469.6794271
+    "fetched_at": 1786519460.507326
   },
   "polkadot": {
     "sector": "Smart Contracts",
     "peg_type": null,
-    "fetched_at": 1786462621.502604
+    "fetched_at": 1786519463.3917649
   },
   "aave": {
     "sector": "DeFi",
     "peg_type": "stablecoin",
-    "fetched_at": 1786462624.424077
+    "fetched_at": 1786519466.2291572
   },
   "mantle": {
     "sector": "Layer 2",
     "peg_type": null,
-    "fetched_at": 1786462627.305013
+    "fetched_at": 1786519469.096396
   },
   "sky": {
     "sector": "DeFi",
     "peg_type": "stablecoin",
-    "fetched_at": 1786462630.183158
+    "fetched_at": 1786519621.7193038
   },
   "bfusd": {
     "sector": "DeFi",
     "peg_type": "stablecoin",
-    "fetched_at": 1786477921.972519
+    "fetched_at": 1786519627.6053388
   },
   "morpho": {
     "sector": "DeFi",
     "peg_type": null,
-    "fetched_at": 1786477924.8339782
+    "fetched_at": 1786519630.6619892
   },
   "united-stables": {
     "sector": "Stablecoin",
     "peg_type": "stablecoin",
-    "fetched_at": 1786477927.7115278
+    "fetched_at": 1786519760.466521
   },
   "pepe": {
     "sector": "Meme",
     "peg_type": null,
-    "fetched_at": 1786479860.498883
+    "fetched_at": 1786519763.3108218
   },
   "internet-computer": {
     "sector": "AI/Compute",
     "peg_type": null,
-    "fetched_at": 1786479863.340796
+    "fetched_at": 1786519766.155634
   },
   "bitget-token": {
     "sector": "Exchange",
     "peg_type": null,
-    "fetched_at": 1786479866.1882508
+    "fetched_at": 1786519769.021548
   },
   "usdgo": {
     "sector": "Stablecoin",
     "peg_type": "stablecoin",
-    "fetched_at": 1786479869.373774
+    "fetched_at": 1786519921.66418
   },
   "worldcoin-wld": {
     "sector": "Smart Contracts",
     "peg_type": null,
-    "fetched_at": 1786486760.454436
+    "fetched_at": 1786519924.770528
   },
   "ethereum-classic": {
     "sector": "Proof of Work",
     "peg_type": null,
-    "fetched_at": 1786486763.299113
+    "fetched_at": 1786520060.520243
   },
   "pi-network": {
     "sector": "Smart Contracts",
     "peg_type": null,
-    "fetched_at": 1786489323.949141
+    "fetched_at": 1786520063.369272
   },
   "spiko-amundi-overnight-swap-fund-eur": {
     "sector": "DeFi",
     "peg_type": null,
-    "fetched_at": 1786489327.025015
+    "fetched_at": 1786520066.2519271
   },
   "blockchain-capital": {
     "sector": "RWA",
     "peg_type": null,
-    "fetched_at": 1786489329.991526
+    "fetched_at": 1786520069.1539898
   },
   "pump-fun": {
     "sector": "Meme",
     "peg_type": null,
-    "fetched_at": 1786489332.920737
+    "fetched_at": 1786520223.419446
   },
   "eutbl": {
     "sector": "RWA",
     "peg_type": null,
-    "fetched_at": 1786490360.4948008
+    "fetched_at": 1786520226.640177
   },
   "superstate-short-duration-us-government-securities-fund-ustb": {
     "sector": "RWA",
     "peg_type": null,
-    "fetched_at": 1786490363.35215
+    "fetched_at": 1786520501.5886238
   },
   "kucoin-shares": {
     "sector": "Exchange",
     "peg_type": null,
-    "fetched_at": 1786490526.010945
+    "fetched_at": 1786520504.446056
   },
   "ethena": {
     "sector": "DeFi",
     "peg_type": "stablecoin",
-    "fetched_at": 1786490528.8717592
+    "fetched_at": 1786520571.595181
   },
   "janus-henderson-anemoy-treasury-fund": {
     "sector": "RWA",
     "peg_type": null,
-    "fetched_at": 1786492760.48348
+    "fetched_at": 1786520575.1125681
   },
   "just": {
     "sector": "DeFi",
     "peg_type": null,
-    "fetched_at": 1786470121.76629
+    "fetched_at": 1786519624.649836
   },
   "quant-network": {
     "sector": "RWA",
     "peg_type": null,
-    "fetched_at": 1786492763.370073
+    "fetched_at": 1786520577.989127
   },
   "polygon-ecosystem-token": {
     "sector": "Layer 2",

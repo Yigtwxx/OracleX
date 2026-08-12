@@ -163,6 +163,26 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed origins for the frontend.
     CORS_ORIGINS: str = "http://localhost:3100,http://127.0.0.1:3100"
 
+    # ── Request throttling ──────────────────────────────────────────────────
+    # Whether `X-Forwarded-For` may be believed when identifying a caller
+    # (see dependencies/rate_limit.py).
+    #
+    # Off by default, and that default is the safe one: if nothing in front of
+    # this process rewrites the header, any client can set it to a fresh value
+    # per request and every per-IP limit becomes decorative. Turn it on only
+    # when a reverse proxy you control is the sole way in.
+    TRUST_PROXY_HEADERS: bool = False
+
+    # ── Sign-up email checks ────────────────────────────────────────────────
+    # Whether POST /api/auth/email/precheck resolves the address's domain over
+    # DNS-over-HTTPS before accepting it (see services/email_guard.py).
+    #
+    # On by default. Off is for offline development and CI, where the syntax and
+    # disposable-domain checks still run but no network call is made — a check
+    # that cannot reach a resolver fails open anyway, so this only saves the
+    # round-trip and the log noise.
+    EMAIL_DNS_CHECK_ENABLED: bool = True
+
     # ── Admin ───────────────────────────────────────────────────────────────
     # Comma-separated emails that get the admin panel, matched case-insensitively
     # against the *verified* email on the caller's JWT.
@@ -174,6 +194,32 @@ class Settings(BaseSettings):
     #
     # Empty is the safe default — nobody is an admin.
     ADMIN_EMAILS: str = ""
+
+    # ── Direct messages ─────────────────────────────────────────────────────
+    # Who is allowed to *send* a DM (see services/social/eligibility.py).
+    # Reading and replying inside an existing thread are never gated — the rules
+    # exist to stop a fresh throwaway account from spraying strangers, not to
+    # trap someone mid-conversation.
+    #
+    # These are settings rather than constants for one reason: with the rules at
+    # their intended values, a brand-new project has *nobody* who can send, so
+    # the feature cannot be exercised at all. Lowering the age to 0 in .env is
+    # how the flow gets tested without faking rows in auth.users.
+    DM_REQUIRE_EMAIL_VERIFIED: bool = True
+    # Off by default, and that default is a statement of fact rather than a
+    # preference: phone verification needs an SMS provider configured on the
+    # Supabase project, and until one is, `phone_confirmed_at` is NULL for every
+    # account — so turning this on would refuse everyone. Flip it to true the
+    # day Twilio/Vonage is wired up. To exercise the flow for free before then,
+    # use the dashboard's Test OTP mapping (a fixed number to a fixed code,
+    # no SMS sent).
+    DM_REQUIRE_PHONE_VERIFIED: bool = False
+    # The "three month old account" rule.
+    DM_MIN_ACCOUNT_AGE_DAYS: int = 90
+    # Ceiling on messages one account may send per rolling day. Not a spam
+    # defence on its own — the eligibility rules above are — but it bounds the
+    # damage an account that passed them can do before anyone notices.
+    DM_DAILY_SEND_LIMIT: int = 200
 
     # ── Ownership board ─────────────────────────────────────────────────────
     # A single daily rebuild, not a polling interval: every source behind this

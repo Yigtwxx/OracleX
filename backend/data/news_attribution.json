@@ -23436,6 +23436,2520 @@
       "asset_type": "stock",
       "confident": true,
       "ts": "2026-08-12T10:15:28"
+    },
+    "6ed03bde7c23": {
+      "symbol": "BINANCE:ONEUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T10:19:21"
+    },
+    "4eb08cec0924": {
+      "symbol": "NYSE:WBI",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:21:20"
+    },
+    "4eb0beda3913": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:25:21"
+    },
+    "dd2b77282d0b": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:27:21"
+    },
+    "bc09f2f8c3ce": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:27:21"
+    },
+    "d93e9bb808f0": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:27:22"
+    },
+    "009961ace046": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:27:23"
+    },
+    "a5566102e987": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:27:24"
+    },
+    "a8a7bfbd3631": {
+      "symbol": "NYSE:FLUT",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:27:25"
+    },
+    "a0815226de92": {
+      "symbol": "NYSE:JEF",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:27:26"
+    },
+    "be008452205c": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:27:27"
+    },
+    "6027ebcb24fd": {
+      "symbol": "NYSE:JPM",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:27:27"
+    },
+    "2642303f8ded": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:27:28"
+    },
+    "47ad559e5971": {
+      "symbol": "BINANCE:AVAUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T10:31:19"
+    },
+    "783fc66cb6bd": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:31:21"
+    },
+    "49b202505592": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:35:21"
+    },
+    "631a9a6fc4b1": {
+      "symbol": "NYSE:BA",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:37:43"
+    },
+    "b9813da849a1": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:37:44"
+    },
+    "7a0e1b5d742e": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:37:45"
+    },
+    "683159e25d74": {
+      "symbol": "NYSE:BA",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:37:46"
+    },
+    "450ba764116c": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:37:47"
+    },
+    "9d6297d3b2c8": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:37:48"
+    },
+    "e8fee975f4ff": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:37:49"
+    },
+    "b2e63cbf3828": {
+      "symbol": "NYSE:BCH",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:37:49"
+    },
+    "1d1127c46397": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:37:50"
+    },
+    "e744ea405a84": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:37:51"
+    },
+    "1166ea3384c3": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T10:37:52"
+    },
+    "b515462c5fbf": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T10:41:02"
+    },
+    "40ed61f0d0ad": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T10:42:52"
+    },
+    "c8a18b241c81": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:44:59"
+    },
+    "ee85fce94382": {
+      "symbol": "NYSE:SHG",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:45:24"
+    },
+    "54592539aabc": {
+      "symbol": "NASDAQ:PI",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:45:25"
+    },
+    "1b4b1ff9f319": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:45:26"
+    },
+    "06f7c54527de": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:45:27"
+    },
+    "31ed98439cad": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:45:27"
+    },
+    "df90212bf106": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:45:28"
+    },
+    "a963e86c64ca": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:45:29"
+    },
+    "db1573c33992": {
+      "symbol": "NYSE:BCH",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:45:30"
+    },
+    "33287da65484": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:45:31"
+    },
+    "3328be432151": {
+      "symbol": "NYSE:BILL",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:49:46"
+    },
+    "9df04d5f0c66": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T10:51:46"
+    },
+    "328304811360": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T10:53:46"
+    },
+    "6af9f52b3db0": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:55:46"
+    },
+    "aa48738d3e18": {
+      "symbol": "NYSE:DOUG",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:55:47"
+    },
+    "1dc515aa59ba": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:55:48"
+    },
+    "a2a0f4887951": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:55:49"
+    },
+    "4af946552e8b": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:55:50"
+    },
+    "50db39c3ebbf": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:55:51"
+    },
+    "8eee5b97a34d": {
+      "symbol": "NYSE:DB",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:55:52"
+    },
+    "731f34a9c14d": {
+      "symbol": "NASDAQ:TITN",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:55:53"
+    },
+    "5e831ddc426b": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:55:53"
+    },
+    "1c072dc22c44": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:55:54"
+    },
+    "68547d1e6523": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T10:57:46"
+    },
+    "09e53351234b": {
+      "symbol": "BINANCE:LINKUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T10:59:17"
+    },
+    "67205072b76e": {
+      "symbol": "NYSE:FTI",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T10:59:25"
+    },
+    "4b90700c2da0": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T11:01:22"
+    },
+    "2bafc14f21cc": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T11:01:23"
+    },
+    "9c672da472a2": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T11:01:24"
+    },
+    "c7499cc82949": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T11:01:25"
+    },
+    "731a24a63d62": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T11:03:22"
+    },
+    "806ff198ba11": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T11:03:23"
+    },
+    "246eed90bea5": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T11:05:23"
+    },
+    "641687779177": {
+      "symbol": "NASDAQ:MAT",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:05:23"
+    },
+    "bf2b2a6acc10": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:07:23"
+    },
+    "2f19c4750e7a": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:07:24"
+    },
+    "e4f51642d531": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:07:25"
+    },
+    "025b5181dc4a": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:07:26"
+    },
+    "0ae093d7406c": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:07:27"
+    },
+    "d9ed95974865": {
+      "symbol": "NASDAQ:ENTG",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:07:28"
+    },
+    "5e43b470bd5c": {
+      "symbol": "NYSE:DB",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:07:29"
+    },
+    "416efefc9b1b": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:07:30"
+    },
+    "d142113914e5": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:07:31"
+    },
+    "311ef8a15590": {
+      "symbol": "BINANCE:ADAUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T11:07:33"
+    },
+    "5ec895be9a73": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T11:07:34"
+    },
+    "846a76f84e6d": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T11:13:24"
+    },
+    "03b788adfa08": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:15:22"
+    },
+    "df7bc4a4af48": {
+      "symbol": "NYSE:CAVA",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:15:23"
+    },
+    "69d99815404b": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:15:24"
+    },
+    "a8ebe33ff1d8": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:15:25"
+    },
+    "754ef0788077": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:15:26"
+    },
+    "ad34f79c766b": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:15:27"
+    },
+    "385e41380c5a": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:15:27"
+    },
+    "8637dadd60da": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:15:28"
+    },
+    "f0d18e183543": {
+      "symbol": "NYSE:WEAV",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:15:29"
+    },
+    "21e2a18387f6": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:15:30"
+    },
+    "1e0f7729dea9": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T11:15:31"
+    },
+    "9947f6369d27": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:20:47"
+    },
+    "6d0d3bb426c9": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:20:48"
+    },
+    "9b6e4d52b2ac": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:20:49"
+    },
+    "c32ca2d07b33": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:24:47"
+    },
+    "f1184a6af66b": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:24:48"
+    },
+    "03f708858f3b": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:24:49"
+    },
+    "1c26e27bf87b": {
+      "symbol": "NASDAQ:LITE",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:24:50"
+    },
+    "b19ad96504e7": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:24:51"
+    },
+    "982608f81bb1": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:24:51"
+    },
+    "9642f9f61bf4": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:26:47"
+    },
+    "f996e00c4fee": {
+      "symbol": "NASDAQ:LITE",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:26:48"
+    },
+    "cf610558965f": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:26:49"
+    },
+    "053ea0e38f98": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:26:50"
+    },
+    "bf9809d9f1f3": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:26:50"
+    },
+    "986a47b0e1b7": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:26:51"
+    },
+    "90d68ed78068": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:26:52"
+    },
+    "8c8c1e934bc5": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:26:53"
+    },
+    "bec29d836937": {
+      "symbol": "NYSE:CLS",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:26:54"
+    },
+    "2ffe98d53b38": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:26:55"
+    },
+    "f411d282a5c0": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:26:56"
+    },
+    "4a25a25e0d8b": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T11:28:47"
+    },
+    "be835379cb3f": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T11:30:47"
+    },
+    "136e0441f648": {
+      "symbol": "BINANCE:ONEUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T11:36:46"
+    },
+    "b8810099e088": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:36:47"
+    },
+    "fc86432284fa": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:36:48"
+    },
+    "fc03c64d6583": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:36:49"
+    },
+    "1f7295528460": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:36:50"
+    },
+    "f1d081d6e43a": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:36:51"
+    },
+    "f85e06688886": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:36:52"
+    },
+    "1a133a55897b": {
+      "symbol": "NASDAQ:SMCI",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:36:53"
+    },
+    "54578b7e889b": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:36:54"
+    },
+    "d6b778c6a34c": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:36:54"
+    },
+    "a383474590d2": {
+      "symbol": "NYSE:STZ",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:40:47"
+    },
+    "aecd2a335abd": {
+      "symbol": "NYSE:DB",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:44:47"
+    },
+    "c6aed6f8108f": {
+      "symbol": "BINANCE:GPSUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T11:44:48"
+    },
+    "fc3456d9acba": {
+      "symbol": "NYSE:KMX",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:44:49"
+    },
+    "c78ae160098b": {
+      "symbol": "NYSE:DK",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:44:50"
+    },
+    "c8919a325a64": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:44:51"
+    },
+    "3e34c9417e14": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:44:52"
+    },
+    "e7f9a6606db2": {
+      "symbol": "NYSE:GLAS",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:44:52"
+    },
+    "2d44f8b09280": {
+      "symbol": "NASDAQ:HHS",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:49:13"
+    },
+    "654e3c6cfd7c": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:44:54"
+    },
+    "5a3c251d8aa1": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:44:55"
+    },
+    "aa52b394cfa6": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T11:47:17"
+    },
+    "80f67455a8e5": {
+      "symbol": "NASDAQ:STRC",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:51:12"
+    },
+    "cbc0cf956140": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T11:51:16"
+    },
+    "8f2cbbc15e9a": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T11:53:38"
+    },
+    "c5c68f2d2495": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:56:04"
+    },
+    "202a393ecf14": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:56:05"
+    },
+    "cb05323ae8c9": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:56:06"
+    },
+    "f3b63e22af43": {
+      "symbol": "NYSE:AIG",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:56:07"
+    },
+    "58cd25646871": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:56:08"
+    },
+    "cb6d7792e769": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:56:09"
+    },
+    "3d3308fbcacf": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:56:10"
+    },
+    "c28f24cf4286": {
+      "symbol": "NASDAQ:HHS",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:56:10"
+    },
+    "73a4042af2dc": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:56:11"
+    },
+    "315562aa09b7": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T11:56:12"
+    },
+    "0b1bde6d1eef": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T12:00:01"
+    },
+    "499b0df2e784": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:02:01"
+    },
+    "e4c06a4f6d10": {
+      "symbol": "BINANCE:ENJUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T12:02:02"
+    },
+    "233199fe613c": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T12:02:03"
+    },
+    "f31e7d614b03": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T12:04:01"
+    },
+    "7309e0934417": {
+      "symbol": "NYSE:BA",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:09:15"
+    },
+    "9582bb08bd3f": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:09:16"
+    },
+    "77d3671f9db2": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:09:16"
+    },
+    "9f87a230725f": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:09:17"
+    },
+    "8745552d7565": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:09:18"
+    },
+    "b615b6a86e92": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:09:19"
+    },
+    "3a438c643ffd": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:09:20"
+    },
+    "cca4abf941a6": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:09:21"
+    },
+    "f2074b656196": {
+      "symbol": "NASDAQ:NWPX",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:09:22"
+    },
+    "262b0f3266cf": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T12:09:23"
+    },
+    "a4dc4bb91148": {
+      "symbol": "NYSE:UAMY",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:09:24"
+    },
+    "4c4306ad5d4f": {
+      "symbol": "NASDAQ:SMCI",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:09:24"
+    },
+    "33446b10ec28": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:09:25"
+    },
+    "cc8a6cb06b7a": {
+      "symbol": "NASDAQ:GOOGL",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:09:26"
+    },
+    "c63219766b4f": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T12:09:27"
+    },
+    "6b30b00b3a9a": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T12:13:12"
+    },
+    "8fc31428f65b": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T12:13:13"
+    },
+    "e4f1d1f0082f": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:13:14"
+    },
+    "31612b3e91a7": {
+      "symbol": "NASDAQ:CRWD",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:15:13"
+    },
+    "057150091b51": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:15:14"
+    },
+    "b026e6eb7b72": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:15:15"
+    },
+    "506d3b799d37": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:15:16"
+    },
+    "bf02c60d7d51": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:15:17"
+    },
+    "d7f0af775dff": {
+      "symbol": "NYSE:JPM",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:15:18"
+    },
+    "2e6d3e742596": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:15:19"
+    },
+    "370081c66c2c": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:15:20"
+    },
+    "ec9ea974ef9c": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:17:13"
+    },
+    "383da2e5143b": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:21:13"
+    },
+    "e3addafd1f2e": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T12:23:13"
+    },
+    "5dff61c00b4a": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T12:23:14"
+    },
+    "3ce2322f413c": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:25:30"
+    },
+    "c1a8a97e7d08": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:25:31"
+    },
+    "db2a894e3701": {
+      "symbol": "NASDAQ:INTC",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:25:32"
+    },
+    "b617d55709f4": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:25:33"
+    },
+    "f8da30d44d02": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:25:33"
+    },
+    "749fb46c0a7f": {
+      "symbol": "NASDAQ:PANW",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:25:34"
+    },
+    "b9c358992e4b": {
+      "symbol": "NASDAQ:JSPR",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:25:35"
+    },
+    "d120678f0647": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:25:36"
+    },
+    "519eef8325f0": {
+      "symbol": "NASDAQ:MRCY",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:25:37"
+    },
+    "d3ece6b3cc5f": {
+      "symbol": "NASDAQ:LPTH",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:25:38"
+    },
+    "f1bd5c427794": {
+      "symbol": "BINANCE:ZILUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T12:27:39"
+    },
+    "7366caf64aa9": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T12:30:14"
+    },
+    "71bb2b6bb459": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T12:30:15"
+    },
+    "58a6c7b0c318": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:32:17"
+    },
+    "65f720ebe860": {
+      "symbol": "BINANCE:ETHUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T12:32:18"
+    },
+    "8ae228825750": {
+      "symbol": "BINANCE:ZILUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T12:32:19"
+    },
+    "0d05ec7d6a9b": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T12:32:20"
+    },
+    "38d91be2d17c": {
+      "symbol": "BINANCE:ETHUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T12:32:21"
+    },
+    "0fc44e4ea0ca": {
+      "symbol": "NASDAQ:CRWV",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:33:30"
+    },
+    "96c7ffeb31d7": {
+      "symbol": "NYSE:AMTM",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:33:31"
+    },
+    "b04b4e887d84": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:33:32"
+    },
+    "26269f993644": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:33:32"
+    },
+    "0ef72e2c435e": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:33:33"
+    },
+    "9e9664b7b497": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:37:26"
+    },
+    "d2e9e275682b": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:37:27"
+    },
+    "78a31b6f97e8": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:37:28"
+    },
+    "7bd38206cbff": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:37:29"
+    },
+    "c74899289b02": {
+      "symbol": "NYSE:DOCS",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:37:30"
+    },
+    "8d137505068b": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:37:31"
+    },
+    "504f3b5b5c0e": {
+      "symbol": "NASDAQ:FRPH",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:37:32"
+    },
+    "4cf49372b866": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:37:33"
+    },
+    "846a3b57f8e3": {
+      "symbol": "NASDAQ:ETOR",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:37:34"
+    },
+    "cce109be945d": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:37:34"
+    },
+    "866b6013a12e": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T12:37:35"
+    },
+    "693251370077": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:25"
+    },
+    "8d5b2e8b5ac3": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:25"
+    },
+    "c4235377c946": {
+      "symbol": "BINANCE:ETHUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:25"
+    },
+    "981827bce1ee": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:26"
+    },
+    "2ea0ba610792": {
+      "symbol": "NASDAQ:ANNX",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:21:27"
+    },
+    "9e2642ed973c": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:21:28"
+    },
+    "7ab2d2468fe9": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:29"
+    },
+    "90888323a0dd": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:21:30"
+    },
+    "558e6f8d0f29": {
+      "symbol": "NYSE:BETA",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:21:31"
+    },
+    "47696946a34c": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:21:31"
+    },
+    "ca4b3d4b60ee": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:21:32"
+    },
+    "56961aa7562a": {
+      "symbol": "NASDAQ:ALLT",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:21:33"
+    },
+    "768abba2daee": {
+      "symbol": "NYSE:GLOB",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:21:34"
+    },
+    "96b32f797499": {
+      "symbol": "NYSE:GS",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:21:35"
+    },
+    "482d7c91c7e5": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:21:36"
+    },
+    "6b5b707fc361": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:21:37"
+    },
+    "779a3cc18d1b": {
+      "symbol": "NYSE:TGT",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:21:38"
+    },
+    "8f95955cac23": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:21:38"
+    },
+    "588d2030508b": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:21:39"
+    },
+    "d7b49cfdb9cf": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:21:40"
+    },
+    "c97c357da8a9": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:21:41"
+    },
+    "8570b4cdf121": {
+      "symbol": "NYSE:HRB",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:21:42"
+    },
+    "5e1fd21842e9": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:43"
+    },
+    "10fe2fe10d97": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:44"
+    },
+    "53aa8d24810a": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:45"
+    },
+    "09cc2d48389a": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:45"
+    },
+    "5bdbb3b6b14d": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:46"
+    },
+    "bbb87d8d49f5": {
+      "symbol": "BINANCE:CAKEUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:47"
+    },
+    "818703f74175": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:48"
+    },
+    "4a68b8dbe475": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:49"
+    },
+    "fa600f99d17e": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:50"
+    },
+    "567217e485c2": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:51"
+    },
+    "f0c045f12b96": {
+      "symbol": "BINANCE:BNBUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:52"
+    },
+    "5210027fe9bd": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:53"
+    },
+    "9099bfccd139": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:54"
+    },
+    "d13cf0ecda21": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:55"
+    },
+    "b1d18b2dec40": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:56"
+    },
+    "da2de1c99b1a": {
+      "symbol": "BINANCE:ETHUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:57"
+    },
+    "7bd3684d5595": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:57"
+    },
+    "9410ec8d28b5": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:58"
+    },
+    "50ebc6a57c9d": {
+      "symbol": "BINANCE:BNBUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:21:59"
+    },
+    "da2b430b3fbd": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:22:00"
+    },
+    "47ab26027579": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:22:01"
+    },
+    "59100fcbdbd6": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:22:02"
+    },
+    "30e358928a0c": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:22:03"
+    },
+    "49c2f4de2b9e": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:22:04"
+    },
+    "c2b7f52e4423": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:22:05"
+    },
+    "304a2daf17f1": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:22:06"
+    },
+    "42a8c07e3d93": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:22:07"
+    },
+    "6eae6aee3903": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:22:08"
+    },
+    "1c4cc24d8ef4": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:23:27"
+    },
+    "b25d89eb8b05": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:25:26"
+    },
+    "8762b9a91714": {
+      "symbol": "NASDAQ:META",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:25:27"
+    },
+    "90307b0ce09d": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:25:28"
+    },
+    "255b68377123": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:25:29"
+    },
+    "176b3d58ab54": {
+      "symbol": "NYSE:JEF",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:25:30"
+    },
+    "6df3d9c5ffaa": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:25:31"
+    },
+    "c60a0e77f411": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:25:32"
+    },
+    "1094b6b3f2cb": {
+      "symbol": "NASDAQ:SMCI",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:25:32"
+    },
+    "715c7f5790fa": {
+      "symbol": "NASDAQ:TRMB",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:25:33"
+    },
+    "a394dad01fed": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:25:34"
+    },
+    "59d2b6c06467": {
+      "symbol": "NYSE:PAGS",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:25:35"
+    },
+    "cc711d13fd58": {
+      "symbol": "NYSE:BYD",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:27:26"
+    },
+    "0db7ebe95113": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:27:27"
+    },
+    "5e084e32a255": {
+      "symbol": "NASDAQ:TITN",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:27:28"
+    },
+    "4ae1159d5728": {
+      "symbol": "NASDAQ:MSTR",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:27:29"
+    },
+    "e2d5e01ec96b": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:27:30"
+    },
+    "8756959a1533": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:31:27"
+    },
+    "4f1783302ef8": {
+      "symbol": "BINANCE:ONEUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:33:27"
+    },
+    "c642a793f8eb": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:33:28"
+    },
+    "ebd51ab58a08": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:35:29"
+    },
+    "acafcd1c0df3": {
+      "symbol": "BINANCE:POLUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:35:30"
+    },
+    "9c6e29a6a3ab": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:39:27"
+    },
+    "814657af881b": {
+      "symbol": "BINANCE:ONEUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:39:28"
+    },
+    "eff0ee3e76a1": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:39:29"
+    },
+    "9958f2cf8077": {
+      "symbol": "NASDAQ:NVDA",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:39:29"
+    },
+    "2afb39f3ab32": {
+      "symbol": "NASDAQ:HON",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:39:30"
+    },
+    "29ff7964846f": {
+      "symbol": "NYSE:ALC",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:39:31"
+    },
+    "30d42539da4f": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:39:32"
+    },
+    "e3e761164165": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:39:33"
+    },
+    "17ac01a559cb": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:39:34"
+    },
+    "de4c55076303": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:39:34"
+    },
+    "616f36973f56": {
+      "symbol": "NASDAQ:NVDA",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:39:35"
+    },
+    "a23357bfc414": {
+      "symbol": "NASDAQ:LQDA",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:39:36"
+    },
+    "7d2d559207cd": {
+      "symbol": "NASDAQ:ITRN",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:39:37"
+    },
+    "a0ab4a9c9d6f": {
+      "symbol": "NASDAQ:SMCI",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:39:38"
+    },
+    "eb2ca3dc3473": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:39:39"
+    },
+    "b726d49e1d6e": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:41:27"
+    },
+    "c889cf98e981": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:41:28"
+    },
+    "ee6742cf22b8": {
+      "symbol": "NYSE:GHC",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:41:28"
+    },
+    "337e0555712e": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:41:29"
+    },
+    "3e14a1a6afef": {
+      "symbol": "NASDAQ:DPZ",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:41:30"
+    },
+    "cccd82c787f5": {
+      "symbol": "NASDAQ:TECH",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:41:31"
+    },
+    "7aff752e7368": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:41:32"
+    },
+    "846d40ed736e": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:43:28"
+    },
+    "b17b745e9968": {
+      "symbol": "NASDAQ:ANNX",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:46:01"
+    },
+    "ee961c25b1e5": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:46:02"
+    },
+    "42c8db2bb43a": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:46:03"
+    },
+    "99b6e4228206": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:46:04"
+    },
+    "629f771911c4": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:46:05"
+    },
+    "9d3bfcccf38d": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:46:05"
+    },
+    "4258549ecff3": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:46:06"
+    },
+    "a7c5d88fb3fa": {
+      "symbol": "NYSE:AMCR",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:46:07"
+    },
+    "4cbd122160d7": {
+      "symbol": "NASDAQ:LQDA",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:46:08"
+    },
+    "5055898231fe": {
+      "symbol": "NYSE:AMCR",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:46:09"
+    },
+    "508bcc582cef": {
+      "symbol": "BINANCE:ONEUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:47:59"
+    },
+    "5ca7abf66c9f": {
+      "symbol": "BINANCE:SUSHIUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:49:59"
+    },
+    "381f7134458b": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:51:59"
+    },
+    "60e1656571d9": {
+      "symbol": "NYSE:EAT",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:52:00"
+    },
+    "b63a15c7bcdd": {
+      "symbol": "NYSE:RSKD",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:52:01"
+    },
+    "d721bac15e31": {
+      "symbol": "BINANCE:SUSHIUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:52:02"
+    },
+    "663b03bb6575": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:52:03"
+    },
+    "dab9e3afc3da": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T13:53:59"
+    },
+    "701aff6982be": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:55:59"
+    },
+    "3d2d5ba09fc6": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:56:00"
+    },
+    "67e192060790": {
+      "symbol": "NASDAQ:ISRG",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:56:01"
+    },
+    "ee487c256894": {
+      "symbol": "NASDAQ:TECH",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:56:01"
+    },
+    "9b786e6ad379": {
+      "symbol": "NASDAQ:LZ",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:56:02"
+    },
+    "2d7e4748aa97": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:56:03"
+    },
+    "c9ea5bb771db": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:56:04"
+    },
+    "e66446d1c8ce": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:56:05"
+    },
+    "5ff640fb669c": {
+      "symbol": "NYSE:GLOB",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:56:06"
+    },
+    "9f0c131ff111": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:56:07"
+    },
+    "f84c287aba91": {
+      "symbol": "NASDAQ:REGN",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:56:08"
+    },
+    "603368876599": {
+      "symbol": "NASDAQ:TECH",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:56:08"
+    },
+    "0528d27f4677": {
+      "symbol": "NASDAQ:LZ",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:56:09"
+    },
+    "fec1a9c23d01": {
+      "symbol": "NYSE:JMIA",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:56:10"
+    },
+    "634f53953ca2": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T13:59:59"
+    },
+    "7eddc3316a81": {
+      "symbol": "NYSE:KNX",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:01:59"
+    },
+    "8ed181980992": {
+      "symbol": "NASDAQ:TRMB",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:02:00"
+    },
+    "070f7ba9e5f2": {
+      "symbol": "NASDAQ:BLTE",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:02:01"
+    },
+    "e81c3d5fa235": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:02:02"
+    },
+    "2aa204fe3c79": {
+      "symbol": "NASDAQ:PHAR",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:02:02"
+    },
+    "dd39343d1474": {
+      "symbol": "NYSE:KNX",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:02:03"
+    },
+    "ff4427b32d6d": {
+      "symbol": "NYSE:MTRN",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:05:59"
+    },
+    "c0c4342dd3ca": {
+      "symbol": "NASDAQ:AURA",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:06:00"
+    },
+    "10f8fb159bec": {
+      "symbol": "NYSE:MMT",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:06:01"
+    },
+    "da0054e77155": {
+      "symbol": "NYSE:MTRN",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:06:02"
+    },
+    "96878a1460e6": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:06:03"
+    },
+    "5c7472c0a8cb": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:06:03"
+    },
+    "27356c837316": {
+      "symbol": "NYSE:RSKD",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:06:04"
+    },
+    "03d8013b5505": {
+      "symbol": "NASDAQ:NVDA",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:06:05"
+    },
+    "cb7115444330": {
+      "symbol": "NYSE:GLOB",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:06:06"
+    },
+    "42462b151841": {
+      "symbol": "NASDAQ:NVDA",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:06:07"
+    },
+    "7e2d7187e4df": {
+      "symbol": "NYSE:UNH",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:06:08"
+    },
+    "849f2fd17728": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:06:09"
+    },
+    "f9ecdb782c47": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:06:10"
+    },
+    "f5e6d7af9ffd": {
+      "symbol": "NASDAQ:RDCM",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:06:10"
+    },
+    "d701b1fa5c40": {
+      "symbol": "NYSE:EAT",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:06:11"
+    },
+    "ac137f3cb6c2": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:06:12"
+    },
+    "ff39ff569f38": {
+      "symbol": "NYSE:OWL",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:06:13"
+    },
+    "cf192c0d960e": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T14:07:59"
+    },
+    "b095bed88175": {
+      "symbol": "BINANCE:ONEUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T14:08:00"
+    },
+    "3443d88bfe7e": {
+      "symbol": "NASDAQ:KMDA",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:11:59"
+    },
+    "028069e5c91a": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:12:00"
+    },
+    "261b9230d055": {
+      "symbol": "NYSE:PFGC",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:12:01"
+    },
+    "f3cb2e243471": {
+      "symbol": "NASDAQ:WRD",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:12:02"
+    },
+    "2df86b3df7f1": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:12:03"
+    },
+    "c97da5a26e49": {
+      "symbol": "NYSE:HUM",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:12:03"
+    },
+    "10e41a104901": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:12:04"
+    },
+    "597f9ce3e3b9": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:16:00"
+    },
+    "10c28da004e0": {
+      "symbol": "BINANCE:XRPUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T14:16:01"
+    },
+    "c574c131cd1f": {
+      "symbol": "NYSE:MTRN",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:16:02"
+    },
+    "bcd1660e6854": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:16:03"
+    },
+    "3fae44ca4211": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:16:04"
+    },
+    "9957d05f2882": {
+      "symbol": "NYSE:KNX",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:16:05"
+    },
+    "2c810e3307dd": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:16:06"
+    },
+    "2710c525534c": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T14:19:59"
+    },
+    "d549a89bfb91": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T14:20:00"
+    },
+    "cb21592ddb7b": {
+      "symbol": "NASDAQ:OCTV",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:21:59"
+    },
+    "5027b146d334": {
+      "symbol": "NYSE:H",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:22:00"
+    },
+    "d7edc16669d7": {
+      "symbol": "NYSE:SUN",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:22:01"
+    },
+    "2f2732ff3720": {
+      "symbol": "NASDAQ:EXC",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:22:02"
+    },
+    "778c9da85afa": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:22:03"
+    },
+    "cbb2ffe2ae51": {
+      "symbol": "NASDAQ:LXEO",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:22:04"
+    },
+    "d51a7889b852": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T14:22:05"
+    },
+    "3f4950dc8d7d": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T14:22:05"
+    },
+    "a5c35334942c": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T14:22:07"
+    },
+    "0d0e4889c540": {
+      "symbol": "NYSE:UAMY",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:23:59"
+    },
+    "49877bf7358d": {
+      "symbol": "NASDAQ:SMCI",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:24:00"
+    },
+    "64cd3b9bb8d3": {
+      "symbol": "NYSE:CAVA",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:24:01"
+    },
+    "b975e01e0d51": {
+      "symbol": "BINANCE:AUDUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T14:24:01"
+    },
+    "8cd6661ace26": {
+      "symbol": "NASDAQ:KMDA",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:24:02"
+    },
+    "f28c10d7c9c3": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:24:03"
+    },
+    "fac10c7f0f5a": {
+      "symbol": "NYSE:H",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:24:04"
+    },
+    "224978dd1539": {
+      "symbol": "NASDAQ:AMCX",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:24:05"
+    },
+    "c4f50ddc06dc": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:24:06"
+    },
+    "3bc56a11f97b": {
+      "symbol": "NYSE:MTRN",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:24:07"
+    },
+    "46ebacfb4981": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T14:24:08"
+    },
+    "5ce9c3b2e705": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T14:25:59"
+    },
+    "525607c9184f": {
+      "symbol": "NYSE:HIO",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:26:00"
+    },
+    "25a6e8427430": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:26:01"
+    },
+    "a9e87af07eac": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T14:29:59"
+    },
+    "85a696fa6263": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:31:59"
+    },
+    "8b932ee5c687": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:32:00"
+    },
+    "09d53b60746b": {
+      "symbol": "NASDAQ:NBIX",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:32:01"
+    },
+    "458c164c6ef8": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:32:01"
+    },
+    "aca6f1addf20": {
+      "symbol": "NASDAQ:ENTG",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:32:02"
+    },
+    "1805c003c6ea": {
+      "symbol": "NYSE:MAIN",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:32:03"
+    },
+    "2a5baf457d11": {
+      "symbol": "NASDAQ:KMDA",
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:32:04"
+    },
+    "fbe69324025e": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T14:32:05"
+    },
+    "b41b7bc7e621": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T14:33:58"
+    },
+    "0a8c326d61ab": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:33:59"
+    },
+    "11c6e06b7a63": {
+      "symbol": null,
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T14:34:00"
+    },
+    "90c6fea66cfd": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:35:59"
+    },
+    "7a74a96ef19a": {
+      "symbol": null,
+      "asset_type": "stock",
+      "confident": true,
+      "ts": "2026-08-12T14:37:59"
+    },
+    "b156e5d0710b": {
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "confident": true,
+      "ts": "2026-08-12T14:38:00"
     }
   }
 }

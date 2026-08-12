@@ -1,0 +1,797 @@
+{
+  "version": 1,
+  "_comment": [
+    "Who is tracked on the Ownership board, and which key each source needs to find them.",
+    "Hand-maintained: adding an entity is one object here, never a code change.",
+    "",
+    "`id` appears in the URL (/ownership?entity=<id>) and is the key the snapshot",
+    "history is stored under — renaming one orphans its history, so treat it as permanent.",
+    "",
+    "`sources` maps a SourceKind to whatever that provider needs to identify this entity.",
+    "An entity with no key for a source is simply not looked up there; it is not an error.",
+    "",
+    "CoinGecko is matched on `symbol` rather than `name` because the names carry",
+    "editorial suffixes that change under us — 'Forum Markets (formerly ETHZilla)',",
+    "'ProCap Financial (formerly ProCap BTC)'. The exchange ticker does not move."
+  ],
+  "entities": [
+    {
+      "id": "strategy-mstr",
+      "name": "Strategy",
+      "subtitle": "Michael Saylor · MSTR",
+      "category": "treasury",
+      "country": "US",
+      "order": 10,
+      "coverage_note": "Bitcoin held on the corporate balance sheet. Does not include the operating business or its debt. Cash is the balance-sheet line from the latest 10-Q; other assets are not covered.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "MSTR.US",
+          "coins": [
+            "bitcoin"
+          ]
+        },
+        "manual": {
+          "group": "strategy-cash"
+        }
+      }
+    },
+    {
+      "id": "twenty-one-capital",
+      "name": "Twenty One Capital",
+      "subtitle": "Jack Mallers · XXI",
+      "category": "treasury",
+      "country": "US",
+      "order": 15,
+      "coverage_note": "Bitcoin held on the corporate balance sheet.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "XXI.US",
+          "coins": [
+            "bitcoin"
+          ]
+        }
+      }
+    },
+    {
+      "id": "metaplanet",
+      "name": "Metaplanet",
+      "subtitle": "Tokyo · 3350.T",
+      "category": "treasury",
+      "country": "JP",
+      "order": 20,
+      "coverage_note": "Bitcoin held on the corporate balance sheet.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "3350.T",
+          "coins": [
+            "bitcoin"
+          ]
+        }
+      }
+    },
+    {
+      "id": "galaxy-digital",
+      "name": "Galaxy Digital",
+      "subtitle": "Mike Novogratz · GLXY",
+      "category": "treasury",
+      "country": "US",
+      "order": 25,
+      "coverage_note": "Bitcoin, ether and solana held on the corporate balance sheet. Corporate holdings only — customer assets held in custody are not included.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "GLXY.US",
+          "coins": [
+            "bitcoin",
+            "ethereum",
+            "solana"
+          ]
+        }
+      }
+    },
+    {
+      "id": "mara-holdings",
+      "name": "MARA Holdings",
+      "subtitle": "Bitcoin miner · MARA",
+      "category": "treasury",
+      "country": "US",
+      "order": 30,
+      "coverage_note": "Mined and purchased bitcoin held on the balance sheet. Cash is the balance-sheet line from the latest 10-Q; other assets are not covered.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "MARA.US",
+          "coins": [
+            "bitcoin"
+          ]
+        },
+        "manual": {
+          "group": "mara-cash"
+        }
+      }
+    },
+    {
+      "id": "bullish",
+      "name": "Bullish",
+      "subtitle": "BLSH",
+      "category": "treasury",
+      "country": "US",
+      "order": 35,
+      "coverage_note": "Bitcoin and ether held on the corporate balance sheet. Corporate holdings only — customer assets held in custody are not included.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "BLSH.US",
+          "coins": [
+            "bitcoin",
+            "ethereum"
+          ]
+        }
+      }
+    },
+    {
+      "id": "coinbase",
+      "name": "Coinbase Global",
+      "subtitle": "COIN",
+      "category": "treasury",
+      "country": "US",
+      "order": 40,
+      "coverage_note": "Corporate holdings only — customer assets held in custody are not included. Cash is the balance-sheet line from the latest 10-Q; other assets are not covered.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "COIN.US",
+          "coins": [
+            "bitcoin",
+            "ethereum"
+          ]
+        },
+        "manual": {
+          "group": "coinbase-cash"
+        }
+      }
+    },
+    {
+      "id": "riot-platforms",
+      "name": "Riot Platforms",
+      "subtitle": "Bitcoin miner · RIOT",
+      "category": "treasury",
+      "country": "US",
+      "order": 45,
+      "coverage_note": "Mined and purchased bitcoin held on the balance sheet.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "RIOT.US",
+          "coins": [
+            "bitcoin"
+          ]
+        }
+      }
+    },
+    {
+      "id": "tesla",
+      "name": "Tesla",
+      "subtitle": "TSLA",
+      "category": "treasury",
+      "country": "US",
+      "order": 50,
+      "coverage_note": "Bitcoin held on the corporate balance sheet. Cash is the balance-sheet line from the latest 10-Q; other assets are not covered.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "TSLA.US",
+          "coins": [
+            "bitcoin"
+          ]
+        },
+        "manual": {
+          "group": "tesla-cash"
+        }
+      }
+    },
+    {
+      "id": "hut8",
+      "name": "Hut 8",
+      "subtitle": "Bitcoin miner · HUT",
+      "category": "treasury",
+      "country": "US",
+      "order": 55,
+      "coverage_note": "Mined and purchased bitcoin held on the balance sheet.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "HUT.US",
+          "coins": [
+            "bitcoin"
+          ]
+        }
+      }
+    },
+    {
+      "id": "trump-media",
+      "name": "Trump Media & Technology Group",
+      "subtitle": "DJT",
+      "category": "treasury",
+      "country": "US",
+      "order": 60,
+      "coverage_note": "Bitcoin held on the corporate balance sheet, plus open-market share purchases and sales by company insiders as reported on Form 4. Option settlements, tax withholding and grants are excluded — they are not trades.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "DJT.US",
+          "coins": [
+            "bitcoin"
+          ]
+        },
+        "sec_form4": {
+          "issuer_cik": "0001849635"
+        }
+      }
+    },
+    {
+      "id": "cleanspark",
+      "name": "CleanSpark",
+      "subtitle": "Bitcoin miner · CLSK",
+      "category": "treasury",
+      "country": "US",
+      "order": 65,
+      "coverage_note": "Mined and purchased bitcoin held on the balance sheet.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "CLSK.US",
+          "coins": [
+            "bitcoin"
+          ]
+        }
+      }
+    },
+    {
+      "id": "bitmine-immersion",
+      "name": "BitMine Immersion",
+      "subtitle": "BMNR",
+      "category": "treasury",
+      "country": "US",
+      "order": 70,
+      "coverage_note": "Ether held on the corporate balance sheet.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "BMNR.US",
+          "coins": [
+            "ethereum"
+          ]
+        }
+      }
+    },
+    {
+      "id": "block-inc",
+      "name": "Block",
+      "subtitle": "Jack Dorsey · XYZ",
+      "category": "treasury",
+      "country": "US",
+      "order": 75,
+      "coverage_note": "Bitcoin held on the corporate balance sheet.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "XYZ.US",
+          "coins": [
+            "bitcoin"
+          ]
+        }
+      }
+    },
+    {
+      "id": "sharplink-gaming",
+      "name": "SharpLink",
+      "subtitle": "SBET",
+      "category": "treasury",
+      "country": "US",
+      "order": 80,
+      "coverage_note": "Ether held on the corporate balance sheet.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "SBET.US",
+          "coins": [
+            "ethereum"
+          ]
+        }
+      }
+    },
+    {
+      "id": "american-bitcoin",
+      "name": "American Bitcoin",
+      "subtitle": "ABTC",
+      "category": "treasury",
+      "country": "US",
+      "order": 85,
+      "coverage_note": "Mined and purchased bitcoin held on the balance sheet.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "ABTC.US",
+          "coins": [
+            "bitcoin"
+          ]
+        }
+      }
+    },
+    {
+      "id": "strive",
+      "name": "Strive",
+      "subtitle": "Vivek Ramaswamy · ASST",
+      "category": "treasury",
+      "country": "US",
+      "order": 86,
+      "coverage_note": "Bitcoin held on the corporate balance sheet.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "ASST.US",
+          "coins": [
+            "bitcoin"
+          ]
+        }
+      }
+    },
+    {
+      "id": "ether-machine",
+      "name": "The Ether Machine",
+      "subtitle": "ETHM",
+      "category": "treasury",
+      "country": "US",
+      "order": 90,
+      "coverage_note": "Ether held on the corporate balance sheet.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "ETHM.US",
+          "coins": [
+            "ethereum"
+          ]
+        }
+      }
+    },
+    {
+      "id": "bit-digital",
+      "name": "Bit Digital",
+      "subtitle": "BTBT",
+      "category": "treasury",
+      "country": "US",
+      "order": 91,
+      "coverage_note": "Ether held on the corporate balance sheet.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "BTBT.US",
+          "coins": [
+            "ethereum"
+          ]
+        }
+      }
+    },
+    {
+      "id": "gemini-space-station",
+      "name": "Gemini Space Station",
+      "subtitle": "Winklevoss twins · GEMI",
+      "category": "treasury",
+      "country": "US",
+      "order": 92,
+      "coverage_note": "Bitcoin and ether held on the corporate balance sheet. Corporate holdings only — customer assets held in custody are not included.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "GEMI.US",
+          "coins": [
+            "bitcoin",
+            "ethereum"
+          ]
+        }
+      }
+    },
+    {
+      "id": "forward-industries",
+      "name": "Forward Industries",
+      "subtitle": "FWDI",
+      "category": "treasury",
+      "country": "US",
+      "order": 95,
+      "coverage_note": "Solana held on the corporate balance sheet.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "FWDI.US",
+          "coins": [
+            "solana"
+          ]
+        }
+      }
+    },
+    {
+      "id": "defi-development",
+      "name": "DeFi Development Corp",
+      "subtitle": "DFDV",
+      "category": "treasury",
+      "country": "US",
+      "order": 96,
+      "coverage_note": "Solana held on the corporate balance sheet.",
+      "sources": {
+        "coingecko_treasury": {
+          "symbol": "DFDV.US",
+          "coins": [
+            "solana"
+          ]
+        }
+      }
+    },
+    {
+      "id": "berkshire-hathaway",
+      "name": "Berkshire Hathaway",
+      "subtitle": "Warren Buffett",
+      "category": "institution",
+      "country": "US",
+      "order": 110,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0001067983"
+        }
+      }
+    },
+    {
+      "id": "bridgewater",
+      "name": "Bridgewater Associates",
+      "subtitle": "Ray Dalio",
+      "category": "institution",
+      "country": "US",
+      "order": 120,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0001350694"
+        }
+      },
+      "logo_domain": "bridgewater.com"
+    },
+    {
+      "id": "pershing-square",
+      "name": "Pershing Square",
+      "subtitle": "Bill Ackman",
+      "category": "institution",
+      "country": "US",
+      "order": 130,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0001336528"
+        }
+      },
+      "logo_domain": "pershingsquareholdings.com"
+    },
+    {
+      "id": "ark-invest",
+      "name": "ARK Investment Management",
+      "subtitle": "Cathie Wood",
+      "category": "institution",
+      "country": "US",
+      "order": 140,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0001697748"
+        }
+      },
+      "logo_domain": "ark-invest.com"
+    },
+    {
+      "id": "scion-asset",
+      "name": "Scion Asset Management",
+      "subtitle": "Michael Burry",
+      "category": "institution",
+      "country": "US",
+      "order": 150,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0001649339"
+        }
+      },
+      "logo_domain": "scionasset.com"
+    },
+    {
+      "id": "tiger-global",
+      "name": "Tiger Global Management",
+      "subtitle": "Chase Coleman",
+      "category": "institution",
+      "country": "US",
+      "order": 160,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0001167483"
+        }
+      },
+      "logo_domain": "tigerglobal.com"
+    },
+    {
+      "id": "coatue",
+      "name": "Coatue Management",
+      "subtitle": "Philippe Laffont",
+      "category": "institution",
+      "country": "US",
+      "order": 162,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0001135730"
+        }
+      },
+      "logo_domain": "coatue.com"
+    },
+    {
+      "id": "soros-fund",
+      "name": "Soros Fund Management",
+      "subtitle": "George Soros",
+      "category": "institution",
+      "country": "US",
+      "order": 164,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0001029160"
+        }
+      }
+    },
+    {
+      "id": "duquesne",
+      "name": "Duquesne Family Office",
+      "subtitle": "Stanley Druckenmiller",
+      "category": "institution",
+      "country": "US",
+      "order": 166,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0001536411"
+        }
+      }
+    },
+    {
+      "id": "appaloosa",
+      "name": "Appaloosa",
+      "subtitle": "David Tepper",
+      "category": "institution",
+      "country": "US",
+      "order": 168,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0001656456"
+        }
+      }
+    },
+    {
+      "id": "third-point",
+      "name": "Third Point",
+      "subtitle": "Daniel Loeb",
+      "category": "institution",
+      "country": "US",
+      "order": 170,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0001040273"
+        }
+      },
+      "logo_domain": "thirdpoint.com"
+    },
+    {
+      "id": "lone-pine",
+      "name": "Lone Pine Capital",
+      "subtitle": "Stephen Mandel",
+      "category": "institution",
+      "country": "US",
+      "order": 172,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0001061165"
+        }
+      },
+      "logo_domain": "lonepinecapital.com"
+    },
+    {
+      "id": "viking-global",
+      "name": "Viking Global Investors",
+      "subtitle": "Andreas Halvorsen",
+      "category": "institution",
+      "country": "US",
+      "order": 174,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0001103804"
+        }
+      },
+      "logo_domain": "vikingglobal.com"
+    },
+    {
+      "id": "elliott-management",
+      "name": "Elliott Investment Management",
+      "subtitle": "Paul Singer",
+      "category": "institution",
+      "country": "US",
+      "order": 176,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0001791786"
+        }
+      },
+      "logo_domain": "elliottmgmt.com"
+    },
+    {
+      "id": "icahn-capital",
+      "name": "Icahn Capital",
+      "subtitle": "Carl Icahn",
+      "category": "institution",
+      "country": "US",
+      "order": 178,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0000921669"
+        }
+      }
+    },
+    {
+      "id": "gates-foundation",
+      "name": "Gates Foundation Trust",
+      "subtitle": "Bill Gates",
+      "category": "institution",
+      "country": "US",
+      "order": 180,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0001166559"
+        }
+      },
+      "logo_domain": "gatesfoundation.org"
+    },
+    {
+      "id": "himalaya-capital",
+      "name": "Himalaya Capital",
+      "subtitle": "Li Lu",
+      "category": "institution",
+      "country": "US",
+      "order": 182,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0001709323"
+        }
+      },
+      "logo_domain": "himalayacapital.com"
+    },
+    {
+      "id": "farallon",
+      "name": "Farallon Capital",
+      "subtitle": "Andrew Spokes",
+      "category": "institution",
+      "country": "US",
+      "order": 184,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0000909661"
+        }
+      },
+      "logo_domain": "faralloncapital.com"
+    },
+    {
+      "id": "pantera-capital",
+      "name": "Pantera Capital",
+      "subtitle": "Dan Morehead",
+      "category": "institution",
+      "country": "US",
+      "order": 186,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0002067181"
+        }
+      },
+      "logo_domain": "panteracapital.com"
+    },
+    {
+      "id": "temasek",
+      "name": "Temasek",
+      "subtitle": "Singapore sovereign fund",
+      "category": "institution",
+      "country": "SG",
+      "order": 188,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0001021944"
+        }
+      },
+      "logo_domain": "temasek.com.sg"
+    },
+    {
+      "id": "saudi-pif",
+      "name": "Public Investment Fund",
+      "subtitle": "Saudi sovereign fund",
+      "category": "institution",
+      "country": "SA",
+      "order": 190,
+      "coverage_note": "US-listed long equity positions as reported on Form 13F. Does not include cash, bonds, foreign listings, short positions or anything held outside the US.",
+      "sources": {
+        "sec_13f": {
+          "cik": "0001767640"
+        }
+      },
+      "logo_domain": "pif.gov.sa"
+    },
+    {
+      "id": "vitalik-buterin",
+      "name": "Vitalik Buterin",
+      "subtitle": "Ethereum co-founder",
+      "category": "onchain",
+      "country": null,
+      "order": 210,
+      "coverage_note": "Balances of this one address at the moment it was read. Holders commonly spread funds across several addresses, so this is not their whole position. A transfer out may be a sale, a move to custody, or a shuffle between addresses the same holder owns — the chain does not say which.",
+      "sources": {
+        "onchain": {
+          "address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+        }
+      }
+    },
+    {
+      "id": "ethereum-foundation",
+      "name": "Ethereum Foundation",
+      "subtitle": "Treasury wallet",
+      "category": "onchain",
+      "country": null,
+      "order": 220,
+      "coverage_note": "Balances of this one address at the moment it was read. Holders commonly spread funds across several addresses, so this is not their whole position. A transfer out may be a sale, a move to custody, or a shuffle between addresses the same holder owns — the chain does not say which.",
+      "sources": {
+        "onchain": {
+          "address": "0xde0B295669a9FD93d5F28D9Ec85E40f4cB697BAe"
+        }
+      },
+      "logo_domain": "ethereum.org"
+    },
+    {
+      "id": "devin-nunes",
+      "name": "Devin Nunes",
+      "subtitle": "Former US Representative · Trump Media CEO",
+      "category": "politician",
+      "country": "US",
+      "order": 310,
+      "coverage_note": "Open-market purchases and sales of Trump Media stock reported on Form 4, filed within two business days. Covers this issuer only, not the person's wider portfolio. Option settlements, tax withholding and grants are excluded — they are not trades.",
+      "sources": {
+        "sec_form4": {
+          "issuer_cik": "0001849635",
+          "owner_cik": "0002015798"
+        }
+      }
+    },
+    {
+      "id": "robert-lighthizer",
+      "name": "Robert Lighthizer",
+      "subtitle": "Former US Trade Representative",
+      "category": "politician",
+      "country": "US",
+      "order": 320,
+      "coverage_note": "Open-market purchases and sales of Trump Media stock reported on Form 4, filed within two business days. Covers this issuer only, not the person's wider portfolio. Option settlements, tax withholding and grants are excluded — they are not trades.",
+      "sources": {
+        "sec_form4": {
+          "issuer_cik": "0001849635",
+          "owner_cik": "0002015803"
+        }
+      }
+    },
+    {
+      "id": "donald-trump-jr",
+      "name": "Donald Trump Jr.",
+      "subtitle": "Trump Media board member",
+      "category": "politician",
+      "country": "US",
+      "order": 330,
+      "coverage_note": "Open-market purchases and sales of Trump Media stock reported on Form 4, filed within two business days. Covers this issuer only, not the person's wider portfolio. Option settlements, tax withholding and grants are excluded — they are not trades.",
+      "sources": {
+        "sec_form4": {
+          "issuer_cik": "0001849635",
+          "owner_cik": "0002016181"
+        }
+      }
+    }
+  ]
+}

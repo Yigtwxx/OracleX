@@ -3,1500 +3,1500 @@
     "symbol": "NVDA",
     "name": "NVIDIA Corporation",
     "sector": "Technology",
-    "market_cap": 5299558000000.0
+    "market_cap": 5263500000000.0
   },
   {
     "symbol": "AAPL",
     "name": "Apple Inc.",
     "sector": "Technology",
-    "market_cap": 4559367773800.0
+    "market_cap": 4449911423800.0
   },
   {
     "symbol": "GOOGL",
     "name": "Alphabet Inc.",
     "sector": "Technology",
-    "market_cap": 4375282500000.0
+    "market_cap": 4204674000000.0
   },
   {
     "symbol": "GOOG",
     "name": "Alphabet Inc.",
     "sector": "Technology",
-    "market_cap": 4361462600000.0
+    "market_cap": 4194890000000.0
   },
   {
     "symbol": "MSFT",
     "name": "Microsoft Corporation",
     "sector": "Technology",
-    "market_cap": 3711733169131.0
+    "market_cap": 3741064073821.0
   },
   {
     "symbol": "AMZN",
     "name": "Amazon.com Inc.",
     "sector": "Consumer Discretionary",
-    "market_cap": 2936681733113.0
+    "market_cap": 2936789596248.0
   },
   {
     "symbol": "AVGO",
     "name": "Broadcom Inc.",
     "sector": "Technology",
-    "market_cap": 2000871715972.0
+    "market_cap": 1979533968784.0
   },
   {
     "symbol": "SPCX",
     "name": "Space Exploration Technologies Corp.",
     "sector": "Technology",
-    "market_cap": 1514850151279.0
+    "market_cap": 1756999448869.0
   },
   {
     "symbol": "META",
     "name": "Meta Platforms Inc.",
     "sector": "Technology",
-    "market_cap": 1502773922128.0
+    "market_cap": 1526261929522.0
   },
   {
     "symbol": "TSLA",
     "name": "Tesla Inc.",
     "sector": "Industrials",
-    "market_cap": 1261998878805.0
+    "market_cap": 1314448868197.0
   },
   {
     "symbol": "SKHY",
     "name": "SK hynix Inc. American Depositary Shares",
     "sector": "Technology",
-    "market_cap": 1046140652150.0
+    "market_cap": 1032437980750.0
   },
   {
     "symbol": "MU",
     "name": "Micron Technology Inc.",
     "sector": "Technology",
-    "market_cap": 995526180812.0
+    "market_cap": 980900539507.0
   },
   {
     "symbol": "WMT",
     "name": "Walmart Inc.",
     "sector": "Consumer Discretionary",
-    "market_cap": 891861930901.0
+    "market_cap": 901332045095.0
   },
   {
     "symbol": "AMD",
     "name": "Advanced Micro Devices Inc.",
     "sector": "Technology",
-    "market_cap": 797820280650.0
+    "market_cap": 774315561921.0
   },
   {
     "symbol": "ASML",
     "name": "ASML Holding N.V. New York Registry Shares",
     "sector": "Technology",
-    "market_cap": 656894305696.0
+    "market_cap": 693512838048.0
   },
   {
     "symbol": "GOOGM",
     "name": "Alphabet Inc. Depositary Shares representing a 1/20th Interest in a Share of Series A Mandatory Convertible Preferred Stock",
     "sector": "Technology",
-    "market_cap": 619938700000.0
+    "market_cap": 601593700000.0
   },
   {
     "symbol": "GOOGN",
     "name": "Alphabet Inc. Depositary Shares representing a 1/20th Interest in a Share of Series B Mandatory Convertible Preferred Stock",
     "sector": "Technology",
-    "market_cap": 617370400000.0
+    "market_cap": 599759200000.0
   },
   {
     "symbol": "INTC",
     "name": "Intel Corporation",
     "sector": "Technology",
-    "market_cap": 503441640000.0
+    "market_cap": 492849240000.0
   },
   {
     "symbol": "CSCO",
     "name": "Cisco Systems Inc. (DE)",
     "sector": "Telecommunications",
-    "market_cap": 476440622305.0
-  },
-  {
-    "symbol": "COST",
-    "name": "Costco Wholesale Corporation",
-    "sector": "Consumer Discretionary",
-    "market_cap": 420927906817.0
-  },
-  {
-    "symbol": "AMAT",
-    "name": "Applied Materials Inc.",
-    "sector": "Technology",
-    "market_cap": 418797720136.0
-  },
-  {
-    "symbol": "LRCX",
-    "name": "Lam Research Corporation",
-    "sector": "Technology",
-    "market_cap": 382387094670.0
+    "market_cap": 474666976706.0
   },
   {
     "symbol": "PLTR",
     "name": "Palantir Technologies Inc.",
     "sector": "Technology",
-    "market_cap": 374528178602.0
+    "market_cap": 420215235791.0
   },
   {
-    "symbol": "NFLX",
-    "name": "Netflix Inc.",
+    "symbol": "COST",
+    "name": "Costco Wholesale Corporation",
     "sector": "Consumer Discretionary",
-    "market_cap": 306840714724.0
+    "market_cap": 418785904193.0
   },
   {
-    "symbol": "ARM",
-    "name": "Arm Holdings plc American Depositary Shares",
+    "symbol": "AMAT",
+    "name": "Applied Materials Inc.",
     "sector": "Technology",
-    "market_cap": 305043359643.0
+    "market_cap": 417313016002.0
+  },
+  {
+    "symbol": "LRCX",
+    "name": "Lam Research Corporation",
+    "sector": "Technology",
+    "market_cap": 389673872610.0
   },
   {
     "symbol": "PANW",
     "name": "Palo Alto Networks Inc.",
     "sector": "Technology",
-    "market_cap": 292984350000.0
+    "market_cap": 312797000000.0
   },
   {
-    "symbol": "TXN",
-    "name": "Texas Instruments Incorporated",
+    "symbol": "NFLX",
+    "name": "Netflix Inc.",
+    "sector": "Consumer Discretionary",
+    "market_cap": 311421048368.0
+  },
+  {
+    "symbol": "ARM",
+    "name": "Arm Holdings plc American Depositary Shares",
     "sector": "Technology",
-    "market_cap": 254248155782.0
+    "market_cap": 286156378920.0
   },
   {
     "symbol": "KLAC",
     "name": "KLA Corporation",
     "sector": "Technology",
-    "market_cap": 252398496076.0
+    "market_cap": 261923433588.0
+  },
+  {
+    "symbol": "TXN",
+    "name": "Texas Instruments Incorporated",
+    "sector": "Technology",
+    "market_cap": 256841779211.0
   },
   {
     "symbol": "LIN",
     "name": "Linde plc",
     "sector": "Basic Materials",
-    "market_cap": 225930987688.0
-  },
-  {
-    "symbol": "AMGN",
-    "name": "Amgen Inc.",
-    "sector": "Health Care",
-    "market_cap": 218500894729.0
+    "market_cap": 226124599356.0
   },
   {
     "symbol": "CRWD",
     "name": "CrowdStrike Holdings Inc.",
     "sector": "Technology",
-    "market_cap": 211176792079.0
+    "market_cap": 225951734232.0
   },
   {
-    "symbol": "STX",
-    "name": "Seagate Technology Holdings PLC (Ireland)",
-    "sector": "Technology",
-    "market_cap": 193316441628.0
-  },
-  {
-    "symbol": "TMUS",
-    "name": "T-Mobile US Inc.",
-    "sector": "Telecommunications",
-    "market_cap": 193048710192.0
+    "symbol": "AMGN",
+    "name": "Amgen Inc.",
+    "sector": "Health Care",
+    "market_cap": 223983839672.0
   },
   {
     "symbol": "SHOP",
     "name": "Shopify Inc. Subordinate Voting Shares",
     "sector": "Technology",
-    "market_cap": 191054377526.0
+    "market_cap": 197753720525.0
+  },
+  {
+    "symbol": "TMUS",
+    "name": "T-Mobile US Inc.",
+    "sector": "Telecommunications",
+    "market_cap": 191557696650.0
   },
   {
     "symbol": "PEP",
     "name": "PepsiCo Inc.",
     "sector": "Consumer Staples",
-    "market_cap": 188955587290.0
+    "market_cap": 188914640543.0
   },
   {
     "symbol": "SNDK",
     "name": "Sandisk Corporation",
     "sector": "Technology",
-    "market_cap": 186382807624.0
-  },
-  {
-    "symbol": "MRVL",
-    "name": "Marvell Technology Inc.",
-    "sector": "Technology",
-    "market_cap": 184383862698.0
+    "market_cap": 188229486906.0
   },
   {
     "symbol": "ADI",
     "name": "Analog Devices Inc.",
     "sector": "Technology",
-    "market_cap": 183782811062.0
+    "market_cap": 187674636512.0
+  },
+  {
+    "symbol": "STX",
+    "name": "Seagate Technology Holdings PLC (Ireland)",
+    "sector": "Technology",
+    "market_cap": 185966359909.0
+  },
+  {
+    "symbol": "MRVL",
+    "name": "Marvell Technology Inc.",
+    "sector": "Technology",
+    "market_cap": 185933969267.0
   },
   {
     "symbol": "QCOM",
     "name": "QUALCOMM Incorporated",
     "sector": "Technology",
-    "market_cap": 168447018589.0
+    "market_cap": 170852054268.0
   },
   {
     "symbol": "GILD",
     "name": "Gilead Sciences Inc.",
     "sector": "Health Care",
-    "market_cap": 162471833712.0
+    "market_cap": 168348711394.0
   },
   {
     "symbol": "BKNG",
     "name": "Booking Holdings Inc.",
     "sector": "Consumer Discretionary",
-    "market_cap": 155828801895.0
+    "market_cap": 159946367035.0
   },
   {
     "symbol": "WDC",
     "name": "Western Digital Corporation",
     "sector": "Technology",
-    "market_cap": 155630875789.0
-  },
-  {
-    "symbol": "IBKR",
-    "name": "Interactive Brokers Group Inc.",
-    "sector": "Finance",
-    "market_cap": 146346617298.0
+    "market_cap": 150946645629.0
   },
   {
     "symbol": "ISRG",
     "name": "Intuitive Surgical Inc.",
     "sector": "Health Care",
-    "market_cap": 132023535581.0
-  },
-  {
-    "symbol": "PDD",
-    "name": "PDD Holdings Inc. American Depositary Shares",
-    "sector": "Consumer Discretionary",
-    "market_cap": 129315568573.0
+    "market_cap": 141745747187.0
   },
   {
     "symbol": "VRTX",
     "name": "Vertex Pharmaceuticals Incorporated",
     "sector": "Health Care",
-    "market_cap": 122682691044.0
+    "market_cap": 134245578397.0
+  },
+  {
+    "symbol": "PDD",
+    "name": "PDD Holdings Inc. American Depositary Shares",
+    "sector": "Consumer Discretionary",
+    "market_cap": 128817379811.0
   },
   {
     "symbol": "SBUX",
     "name": "Starbucks Corporation",
     "sector": "Consumer Discretionary",
-    "market_cap": 119882400000.0
+    "market_cap": 121592400000.0
   },
   {
     "symbol": "FTNT",
     "name": "Fortinet Inc.",
     "sector": "Technology",
-    "market_cap": 117474892982.0
-  },
-  {
-    "symbol": "APP",
-    "name": "Applovin Corporation",
-    "sector": "Technology",
-    "market_cap": 112764979800.0
-  },
-  {
-    "symbol": "ADP",
-    "name": "Automatic Data Processing Inc.",
-    "sector": "Technology",
-    "market_cap": 110127259998.0
-  },
-  {
-    "symbol": "SNY",
-    "name": "Sanofi ADS",
-    "sector": "Health Care",
-    "market_cap": 104602456295.0
-  },
-  {
-    "symbol": "EQIX",
-    "name": "Equinix Inc. REIT",
-    "sector": "Real Estate",
-    "market_cap": 103887471322.0
-  },
-  {
-    "symbol": "ADBE",
-    "name": "Adobe Inc.",
-    "sector": "Technology",
-    "market_cap": 103445400000.0
-  },
-  {
-    "symbol": "CME",
-    "name": "CME Group Inc.",
-    "sector": "Finance",
-    "market_cap": 95043990796.0
-  },
-  {
-    "symbol": "CEG",
-    "name": "Constellation Energy Corporation",
-    "sector": "Utilities",
-    "market_cap": 94306725449.0
-  },
-  {
-    "symbol": "CSX",
-    "name": "CSX Corporation",
-    "sector": "Industrials",
-    "market_cap": 93920478292.0
-  },
-  {
-    "symbol": "MAR",
-    "name": "Marriott International",
-    "sector": "Consumer Discretionary",
-    "market_cap": 93789810805.0
-  },
-  {
-    "symbol": "CDNS",
-    "name": "Cadence Design Systems Inc.",
-    "sector": "Technology",
-    "market_cap": 93198499060.0
-  },
-  {
-    "symbol": "DASH",
-    "name": "DoorDash Inc.",
-    "sector": "Consumer Discretionary",
-    "market_cap": 92921374654.0
-  },
-  {
-    "symbol": "MELI",
-    "name": "MercadoLibre Inc.",
-    "sector": "Consumer Discretionary",
-    "market_cap": 92775843060.0
-  },
-  {
-    "symbol": "MNST",
-    "name": "Monster Beverage Corporation",
-    "sector": "Consumer Staples",
-    "market_cap": 92089243638.0
+    "market_cap": 118780903284.0
   },
   {
     "symbol": "ABNB",
     "name": "Airbnb Inc.",
     "sector": "Consumer Discretionary",
-    "market_cap": 91394174524.0
+    "market_cap": 110763375456.0
   },
   {
-    "symbol": "CMCSA",
-    "name": "Comcast Corporation",
-    "sector": "Telecommunications",
-    "market_cap": 89319182542.0
+    "symbol": "ADP",
+    "name": "Automatic Data Processing Inc.",
+    "sector": "Technology",
+    "market_cap": 107693955373.0
+  },
+  {
+    "symbol": "APP",
+    "name": "Applovin Corporation",
+    "sector": "Technology",
+    "market_cap": 106646580680.0
+  },
+  {
+    "symbol": "SNY",
+    "name": "Sanofi ADS",
+    "sector": "Health Care",
+    "market_cap": 106236488604.0
+  },
+  {
+    "symbol": "ADBE",
+    "name": "Adobe Inc.",
+    "sector": "Technology",
+    "market_cap": 104824725000.0
+  },
+  {
+    "symbol": "EQIX",
+    "name": "Equinix Inc. REIT",
+    "sector": "Real Estate",
+    "market_cap": 101868648626.0
+  },
+  {
+    "symbol": "CEG",
+    "name": "Constellation Energy Corporation",
+    "sector": "Utilities",
+    "market_cap": 98625002018.0
+  },
+  {
+    "symbol": "MELI",
+    "name": "MercadoLibre Inc.",
+    "sector": "Consumer Discretionary",
+    "market_cap": 98351795880.0
+  },
+  {
+    "symbol": "CME",
+    "name": "CME Group Inc.",
+    "sector": "Finance",
+    "market_cap": 93246094481.0
+  },
+  {
+    "symbol": "CSX",
+    "name": "CSX Corporation",
+    "sector": "Industrials",
+    "market_cap": 92512597355.0
   },
   {
     "symbol": "INTU",
     "name": "Intuit Inc.",
     "sector": "Technology",
-    "market_cap": 88054295670.0
+    "market_cap": 92028788280.0
   },
   {
-    "symbol": "NTES",
-    "name": "NetEase Inc. American Depositary Shares",
+    "symbol": "DASH",
+    "name": "DoorDash Inc.",
+    "sector": "Consumer Discretionary",
+    "market_cap": 91858678648.0
+  },
+  {
+    "symbol": "MAR",
+    "name": "Marriott International",
+    "sector": "Consumer Discretionary",
+    "market_cap": 91135209993.0
+  },
+  {
+    "symbol": "CMCSA",
+    "name": "Comcast Corporation",
+    "sector": "Telecommunications",
+    "market_cap": 91022528097.0
+  },
+  {
+    "symbol": "CDNS",
+    "name": "Cadence Design Systems Inc.",
     "sector": "Technology",
-    "market_cap": 83186379768.0
+    "market_cap": 90199469290.0
   },
   {
     "symbol": "DDOG",
     "name": "Datadog Inc.",
     "sector": "Technology",
-    "market_cap": 81618111736.0
-  },
-  {
-    "symbol": "ROST",
-    "name": "Ross Stores Inc.",
-    "sector": "Consumer Discretionary",
-    "market_cap": 81577835438.0
+    "market_cap": 88612534423.0
   },
   {
     "symbol": "HOOD",
     "name": "Robinhood Markets Inc.",
     "sector": "Finance",
-    "market_cap": 81555752984.0
+    "market_cap": 84855384926.0
   },
   {
     "symbol": "CTAS",
     "name": "Cintas Corporation",
     "sector": "Industrials",
-    "market_cap": 80894276756.0
-  },
-  {
-    "symbol": "MDLZ",
-    "name": "Mondelez International Inc.",
-    "sector": "Consumer Staples",
-    "market_cap": 80088330577.0
+    "market_cap": 82146807482.0
   },
   {
     "symbol": "REGN",
     "name": "Regeneron Pharmaceuticals Inc.",
     "sector": "Health Care",
-    "market_cap": 79492575785.0
+    "market_cap": 82055125436.0
+  },
+  {
+    "symbol": "NTES",
+    "name": "NetEase Inc. American Depositary Shares",
+    "sector": "Technology",
+    "market_cap": 81610203348.0
+  },
+  {
+    "symbol": "ROST",
+    "name": "Ross Stores Inc.",
+    "sector": "Consumer Discretionary",
+    "market_cap": 80775882748.0
+  },
+  {
+    "symbol": "MDLZ",
+    "name": "Mondelez International Inc.",
+    "sector": "Consumer Staples",
+    "market_cap": 78850311761.0
   },
   {
     "symbol": "SNPS",
     "name": "Synopsys Inc.",
     "sector": "Technology",
-    "market_cap": 77736776364.0
+    "market_cap": 78680769436.0
   },
   {
     "symbol": "ORLY",
     "name": "O'Reilly Automotive Inc.",
     "sector": "Consumer Discretionary",
-    "market_cap": 77377126926.0
+    "market_cap": 74885500515.0
   },
   {
     "symbol": "HON",
     "name": "Honeywell International Inc.",
     "sector": "Industrials",
-    "market_cap": 76300138007.0
+    "market_cap": 72934235101.0
   },
   {
     "symbol": "PCAR",
     "name": "PACCAR Inc.",
     "sector": "Industrials",
-    "market_cap": 69511755693.0
-  },
-  {
-    "symbol": "AEP",
-    "name": "American Electric Power Company Inc.",
-    "sector": "Utilities",
-    "market_cap": 68191212312.0
+    "market_cap": 69759147221.0
   },
   {
     "symbol": "MPWR",
     "name": "Monolithic Power Systems Inc.",
     "sector": "Technology",
-    "market_cap": 66771600400.0
+    "market_cap": 68903891730.0
   },
   {
     "symbol": "WBD",
     "name": "Warner Bros. Discovery Inc. Series A",
     "sector": "Telecommunications",
-    "market_cap": 66188408933.0
+    "market_cap": 67964738710.0
   },
   {
-    "symbol": "LITE",
-    "name": "Lumentum Holdings Inc.",
-    "sector": "Telecommunications",
-    "market_cap": 65201068000.0
-  },
-  {
-    "symbol": "BKR",
-    "name": "Baker Hughes Company",
-    "sector": "Consumer Discretionary",
-    "market_cap": 62290297955.0
-  },
-  {
-    "symbol": "TER",
-    "name": "Teradyne Inc.",
-    "sector": "Industrials",
-    "market_cap": 60173991268.0
+    "symbol": "AEP",
+    "name": "American Electric Power Company Inc.",
+    "sector": "Utilities",
+    "market_cap": 67276624760.0
   },
   {
     "symbol": "BRKRP",
     "name": "Bruker Corporation 6.375% Mandatory Convertible Preferred Stock Series A",
     "sector": "Industrials",
-    "market_cap": 59912792670.0
+    "market_cap": 65060475118.0
   },
   {
-    "symbol": "NXPI",
-    "name": "NXP Semiconductors N.V.",
-    "sector": "Technology",
-    "market_cap": 58446612250.0
+    "symbol": "BKR",
+    "name": "Baker Hughes Company",
+    "sector": "Consumer Discretionary",
+    "market_cap": 64335206542.0
+  },
+  {
+    "symbol": "LITE",
+    "name": "Lumentum Holdings Inc.",
+    "sector": "Telecommunications",
+    "market_cap": 63841902000.0
   },
   {
     "symbol": "FAST",
     "name": "Fastenal Company",
     "sector": "Consumer Discretionary",
-    "market_cap": 58292876708.0
+    "market_cap": 60105922874.0
   },
   {
-    "symbol": "ALAB",
-    "name": "Astera Labs Inc.",
+    "symbol": "NXPI",
+    "name": "NXP Semiconductors N.V.",
     "sector": "Technology",
-    "market_cap": 56821731779.0
+    "market_cap": 59606567450.0
   },
   {
-    "symbol": "ARGX",
-    "name": "argenx SE American Depositary Shares",
-    "sector": "Health Care",
-    "market_cap": 54323645866.0
+    "symbol": "TER",
+    "name": "Teradyne Inc.",
+    "sector": "Industrials",
+    "market_cap": 59340695070.0
   },
   {
     "symbol": "FANG",
     "name": "Diamondback Energy Inc.",
     "sector": "Energy",
-    "market_cap": 53345440510.0
+    "market_cap": 56483712244.0
+  },
+  {
+    "symbol": "ALAB",
+    "name": "Astera Labs Inc.",
+    "sector": "Technology",
+    "market_cap": 54125617597.0
+  },
+  {
+    "symbol": "ARGX",
+    "name": "argenx SE American Depositary Shares",
+    "sector": "Health Care",
+    "market_cap": 53668261769.0
   },
   {
     "symbol": "NDAQ",
     "name": "Nasdaq Inc.",
     "sector": "Finance",
-    "market_cap": 52935157128.0
+    "market_cap": 53114029887.0
   },
   {
     "symbol": "ADSK",
     "name": "Autodesk Inc.",
     "sector": "Technology",
-    "market_cap": 51161170000.0
-  },
-  {
-    "symbol": "PYPL",
-    "name": "PayPal Holdings Inc.",
-    "sector": "Industrials",
-    "market_cap": 51139451048.0
-  },
-  {
-    "symbol": "HBANL",
-    "name": "Huntington Bancshares Incorporated Depositary Shares Each Representing a 1/40th Interest in a Share of 6.875% Series J Non-Cumulative Perpetual Preferred Stock",
-    "sector": "Finance",
-    "market_cap": 50651799688.0
+    "market_cap": 53085490000.0
   },
   {
     "symbol": "HONA",
     "name": "Honeywell Aerospace Inc.",
     "sector": "Industrials",
-    "market_cap": 49591562683.0
-  },
-  {
-    "symbol": "CCEP",
-    "name": "Coca-Cola Europacific Partners plc",
-    "sector": "Consumer Staples",
-    "market_cap": 49143598372.0
-  },
-  {
-    "symbol": "EBAY",
-    "name": "eBay Inc.",
-    "sector": "Consumer Discretionary",
-    "market_cap": 49013531475.0
-  },
-  {
-    "symbol": "NBIS",
-    "name": "Nebius Group N.V.",
-    "sector": "Technology",
-    "market_cap": 48210189077.0
-  },
-  {
-    "symbol": "XEL",
-    "name": "Xcel Energy Inc.",
-    "sector": "Utilities",
-    "market_cap": 48078102533.0
+    "market_cap": 52591965659.0
   },
   {
     "symbol": "CBRS",
     "name": "Cerebras Systems Inc.",
     "sector": "Technology",
-    "market_cap": 47088324807.0
-  },
-  {
-    "symbol": "FER",
-    "name": "Ferrovial N.V.",
-    "sector": "Industrials",
-    "market_cap": 47045342403.0
-  },
-  {
-    "symbol": "EXC",
-    "name": "Exelon Corporation",
-    "sector": "Utilities",
-    "market_cap": 46781749784.0
-  },
-  {
-    "symbol": "CRWV",
-    "name": "CoreWeave Inc.",
-    "sector": "Technology",
-    "market_cap": 46553517624.0
-  },
-  {
-    "symbol": "IDXX",
-    "name": "IDEXX Laboratories Inc.",
-    "sector": "Health Care",
-    "market_cap": 46480858440.0
-  },
-  {
-    "symbol": "MDLN",
-    "name": "Medline Inc.",
-    "sector": "Health Care",
-    "market_cap": 45335378540.0
-  },
-  {
-    "symbol": "FLEX",
-    "name": "Flex Ltd.",
-    "sector": "Technology",
-    "market_cap": 45307275252.0
-  },
-  {
-    "symbol": "JD",
-    "name": "JD.com Inc. American Depositary Shares",
-    "sector": "Consumer Discretionary",
-    "market_cap": 44812578217.0
-  },
-  {
-    "symbol": "ODFL",
-    "name": "Old Dominion Freight Line Inc.",
-    "sector": "Industrials",
-    "market_cap": 43966574709.0
-  },
-  {
-    "symbol": "RKLB",
-    "name": "Rocket Lab Corporation",
-    "sector": "Industrials",
-    "market_cap": 43802901833.0
-  },
-  {
-    "symbol": "TRI",
-    "name": "Thomson Reuters Corporation Common Shares",
-    "sector": "Consumer Discretionary",
-    "market_cap": 43685976919.0
-  },
-  {
-    "symbol": "TTWO",
-    "name": "Take-Two Interactive Software Inc.",
-    "sector": "Technology",
-    "market_cap": 43161929148.0
-  },
-  {
-    "symbol": "CRDO",
-    "name": "Credo Technology Group Holding Ltd",
-    "sector": "Technology",
-    "market_cap": 42970102036.0
-  },
-  {
-    "symbol": "PAYX",
-    "name": "Paychex Inc.",
-    "sector": "Industrials",
-    "market_cap": 42728181972.0
-  },
-  {
-    "symbol": "HBANM",
-    "name": "Huntington Bancshares Incorporated Depositary Shares each representing a 1/1000th interest in a share of Huntington Series I Preferred Stock",
-    "sector": "Finance",
-    "market_cap": 42186261567.0
+    "market_cap": 52316399109.0
   },
   {
     "symbol": "AXON",
     "name": "Axon Enterprise Inc.",
     "sector": "Industrials",
-    "market_cap": 42111361149.0
+    "market_cap": 51692179539.0
   },
   {
-    "symbol": "RVMD",
-    "name": "Revolution Medicines Inc.",
-    "sector": "Health Care",
-    "market_cap": 42053706148.0
+    "symbol": "HBANL",
+    "name": "Huntington Bancshares Incorporated Depositary Shares Each Representing a 1/40th Interest in a Share of 6.875% Series J Non-Cumulative Perpetual Preferred Stock",
+    "sector": "Finance",
+    "market_cap": 50914453615.0
   },
   {
-    "symbol": "WDAY",
-    "name": "Workday Inc.",
+    "symbol": "PYPL",
+    "name": "PayPal Holdings Inc.",
+    "sector": "Industrials",
+    "market_cap": 50472191566.0
+  },
+  {
+    "symbol": "CRWV",
+    "name": "CoreWeave Inc.",
     "sector": "Technology",
-    "market_cap": 42049280000.0
+    "market_cap": 49275913651.0
   },
   {
-    "symbol": "UAL",
-    "name": "United Airlines Holdings Inc.",
-    "sector": "Consumer Discretionary",
-    "market_cap": 41910256641.0
+    "symbol": "NBIS",
+    "name": "Nebius Group N.V.",
+    "sector": "Technology",
+    "market_cap": 49060748027.0
   },
   {
-    "symbol": "KDP",
-    "name": "Keurig Dr Pepper Inc.",
+    "symbol": "XEL",
+    "name": "Xcel Energy Inc.",
+    "sector": "Utilities",
+    "market_cap": 48509100204.0
+  },
+  {
+    "symbol": "CCEP",
+    "name": "Coca-Cola Europacific Partners plc",
     "sector": "Consumer Staples",
-    "market_cap": 41320191134.0
+    "market_cap": 48353668939.0
   },
   {
-    "symbol": "BTSGU",
-    "name": "BrightSpring Health Services Inc. Tangible Equity Unit",
-    "sector": "Health Care",
-    "market_cap": 40461258642.0
+    "symbol": "FER",
+    "name": "Ferrovial N.V.",
+    "sector": "Industrials",
+    "market_cap": 47246790574.0
   },
   {
-    "symbol": "MCHP",
-    "name": "Microchip Technology Incorporated",
+    "symbol": "EBAY",
+    "name": "eBay Inc.",
+    "sector": "Consumer Discretionary",
+    "market_cap": 47174450000.0
+  },
+  {
+    "symbol": "TTWO",
+    "name": "Take-Two Interactive Software Inc.",
     "sector": "Technology",
-    "market_cap": 40378102393.0
+    "market_cap": 46838600972.0
   },
   {
-    "symbol": "ESLT",
-    "name": "Elbit Systems Ltd.",
+    "symbol": "EXC",
+    "name": "Exelon Corporation",
+    "sector": "Utilities",
+    "market_cap": 46317235499.0
+  },
+  {
+    "symbol": "RKLB",
+    "name": "Rocket Lab Corporation",
     "sector": "Industrials",
-    "market_cap": 39858155581.0
+    "market_cap": 46315186675.0
   },
   {
-    "symbol": "HBANZ",
-    "name": "Huntington Bancshares Incorporated Depositary Shares Each Representing a 1/1000th Interest in a Share of 5.50% Series L Non-Cumulative Perpetual Preferred Stock",
-    "sector": "Finance",
-    "market_cap": 39600130590.0
+    "symbol": "IDXX",
+    "name": "IDEXX Laboratories Inc.",
+    "sector": "Health Care",
+    "market_cap": 46216153890.0
   },
   {
-    "symbol": "ROP",
-    "name": "Roper Technologies Inc.",
-    "sector": "Industrials",
-    "market_cap": 39271559048.0
+    "symbol": "CRDO",
+    "name": "Credo Technology Group Holding Ltd",
+    "sector": "Technology",
+    "market_cap": 46188710556.0
   },
   {
-    "symbol": "COIN",
-    "name": "Coinbase Global Inc.",
-    "sector": "Finance",
-    "market_cap": 38364526973.0
+    "symbol": "MDLN",
+    "name": "Medline Inc.",
+    "sector": "Health Care",
+    "market_cap": 46067350520.0
   },
   {
-    "symbol": "VOD",
-    "name": "Vodafone Group Plc American Depositary Shares",
-    "sector": "Telecommunications",
-    "market_cap": 38014413408.0
+    "symbol": "TRI",
+    "name": "Thomson Reuters Corporation Common Shares",
+    "sector": "Consumer Discretionary",
+    "market_cap": 45416688000.0
+  },
+  {
+    "symbol": "FLEX",
+    "name": "Flex Ltd.",
+    "sector": "Technology",
+    "market_cap": 45218618537.0
   },
   {
     "symbol": "NTRA",
     "name": "Natera Inc.",
     "sector": "Health Care",
-    "market_cap": 38006498075.0
+    "market_cap": 45076764842.0
   },
   {
-    "symbol": "NTAP",
-    "name": "NetApp Inc.",
+    "symbol": "WDAY",
+    "name": "Workday Inc.",
     "sector": "Technology",
-    "market_cap": 37574937062.0
+    "market_cap": 44773690000.0
   },
   {
-    "symbol": "STLD",
-    "name": "Steel Dynamics Inc.",
-    "sector": "Industrials",
-    "market_cap": 37477428450.0
+    "symbol": "MNST",
+    "name": "Monster Beverage Corporation",
+    "sector": "Consumer Staples",
+    "market_cap": 44597813407.0
   },
   {
-    "symbol": "MSTR",
-    "name": "Strategy Inc",
+    "symbol": "RVMD",
+    "name": "Revolution Medicines Inc.",
+    "sector": "Health Care",
+    "market_cap": 44056850720.0
+  },
+  {
+    "symbol": "MCHP",
+    "name": "Microchip Technology Incorporated",
     "sector": "Technology",
-    "market_cap": 37212263984.0
+    "market_cap": 43994564145.0
   },
   {
-    "symbol": "BIDU",
-    "name": "Baidu Inc. ADS",
-    "sector": "Technology",
-    "market_cap": 37199823208.0
-  },
-  {
-    "symbol": "STRF",
-    "name": "Strategy Inc 10.00% Series A Perpetual Strife Preferred Stock",
-    "sector": "Technology",
-    "market_cap": 36812669203.0
-  },
-  {
-    "symbol": "EXPE",
-    "name": "Expedia Group Inc.",
+    "symbol": "JD",
+    "name": "JD.com Inc. American Depositary Shares",
     "sector": "Consumer Discretionary",
-    "market_cap": 36795168146.0
+    "market_cap": 43596997765.0
+  },
+  {
+    "symbol": "ODFL",
+    "name": "Old Dominion Freight Line Inc.",
+    "sector": "Industrials",
+    "market_cap": 43428770912.0
+  },
+  {
+    "symbol": "PAYX",
+    "name": "Paychex Inc.",
+    "sector": "Industrials",
+    "market_cap": 43144330918.0
+  },
+  {
+    "symbol": "HBANM",
+    "name": "Huntington Bancshares Incorporated Depositary Shares each representing a 1/1000th interest in a share of Huntington Series I Preferred Stock",
+    "sector": "Finance",
+    "market_cap": 42226669863.0
+  },
+  {
+    "symbol": "UAL",
+    "name": "United Airlines Holdings Inc.",
+    "sector": "Consumer Discretionary",
+    "market_cap": 40998176241.0
   },
   {
     "symbol": "ONC",
     "name": "BeOne Medicines Ltd. American Depositary Shares",
     "sector": "Health Care",
-    "market_cap": 36665193775.0
+    "market_cap": 40849673350.0
   },
   {
-    "symbol": "STRC",
-    "name": "Strategy Inc Variable Rate Series A Perpetual Stretch Preferred Stock",
-    "sector": "Technology",
-    "market_cap": 36140274139.0
-  },
-  {
-    "symbol": "KMB",
-    "name": "Kimberly-Clark Corporation",
-    "sector": "Consumer Discretionary",
-    "market_cap": 36138038269.0
-  },
-  {
-    "symbol": "MCHPP",
-    "name": "Microchip Technology Incorporated Depositary Shares Each Representing a 1/20th Interest in a Share of 7.50% Series A Mandatory Convertible Preferred Stock",
-    "sector": "Technology",
-    "market_cap": 35116351288.0
-  },
-  {
-    "symbol": "HBAN",
-    "name": "Huntington Bancshares Incorporated",
+    "symbol": "IBKR",
+    "name": "Interactive Brokers Group Inc.",
     "sector": "Finance",
-    "market_cap": 35074401379.0
+    "market_cap": 40677358192.0
   },
   {
-    "symbol": "ERIC",
-    "name": "Ericsson American Depositary Shares",
-    "sector": "Technology",
-    "market_cap": 34252933628.0
-  },
-  {
-    "symbol": "ACGL",
-    "name": "Arch Capital Group Ltd.",
-    "sector": "Finance",
-    "market_cap": 33880639921.0
-  },
-  {
-    "symbol": "NTRS",
-    "name": "Northern Trust Corporation",
-    "sector": "Finance",
-    "market_cap": 33689453943.0
-  },
-  {
-    "symbol": "RPRX",
-    "name": "Royalty Pharma plc",
-    "sector": "Health Care",
-    "market_cap": 32972152001.0
-  },
-  {
-    "symbol": "HBANP",
-    "name": "Huntington Bancshares Incorporated Depositary Shares 4.500% Series H Non-Cumulative Perpetual Preferred Stock",
-    "sector": "Finance",
-    "market_cap": 32682634308.0
-  },
-  {
-    "symbol": "RYAAY",
-    "name": "Ryanair Holdings plc American Depositary Shares",
-    "sector": "Consumer Discretionary",
-    "market_cap": 31863455924.0
-  },
-  {
-    "symbol": "GEHC",
-    "name": "GE HealthCare Technologies Inc.",
-    "sector": "Health Care",
-    "market_cap": 31758060378.0
-  },
-  {
-    "symbol": "WTW",
-    "name": "Willis Towers Watson Public Limited Company",
-    "sector": "Finance",
-    "market_cap": 31577387299.0
-  },
-  {
-    "symbol": "SMCIP",
-    "name": "Super Micro Computer Inc. Depositary Shares representing a 1/20th Interest in a Share of 7% Series A Mandatory Convertible Preferred Stock",
-    "sector": "Technology",
-    "market_cap": 31418101500.0
-  },
-  {
-    "symbol": "DXCM",
-    "name": "DexCom Inc.",
-    "sector": "Health Care",
-    "market_cap": 31328490710.0
-  },
-  {
-    "symbol": "CASY",
-    "name": "Casey's General Stores Inc.",
-    "sector": "Consumer Discretionary",
-    "market_cap": 30803630512.0
-  },
-  {
-    "symbol": "AGNCN",
-    "name": "AGNC Investment Corp. Depositary Shares Each Representing a 1/1000th Interest in a Share of 7.00% Series C Fixed-To-Floating Rate Cumulative Redeemable Preferred Stock",
-    "sector": "Real Estate",
-    "market_cap": 30620985776.0
-  },
-  {
-    "symbol": "ON",
-    "name": "ON Semiconductor Corporation",
-    "sector": "Technology",
-    "market_cap": 30494787106.0
-  },
-  {
-    "symbol": "BIIB",
-    "name": "Biogen Inc.",
-    "sector": "Health Care",
-    "market_cap": 30478694707.0
-  },
-  {
-    "symbol": "BSP",
-    "name": "Bending Spoons S.p.A.",
-    "sector": "Technology",
-    "market_cap": 30410392404.0
-  },
-  {
-    "symbol": "AGNCO",
-    "name": "AGNC Investment Corp. Depositary Shares each representing a 1/1000th interest in a share of 6.50% Series E Fixed-to-Floating Cumulative Redeemable Preferred Stock",
-    "sector": "Real Estate",
-    "market_cap": 30312760600.0
-  },
-  {
-    "symbol": "AGNCZ",
-    "name": "AGNC Investment Corp. Depositary Shares Each Representing a 1/1000th Interest in a Share of 8.75% Series H Fixed-Rate Cumulative Redeemable Preferred Stock",
-    "sector": "Real Estate",
-    "market_cap": 30223849491.0
-  },
-  {
-    "symbol": "AGNCP",
-    "name": "AGNC Investment Corp. Depositary Shares Each Representing a 1/1000th Interest in a Share of 6.125% Series F Fixed-to-Floating Rate Cumulative Redeemable Preferred Stock",
-    "sector": "Real Estate",
-    "market_cap": 29897842093.0
-  },
-  {
-    "symbol": "AGNCL",
-    "name": "AGNC Investment Corp. Depositary Shares Each Representing a 1/1000th Interest in a Share of 7.75% Series G Fixed-Rate Reset Cumulative Redeemable Preferred Stock",
-    "sector": "Real Estate",
-    "market_cap": 29862277650.0
-  },
-  {
-    "symbol": "AGNCM",
-    "name": "AGNC Investment Corp. Depositary Shares rep 6.875% Series D Fixed-to-Floating Cumulative Redeemable Preferred Stock",
-    "sector": "Real Estate",
-    "market_cap": 29814858392.0
-  },
-  {
-    "symbol": "MDB",
-    "name": "MongoDB Inc.",
-    "sector": "Technology",
-    "market_cap": 29759812990.0
-  },
-  {
-    "symbol": "ZM",
-    "name": "Zoom Communications Inc.",
-    "sector": "Technology",
-    "market_cap": 29704423683.0
-  },
-  {
-    "symbol": "KHC",
-    "name": "The Kraft Heinz Company",
+    "symbol": "KDP",
+    "name": "Keurig Dr Pepper Inc.",
     "sector": "Consumer Staples",
-    "market_cap": 29597009844.0
+    "market_cap": 39701125364.0
   },
   {
-    "symbol": "ILMN",
-    "name": "Illumina Inc.",
-    "sector": "Health Care",
-    "market_cap": 29251720000.0
+    "symbol": "ROP",
+    "name": "Roper Technologies Inc.",
+    "sector": "Industrials",
+    "market_cap": 39510899163.0
   },
   {
-    "symbol": "TCOM",
-    "name": "Trip.com Group Limited American Depositary Shares",
-    "sector": "Consumer Discretionary",
-    "market_cap": 29117569465.0
-  },
-  {
-    "symbol": "ALNY",
-    "name": "Alnylam Pharmaceuticals Inc.",
-    "sector": "Health Care",
-    "market_cap": 28918826582.0
-  },
-  {
-    "symbol": "FISV",
-    "name": "Fiserv Inc.",
-    "sector": "Consumer Discretionary",
-    "market_cap": 28854373182.0
-  },
-  {
-    "symbol": "INSM",
-    "name": "Insmed Incorporated",
-    "sector": "Health Care",
-    "market_cap": 28730537380.0
-  },
-  {
-    "symbol": "LPLA",
-    "name": "LPL Financial Holdings Inc.",
+    "symbol": "HBANZ",
+    "name": "Huntington Bancshares Incorporated Depositary Shares Each Representing a 1/1000th Interest in a Share of 5.50% Series L Non-Cumulative Perpetual Preferred Stock",
     "sector": "Finance",
-    "market_cap": 28272419225.0
+    "market_cap": 39344346073.0
   },
   {
-    "symbol": "GFS",
-    "name": "GlobalFoundries Inc.",
-    "sector": "Technology",
-    "market_cap": 28021173012.0
+    "symbol": "COIN",
+    "name": "Coinbase Global Inc.",
+    "sector": "Finance",
+    "market_cap": 39200890019.0
   },
   {
     "symbol": "TEAM",
     "name": "Atlassian Corporation",
     "sector": "Technology",
-    "market_cap": 27957605357.0
+    "market_cap": 39100552177.0
   },
   {
-    "symbol": "CINF",
-    "name": "Cincinnati Financial Corporation",
-    "sector": "Finance",
-    "market_cap": 27478709177.0
-  },
-  {
-    "symbol": "CPRT",
-    "name": "Copart Inc. (DE)",
-    "sector": "Consumer Discretionary",
-    "market_cap": 26857791093.0
-  },
-  {
-    "symbol": "VRSN",
-    "name": "VeriSign Inc.",
+    "symbol": "NTAP",
+    "name": "NetApp Inc.",
     "sector": "Technology",
-    "market_cap": 26415459000.0
+    "market_cap": 38946614575.0
+  },
+  {
+    "symbol": "STLD",
+    "name": "Steel Dynamics Inc.",
+    "sector": "Industrials",
+    "market_cap": 37794183525.0
+  },
+  {
+    "symbol": "VOD",
+    "name": "Vodafone Group Plc American Depositary Shares",
+    "sector": "Telecommunications",
+    "market_cap": 37776823324.0
+  },
+  {
+    "symbol": "MCHPP",
+    "name": "Microchip Technology Incorporated Depositary Shares Each Representing a 1/20th Interest in a Share of 7.50% Series A Mandatory Convertible Preferred Stock",
+    "sector": "Technology",
+    "market_cap": 37711953590.0
+  },
+  {
+    "symbol": "BTSGU",
+    "name": "BrightSpring Health Services Inc. Tangible Equity Unit",
+    "sector": "Health Care",
+    "market_cap": 37649607777.0
+  },
+  {
+    "symbol": "STRF",
+    "name": "Strategy Inc 10.00% Series A Perpetual Strife Preferred Stock",
+    "sector": "Technology",
+    "market_cap": 36997097564.0
+  },
+  {
+    "symbol": "MSTR",
+    "name": "Strategy Inc",
+    "sector": "Technology",
+    "market_cap": 36920252414.0
+  },
+  {
+    "symbol": "EXPE",
+    "name": "Expedia Group Inc.",
+    "sector": "Consumer Discretionary",
+    "market_cap": 36761195723.0
+  },
+  {
+    "symbol": "STRC",
+    "name": "Strategy Inc Variable Rate Series A Perpetual Stretch Preferred Stock",
+    "sector": "Technology",
+    "market_cap": 36624398585.0
+  },
+  {
+    "symbol": "KMB",
+    "name": "Kimberly-Clark Corporation",
+    "sector": "Consumer Discretionary",
+    "market_cap": 36108106156.0
+  },
+  {
+    "symbol": "ESLT",
+    "name": "Elbit Systems Ltd.",
+    "sector": "Industrials",
+    "market_cap": 36094652723.0
+  },
+  {
+    "symbol": "BIDU",
+    "name": "Baidu Inc. ADS",
+    "sector": "Technology",
+    "market_cap": 36046366694.0
+  },
+  {
+    "symbol": "BSP",
+    "name": "Bending Spoons S.p.A.",
+    "sector": "Technology",
+    "market_cap": 35994050278.0
+  },
+  {
+    "symbol": "HBAN",
+    "name": "Huntington Bancshares Incorporated",
+    "sector": "Finance",
+    "market_cap": 35902771458.0
+  },
+  {
+    "symbol": "MDB",
+    "name": "MongoDB Inc.",
+    "sector": "Technology",
+    "market_cap": 35322485061.0
+  },
+  {
+    "symbol": "NTRS",
+    "name": "Northern Trust Corporation",
+    "sector": "Finance",
+    "market_cap": 34355412520.0
+  },
+  {
+    "symbol": "ERIC",
+    "name": "Ericsson American Depositary Shares",
+    "sector": "Technology",
+    "market_cap": 33949511971.0
+  },
+  {
+    "symbol": "DXCM",
+    "name": "DexCom Inc.",
+    "sector": "Health Care",
+    "market_cap": 33785109290.0
+  },
+  {
+    "symbol": "ACGL",
+    "name": "Arch Capital Group Ltd.",
+    "sector": "Finance",
+    "market_cap": 33529173921.0
+  },
+  {
+    "symbol": "RPRX",
+    "name": "Royalty Pharma plc",
+    "sector": "Health Care",
+    "market_cap": 33229319579.0
+  },
+  {
+    "symbol": "SMCIP",
+    "name": "Super Micro Computer Inc. Depositary Shares representing a 1/20th Interest in a Share of 7% Series A Mandatory Convertible Preferred Stock",
+    "sector": "Technology",
+    "market_cap": 33228371131.0
+  },
+  {
+    "symbol": "GEHC",
+    "name": "GE HealthCare Technologies Inc.",
+    "sector": "Health Care",
+    "market_cap": 32860174833.0
+  },
+  {
+    "symbol": "HBANP",
+    "name": "Huntington Bancshares Incorporated Depositary Shares 4.500% Series H Non-Cumulative Perpetual Preferred Stock",
+    "sector": "Finance",
+    "market_cap": 32629699440.0
+  },
+  {
+    "symbol": "WTW",
+    "name": "Willis Towers Watson Public Limited Company",
+    "sector": "Finance",
+    "market_cap": 31798422509.0
+  },
+  {
+    "symbol": "ON",
+    "name": "ON Semiconductor Corporation",
+    "sector": "Technology",
+    "market_cap": 31577073690.0
+  },
+  {
+    "symbol": "RYAAY",
+    "name": "Ryanair Holdings plc American Depositary Shares",
+    "sector": "Consumer Discretionary",
+    "market_cap": 31242500053.0
+  },
+  {
+    "symbol": "ZM",
+    "name": "Zoom Communications Inc.",
+    "sector": "Technology",
+    "market_cap": 31100209041.0
+  },
+  {
+    "symbol": "CASY",
+    "name": "Casey's General Stores Inc.",
+    "sector": "Consumer Discretionary",
+    "market_cap": 30710748178.0
+  },
+  {
+    "symbol": "AGNCN",
+    "name": "AGNC Investment Corp. Depositary Shares Each Representing a 1/1000th Interest in a Share of 7.00% Series C Fixed-To-Floating Rate Cumulative Redeemable Preferred Stock",
+    "sector": "Real Estate",
+    "market_cap": 30680259848.0
+  },
+  {
+    "symbol": "AGNCO",
+    "name": "AGNC Investment Corp. Depositary Shares each representing a 1/1000th interest in a share of 6.50% Series E Fixed-to-Floating Cumulative Redeemable Preferred Stock",
+    "sector": "Real Estate",
+    "market_cap": 30395744301.0
+  },
+  {
+    "symbol": "BIIB",
+    "name": "Biogen Inc.",
+    "sector": "Health Care",
+    "market_cap": 30125562652.0
+  },
+  {
+    "symbol": "AGNCZ",
+    "name": "AGNC Investment Corp. Depositary Shares Each Representing a 1/1000th Interest in a Share of 8.75% Series H Fixed-Rate Cumulative Redeemable Preferred Stock",
+    "sector": "Real Estate",
+    "market_cap": 30099373939.0
+  },
+  {
+    "symbol": "AGNCL",
+    "name": "AGNC Investment Corp. Depositary Shares Each Representing a 1/1000th Interest in a Share of 7.75% Series G Fixed-Rate Reset Cumulative Redeemable Preferred Stock",
+    "sector": "Real Estate",
+    "market_cap": 29921551722.0
+  },
+  {
+    "symbol": "AGNCM",
+    "name": "AGNC Investment Corp. Depositary Shares rep 6.875% Series D Fixed-to-Floating Cumulative Redeemable Preferred Stock",
+    "sector": "Real Estate",
+    "market_cap": 29862277650.0
+  },
+  {
+    "symbol": "AGNCP",
+    "name": "AGNC Investment Corp. Depositary Shares Each Representing a 1/1000th Interest in a Share of 6.125% Series F Fixed-to-Floating Rate Cumulative Redeemable Preferred Stock",
+    "sector": "Real Estate",
+    "market_cap": 29862277650.0
+  },
+  {
+    "symbol": "ALNY",
+    "name": "Alnylam Pharmaceuticals Inc.",
+    "sector": "Health Care",
+    "market_cap": 29598576902.0
+  },
+  {
+    "symbol": "KHC",
+    "name": "The Kraft Heinz Company",
+    "sector": "Consumer Staples",
+    "market_cap": 29230555635.0
+  },
+  {
+    "symbol": "LPLA",
+    "name": "LPL Financial Holdings Inc.",
+    "sector": "Finance",
+    "market_cap": 29228350625.0
+  },
+  {
+    "symbol": "ILMN",
+    "name": "Illumina Inc.",
+    "sector": "Health Care",
+    "market_cap": 29118840000.0
+  },
+  {
+    "symbol": "TCOM",
+    "name": "Trip.com Group Limited American Depositary Shares",
+    "sector": "Consumer Discretionary",
+    "market_cap": 29092381256.0
+  },
+  {
+    "symbol": "INSM",
+    "name": "Insmed Incorporated",
+    "sector": "Health Care",
+    "market_cap": 28950835853.0
   },
   {
     "symbol": "ZS",
     "name": "Zscaler Inc.",
     "sector": "Technology",
-    "market_cap": 26293968765.0
+    "market_cap": 28873235689.0
   },
   {
-    "symbol": "FSLR",
-    "name": "First Solar Inc.",
+    "symbol": "GFS",
+    "name": "GlobalFoundries Inc.",
     "sector": "Technology",
-    "market_cap": 26237674042.0
-  },
-  {
-    "symbol": "ASTS",
-    "name": "AST SpaceMobile Inc.",
-    "sector": "Consumer Discretionary",
-    "market_cap": 26144071170.0
-  },
-  {
-    "symbol": "FOXA",
-    "name": "Fox Corporation",
-    "sector": "Industrials",
-    "market_cap": 25963312404.0
-  },
-  {
-    "symbol": "FCNCA",
-    "name": "First Citizens BancShares Inc.",
-    "sector": "Finance",
-    "market_cap": 25925970195.0
-  },
-  {
-    "symbol": "AFRM",
-    "name": "Affirm Holdings Inc.",
-    "sector": "Finance",
-    "market_cap": 25646532108.0
-  },
-  {
-    "symbol": "CTSH",
-    "name": "Cognizant Technology Solutions Corporation",
-    "sector": "Technology",
-    "market_cap": 25625771050.0
-  },
-  {
-    "symbol": "ROIV",
-    "name": "Roivant Sciences Ltd. Common Shares",
-    "sector": "Health Care",
-    "market_cap": 25380102337.0
+    "market_cap": 28277124950.0
   },
   {
     "symbol": "TSEM",
     "name": "Tower Semiconductor Ltd.",
     "sector": "Technology",
-    "market_cap": 25351764917.0
+    "market_cap": 28158849524.0
   },
   {
-    "symbol": "ECHO",
-    "name": "EchoStar  Corporation",
+    "symbol": "FISV",
+    "name": "Fiserv Inc.",
     "sector": "Consumer Discretionary",
-    "market_cap": 25281406317.0
+    "market_cap": 28034741531.0
   },
   {
-    "symbol": "JBHT",
-    "name": "J.B. Hunt Transport Services Inc.",
-    "sector": "Industrials",
-    "market_cap": 25098767448.0
+    "symbol": "ASTS",
+    "name": "AST SpaceMobile Inc.",
+    "sector": "Consumer Discretionary",
+    "market_cap": 27801363092.0
+  },
+  {
+    "symbol": "CPRT",
+    "name": "Copart Inc. (DE)",
+    "sector": "Consumer Discretionary",
+    "market_cap": 27218857571.0
+  },
+  {
+    "symbol": "CINF",
+    "name": "Cincinnati Financial Corporation",
+    "sector": "Finance",
+    "market_cap": 26583932174.0
+  },
+  {
+    "symbol": "CTSH",
+    "name": "Cognizant Technology Solutions Corporation",
+    "sector": "Technology",
+    "market_cap": 26396030647.0
   },
   {
     "symbol": "STRK",
     "name": "Strategy Inc 8.00% Series A Perpetual Strike Preferred Stock",
     "sector": "Technology",
-    "market_cap": 25070730253.0
-  },
-  {
-    "symbol": "FWONK",
-    "name": "Liberty Media Corporation Series C Liberty Formula One",
-    "sector": "Industrials",
-    "market_cap": 24982883031.0
-  },
-  {
-    "symbol": "OKTA",
-    "name": "Okta Inc.",
-    "sector": "Technology",
-    "market_cap": 24943094951.0
-  },
-  {
-    "symbol": "DLTR",
-    "name": "Dollar Tree Inc.",
-    "sector": "Consumer Discretionary",
-    "market_cap": 24921200572.0
-  },
-  {
-    "symbol": "PFG",
-    "name": "Principal Financial Group Inc",
-    "sector": "Finance",
-    "market_cap": 24709816618.0
-  },
-  {
-    "symbol": "VRSK",
-    "name": "Verisk Analytics Inc.",
-    "sector": "Technology",
-    "market_cap": 24697103277.0
+    "market_cap": 26261830081.0
   },
   {
     "symbol": "STRD",
     "name": "Strategy Inc 10.00% Series A Perpetual Stride Preferred Stock",
     "sector": "Technology",
-    "market_cap": 24279225206.0
+    "market_cap": 26196511703.0
   },
   {
-    "symbol": "TROW",
-    "name": "T. Rowe Price Group Inc.",
-    "sector": "Finance",
-    "market_cap": 24236946877.0
+    "symbol": "OKTA",
+    "name": "Okta Inc.",
+    "sector": "Technology",
+    "market_cap": 26128461180.0
   },
   {
-    "symbol": "TW",
-    "name": "Tradeweb Markets Inc.",
-    "sector": "Finance",
-    "market_cap": 24179800030.0
-  },
-  {
-    "symbol": "ARXS",
-    "name": "Arxis Inc.",
+    "symbol": "FOXA",
+    "name": "Fox Corporation",
     "sector": "Industrials",
-    "market_cap": 24042348968.0
+    "market_cap": 26077060259.0
   },
   {
-    "symbol": "INCY",
-    "name": "Incyte Corp.",
+    "symbol": "VRSN",
+    "name": "VeriSign Inc.",
+    "sector": "Technology",
+    "market_cap": 25972989000.0
+  },
+  {
+    "symbol": "FSLR",
+    "name": "First Solar Inc.",
+    "sector": "Technology",
+    "market_cap": 25890546627.0
+  },
+  {
+    "symbol": "AFRM",
+    "name": "Affirm Holdings Inc.",
+    "sector": "Finance",
+    "market_cap": 25688394428.0
+  },
+  {
+    "symbol": "FWONK",
+    "name": "Liberty Media Corporation Series C Liberty Formula One",
+    "sector": "Industrials",
+    "market_cap": 25667534694.0
+  },
+  {
+    "symbol": "ECHO",
+    "name": "EchoStar  Corporation",
+    "sector": "Consumer Discretionary",
+    "market_cap": 25557372490.0
+  },
+  {
+    "symbol": "ROIV",
+    "name": "Roivant Sciences Ltd. Common Shares",
     "sector": "Health Care",
-    "market_cap": 23995359171.0
+    "market_cap": 25461886279.0
+  },
+  {
+    "symbol": "FCNCA",
+    "name": "First Citizens BancShares Inc.",
+    "sector": "Finance",
+    "market_cap": 25444867466.0
   },
   {
     "symbol": "SYM",
     "name": "Symbotic Inc.",
     "sector": "Industrials",
-    "market_cap": 23867189874.0
+    "market_cap": 25214183207.0
   },
   {
-    "symbol": "FFIV",
-    "name": "F5 Inc.",
-    "sector": "Telecommunications",
-    "market_cap": 23305098358.0
-  },
-  {
-    "symbol": "FOX",
-    "name": "Fox Corporation",
+    "symbol": "JBHT",
+    "name": "J.B. Hunt Transport Services Inc.",
     "sector": "Industrials",
-    "market_cap": 23265716262.0
+    "market_cap": 24923146512.0
   },
   {
-    "symbol": "SOFI",
-    "name": "SoFi Technologies Inc.",
-    "sector": "Finance",
-    "market_cap": 23217615720.0
-  },
-  {
-    "symbol": "ULTA",
-    "name": "Ulta Beauty Inc.",
+    "symbol": "DLTR",
+    "name": "Dollar Tree Inc.",
     "sector": "Consumer Discretionary",
-    "market_cap": 23162210874.0
+    "market_cap": 24609877739.0
   },
   {
-    "symbol": "MTSI",
-    "name": "MACOM Technology Solutions Holdings Inc.",
-    "sector": "Technology",
-    "market_cap": 23013857269.0
-  },
-  {
-    "symbol": "BNTX",
-    "name": "BioNTech SE American Depositary Share",
+    "symbol": "INCY",
+    "name": "Incyte Corp.",
     "sector": "Health Care",
-    "market_cap": 22907326136.0
+    "market_cap": 24540616108.0
   },
   {
-    "symbol": "FWONA",
-    "name": "Liberty Media Corporation Series A Liberty Formula One",
+    "symbol": "TW",
+    "name": "Tradeweb Markets Inc.",
+    "sector": "Finance",
+    "market_cap": 24437231118.0
+  },
+  {
+    "symbol": "TROW",
+    "name": "T. Rowe Price Group Inc.",
+    "sector": "Finance",
+    "market_cap": 24264677938.0
+  },
+  {
+    "symbol": "ARXS",
+    "name": "Arxis Inc.",
     "sector": "Industrials",
-    "market_cap": 22870276912.0
+    "market_cap": 24259435641.0
   },
   {
-    "symbol": "FTAI",
-    "name": "FTAI Aviation Ltd.",
-    "sector": "Industrials",
-    "market_cap": 22721889742.0
-  },
-  {
-    "symbol": "UTHR",
-    "name": "United Therapeutics Corporation",
-    "sector": "Health Care",
-    "market_cap": 22621561885.0
-  },
-  {
-    "symbol": "RIVN",
-    "name": "Rivian Automotive Inc.",
-    "sector": "Industrials",
-    "market_cap": 22268096489.0
-  },
-  {
-    "symbol": "ROKU",
-    "name": "Roku Inc.",
-    "sector": "Telecommunications",
-    "market_cap": 22147868601.0
-  },
-  {
-    "symbol": "ENTG",
-    "name": "Entegris Inc.",
-    "sector": "Industrials",
-    "market_cap": 21796920000.0
-  },
-  {
-    "symbol": "WWD",
-    "name": "Woodward Inc.",
-    "sector": "Energy",
-    "market_cap": 21597780040.0
+    "symbol": "PFG",
+    "name": "Principal Financial Group Inc",
+    "sector": "Finance",
+    "market_cap": 24200247572.0
   },
   {
     "symbol": "MRNA",
     "name": "Moderna Inc.",
     "sector": "Health Care",
-    "market_cap": 21502844982.0
+    "market_cap": 24181717797.0
+  },
+  {
+    "symbol": "RIVN",
+    "name": "Rivian Automotive Inc.",
+    "sector": "Industrials",
+    "market_cap": 23686999907.0
+  },
+  {
+    "symbol": "VRSK",
+    "name": "Verisk Analytics Inc.",
+    "sector": "Technology",
+    "market_cap": 23554333492.0
+  },
+  {
+    "symbol": "FFIV",
+    "name": "F5 Inc.",
+    "sector": "Telecommunications",
+    "market_cap": 23443653348.0
+  },
+  {
+    "symbol": "FWONA",
+    "name": "Liberty Media Corporation Series A Liberty Formula One",
+    "sector": "Industrials",
+    "market_cap": 23424947296.0
+  },
+  {
+    "symbol": "BNTX",
+    "name": "BioNTech SE American Depositary Share",
+    "sector": "Health Care",
+    "market_cap": 23311765165.0
+  },
+  {
+    "symbol": "ULTA",
+    "name": "Ulta Beauty Inc.",
+    "sector": "Consumer Discretionary",
+    "market_cap": 23272263510.0
+  },
+  {
+    "symbol": "FOX",
+    "name": "Fox Corporation",
+    "sector": "Industrials",
+    "market_cap": 23223439246.0
+  },
+  {
+    "symbol": "SOFI",
+    "name": "SoFi Technologies Inc.",
+    "sector": "Finance",
+    "market_cap": 23222434426.0
+  },
+  {
+    "symbol": "FTAI",
+    "name": "FTAI Aviation Ltd.",
+    "sector": "Industrials",
+    "market_cap": 23170719730.0
+  },
+  {
+    "symbol": "ENTG",
+    "name": "Entegris Inc.",
+    "sector": "Industrials",
+    "market_cap": 22952088000.0
+  },
+  {
+    "symbol": "MTSI",
+    "name": "MACOM Technology Solutions Holdings Inc.",
+    "sector": "Technology",
+    "market_cap": 22905933335.0
   },
   {
     "symbol": "EXE",
     "name": "Expand Energy Corporation",
     "sector": "Energy",
-    "market_cap": 21289088436.0
+    "market_cap": 22742932231.0
+  },
+  {
+    "symbol": "ROKU",
+    "name": "Roku Inc.",
+    "sector": "Telecommunications",
+    "market_cap": 22397906612.0
   },
   {
     "symbol": "GH",
     "name": "Guardant Health Inc.",
     "sector": "Health Care",
-    "market_cap": 21146632469.0
+    "market_cap": 22154445705.0
   },
   {
-    "symbol": "SITM",
-    "name": "SiTime Corporation",
-    "sector": "Technology",
-    "market_cap": 20594419313.0
+    "symbol": "UTHR",
+    "name": "United Therapeutics Corporation",
+    "sector": "Health Care",
+    "market_cap": 22110151726.0
   },
   {
-    "symbol": "MKSI",
-    "name": "MKS Inc.",
-    "sector": "Industrials",
-    "market_cap": 19676280219.0
+    "symbol": "WWD",
+    "name": "Woodward Inc.",
+    "sector": "Energy",
+    "market_cap": 21054558496.0
   },
   {
     "symbol": "INIO",
     "name": "INNIO N.V.",
     "sector": "Consumer Discretionary",
-    "market_cap": 19477500000.0
+    "market_cap": 20587500000.0
   },
   {
-    "symbol": "SBAC",
-    "name": "SBA Communications Corporation",
-    "sector": "Real Estate",
-    "market_cap": 19367106904.0
-  },
-  {
-    "symbol": "EVRG",
-    "name": "Evergy Inc.",
-    "sector": "Utilities",
-    "market_cap": 19137191336.0
-  },
-  {
-    "symbol": "BPYPM",
-    "name": "Brookfield Property Partners L.P. 6.25% Cumulative Redeemable Preferred Units Series 1",
-    "sector": "Finance",
-    "market_cap": 19061807884.0
-  },
-  {
-    "symbol": "VTRS",
-    "name": "Viatris Inc.",
-    "sector": "Health Care",
-    "market_cap": 18970562734.0
-  },
-  {
-    "symbol": "CHTR",
-    "name": "Charter Communications Inc. New",
-    "sector": "Telecommunications",
-    "market_cap": 18779048340.0
-  },
-  {
-    "symbol": "SSNC",
-    "name": "SS&C Technologies Holdings Inc.",
+    "symbol": "SITM",
+    "name": "SiTime Corporation",
     "sector": "Technology",
-    "market_cap": 18734854881.0
+    "market_cap": 20060388116.0
   },
   {
-    "symbol": "BPYPP",
-    "name": "Brookfield Property Partners L.P. 6.50% Cumulative Redeemable Perpetual Preferred Units",
-    "sector": "Finance",
-    "market_cap": 18724417374.0
-  },
-  {
-    "symbol": "NWS",
-    "name": "News Corporation",
-    "sector": "Consumer Discretionary",
-    "market_cap": 18542021761.0
+    "symbol": "MKSI",
+    "name": "MKS Inc.",
+    "sector": "Industrials",
+    "market_cap": 19905256724.0
   },
   {
     "symbol": "RGLD",
     "name": "Royal Gold Inc.",
     "sector": "Industrials",
-    "market_cap": 18510254562.0
+    "market_cap": 19784801888.0
+  },
+  {
+    "symbol": "SBAC",
+    "name": "SBA Communications Corporation",
+    "sector": "Real Estate",
+    "market_cap": 19304853377.0
   },
   {
     "symbol": "TPG",
     "name": "TPG Inc.",
     "sector": "Finance",
-    "market_cap": 18332839339.0
-  },
-  {
-    "symbol": "LSCC",
-    "name": "Lattice Semiconductor Corporation",
-    "sector": "Technology",
-    "market_cap": 18279296006.0
-  },
-  {
-    "symbol": "CDW",
-    "name": "CDW Corporation",
-    "sector": "Consumer Discretionary",
-    "market_cap": 18137157438.0
-  },
-  {
-    "symbol": "EWBC",
-    "name": "East West Bancorp Inc.",
-    "sector": "Finance",
-    "market_cap": 18067067033.0
-  },
-  {
-    "symbol": "LNT",
-    "name": "Alliant Energy Corporation",
-    "sector": "Utilities",
-    "market_cap": 18025472274.0
-  },
-  {
-    "symbol": "TSCO",
-    "name": "Tractor Supply Company",
-    "sector": "Consumer Discretionary",
-    "market_cap": 17878487409.0
-  },
-  {
-    "symbol": "BPYPO",
-    "name": "Brookfield Property Partners L.P. 6.375% Cumulative Redeemable Perpetual Preferred Units Series 2",
-    "sector": "Finance",
-    "market_cap": 17782491919.0
+    "market_cap": 19122689560.0
   },
   {
     "symbol": "SMCI",
     "name": "Super Micro Computer Inc.",
     "sector": "Technology",
-    "market_cap": 17669675001.0
+    "market_cap": 19004824031.0
   },
   {
-    "symbol": "CG",
-    "name": "The Carlyle Group Inc.",
+    "symbol": "BPYPM",
+    "name": "Brookfield Property Partners L.P. 6.25% Cumulative Redeemable Preferred Units Series 1",
     "sector": "Finance",
-    "market_cap": 17595549992.0
+    "market_cap": 18922246143.0
   },
   {
-    "symbol": "TIGO",
-    "name": "Millicom International Cellular S.A.",
+    "symbol": "EVRG",
+    "name": "Evergy Inc.",
+    "sector": "Utilities",
+    "market_cap": 18913425119.0
+  },
+  {
+    "symbol": "CHTR",
+    "name": "Charter Communications Inc. New",
     "sector": "Telecommunications",
-    "market_cap": 17476183873.0
+    "market_cap": 18808867713.0
   },
   {
-    "symbol": "KSPI",
-    "name": "Joint Stock Company Kaspi.kz American Depository Shares",
-    "sector": "Other",
-    "market_cap": 17380812087.0
+    "symbol": "SSNC",
+    "name": "SS&C Technologies Holdings Inc.",
+    "sector": "Technology",
+    "market_cap": 18737201431.0
   },
   {
-    "symbol": "AKAM",
-    "name": "Akamai Technologies Inc.",
+    "symbol": "VTRS",
+    "name": "Viatris Inc.",
+    "sector": "Health Care",
+    "market_cap": 18699059266.0
+  },
+  {
+    "symbol": "BPYPP",
+    "name": "Brookfield Property Partners L.P. 6.50% Cumulative Redeemable Perpetual Preferred Units",
+    "sector": "Finance",
+    "market_cap": 18683828167.0
+  },
+  {
+    "symbol": "TSCO",
+    "name": "Tractor Supply Company",
     "sector": "Consumer Discretionary",
-    "market_cap": 17235445216.0
+    "market_cap": 18387506435.0
+  },
+  {
+    "symbol": "EWBC",
+    "name": "East West Bancorp Inc.",
+    "sector": "Finance",
+    "market_cap": 18228057322.0
   },
   {
     "symbol": "ZBRA",
     "name": "Zebra Technologies Corporation",
     "sector": "Industrials",
-    "market_cap": 17232434798.0
+    "market_cap": 18122821420.0
   },
   {
-    "symbol": "NDSN",
-    "name": "Nordson Corporation",
-    "sector": "Industrials",
-    "market_cap": 17215731573.0
+    "symbol": "KSPI",
+    "name": "Joint Stock Company Kaspi.kz American Depository Shares",
+    "sector": "Other",
+    "market_cap": 18054839222.0
   },
   {
-    "symbol": "CHRW",
-    "name": "C.H. Robinson Worldwide Inc.",
-    "sector": "Industrials",
-    "market_cap": 17137405498.0
-  },
-  {
-    "symbol": "GEN",
-    "name": "Gen Digital Inc.",
+    "symbol": "LSCC",
+    "name": "Lattice Semiconductor Corporation",
     "sector": "Technology",
-    "market_cap": 16820015527.0
+    "market_cap": 17912857905.0
   },
   {
-    "symbol": "JAZZ",
-    "name": "Jazz Pharmaceuticals plc (Ireland)",
-    "sector": "Health Care",
-    "market_cap": 16660326187.0
+    "symbol": "LNT",
+    "name": "Alliant Energy Corporation",
+    "sector": "Utilities",
+    "market_cap": 17781744657.0
   },
   {
-    "symbol": "PAA",
-    "name": "Plains All American Pipeline L.P. Common Units representing Limited Partner Interests",
-    "sector": "Energy",
-    "market_cap": 16594105184.0
+    "symbol": "BPYPO",
+    "name": "Brookfield Property Partners L.P. 6.375% Cumulative Redeemable Perpetual Preferred Units Series 2",
+    "sector": "Finance",
+    "market_cap": 17724341193.0
   },
   {
-    "symbol": "STRL",
-    "name": "Sterling Infrastructure Inc.",
-    "sector": "Industrials",
-    "market_cap": 16397892729.0
+    "symbol": "NWS",
+    "name": "News Corporation",
+    "sector": "Consumer Discretionary",
+    "market_cap": 17676189683.0
   },
   {
-    "symbol": "MEDP",
-    "name": "Medpace Holdings Inc.",
-    "sector": "Health Care",
-    "market_cap": 16328597292.0
+    "symbol": "CG",
+    "name": "The Carlyle Group Inc.",
+    "sector": "Finance",
+    "market_cap": 17408363290.0
   },
   {
     "symbol": "NTNX",
     "name": "Nutanix Inc.",
     "sector": "Technology",
-    "market_cap": 16251669001.0
+    "market_cap": 17387015139.0
   },
   {
-    "symbol": "NBIX",
-    "name": "Neurocrine Biosciences Inc.",
-    "sector": "Health Care",
-    "market_cap": 16245572107.0
+    "symbol": "GEN",
+    "name": "Gen Digital Inc.",
+    "sector": "Technology",
+    "market_cap": 17365009798.0
   },
   {
-    "symbol": "NWSA",
-    "name": "News Corporation",
-    "sector": "Consumer Discretionary",
-    "market_cap": 16242745369.0
-  },
-  {
-    "symbol": "LAMR",
-    "name": "Lamar Advertising Company",
-    "sector": "Real Estate",
-    "market_cap": 16236016160.0
-  },
-  {
-    "symbol": "BBIO",
-    "name": "BridgeBio Pharma Inc.",
-    "sector": "Health Care",
-    "market_cap": 16204597726.0
+    "symbol": "NDSN",
+    "name": "Nordson Corporation",
+    "sector": "Industrials",
+    "market_cap": 17348340289.0
   },
   {
     "symbol": "TLN",
     "name": "Talen Energy Corporation",
     "sector": "Utilities",
-    "market_cap": 16203241071.0
+    "market_cap": 17147555011.0
   },
   {
-    "symbol": "BPYPN",
-    "name": "Brookfield Property Partners L.P. 5.750% Cumulative Redeemable Perpetual Preferred Units Series 3",
-    "sector": "Finance",
-    "market_cap": 16165901745.0
+    "symbol": "CHRW",
+    "name": "C.H. Robinson Worldwide Inc.",
+    "sector": "Industrials",
+    "market_cap": 16955117536.0
+  },
+  {
+    "symbol": "CDW",
+    "name": "CDW Corporation",
+    "sector": "Consumer Discretionary",
+    "market_cap": 16923608958.0
+  },
+  {
+    "symbol": "MEDP",
+    "name": "Medpace Holdings Inc.",
+    "sector": "Health Care",
+    "market_cap": 16900507103.0
+  },
+  {
+    "symbol": "AKAM",
+    "name": "Akamai Technologies Inc.",
+    "sector": "Consumer Discretionary",
+    "market_cap": 16767416772.0
+  },
+  {
+    "symbol": "NBIX",
+    "name": "Neurocrine Biosciences Inc.",
+    "sector": "Health Care",
+    "market_cap": 16461068371.0
+  },
+  {
+    "symbol": "BBIO",
+    "name": "BridgeBio Pharma Inc.",
+    "sector": "Health Care",
+    "market_cap": 16380734657.0
+  },
+  {
+    "symbol": "PAA",
+    "name": "Plains All American Pipeline L.P. Common Units representing Limited Partner Interests",
+    "sector": "Energy",
+    "market_cap": 16333058461.0
   },
   {
     "symbol": "PTC",
     "name": "PTC Inc.",
     "sector": "Technology",
-    "market_cap": 16022034499.0
+    "market_cap": 16323681905.0
   },
   {
-    "symbol": "HST",
-    "name": "Host Hotels & Resorts Inc.",
-    "sector": "Real Estate",
-    "market_cap": 16012477590.0
+    "symbol": "STRL",
+    "name": "Sterling Infrastructure Inc.",
+    "sector": "Industrials",
+    "market_cap": 16296338850.0
+  },
+  {
+    "symbol": "BPYPN",
+    "name": "Brookfield Property Partners L.P. 5.750% Cumulative Redeemable Perpetual Preferred Units Series 3",
+    "sector": "Finance",
+    "market_cap": 16196256423.0
+  },
+  {
+    "symbol": "JAZZ",
+    "name": "Jazz Pharmaceuticals plc (Ireland)",
+    "sector": "Health Care",
+    "market_cap": 16097516804.0
+  },
+  {
+    "symbol": "TIGO",
+    "name": "Millicom International Cellular S.A.",
+    "sector": "Telecommunications",
+    "market_cap": 15921404980.0
+  },
+  {
+    "symbol": "NXT",
+    "name": "Nextpower Inc.",
+    "sector": "Technology",
+    "market_cap": 15913392058.0
   },
   {
     "symbol": "ASND",
     "name": "Ascendis Pharma A/S Ordinary Share",
     "sector": "Health Care",
-    "market_cap": 15485055389.0
+    "market_cap": 15777588755.0
+  },
+  {
+    "symbol": "WSE",
+    "name": "Wise Group plc",
+    "sector": "Industrials",
+    "market_cap": 15774527480.0
+  },
+  {
+    "symbol": "LAMR",
+    "name": "Lamar Advertising Company",
+    "sector": "Real Estate",
+    "market_cap": 15620372393.0
   }
 ]

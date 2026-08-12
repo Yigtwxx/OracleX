@@ -30,7 +30,8 @@ Two things happen on top of that:
 
 import asyncio
 import logging
-from typing import Optional
+from datetime import UTC, datetime
+from typing import Any, Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -84,6 +85,13 @@ class AuthUser(BaseModel):
     # off on the Supabase project, signing up as the admin address would
     # otherwise be enough to become an admin.
     email_verified: bool = False
+    # The next two exist for the DM eligibility gate
+    # (services/social/eligibility.py). They are read here, from the GoTrue user
+    # the token was just verified against, rather than from a `profiles` row: a
+    # request can write `profiles`, and both of these decide who may message
+    # strangers.
+    phone_verified: bool = False
+    created_at: Optional[datetime] = None
 
 
 def _resolve_user(token: str) -> Optional[AuthUser]:
@@ -110,7 +118,33 @@ def _resolve_user(token: str) -> Optional[AuthUser]:
         id=user.id,
         email=getattr(user, "email", None),
         email_verified=getattr(user, "email_confirmed_at", None) is not None,
+        phone_verified=getattr(user, "phone_confirmed_at", None) is not None,
+        created_at=_as_utc(getattr(user, "created_at", None)),
     )
+
+
+def _as_utc(value: Any) -> Optional[datetime]:
+    """
+    Coerce a GoTrue timestamp to an aware UTC datetime.
+
+    gotrue-py normally hands back a parsed `datetime`, but the field is
+    populated from JSON and has arrived as an ISO string often enough to be
+    worth handling. A naive value is read as UTC, which is what Postgres stored;
+    guessing local time would shift every account's age by the host's offset and
+    silently move the DM age gate.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    if not isinstance(value, datetime):
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 async def get_current_user(

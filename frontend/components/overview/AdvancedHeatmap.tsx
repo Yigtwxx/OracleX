@@ -1,376 +1,790 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { TrendingUp, TrendingDown, Volume2, MessageCircle, Code, Loader2, RefreshCw } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AlertTriangle,
+  Code,
+  Gauge,
+  RefreshCw,
+  Repeat,
+  Search,
+  TrendingUp,
+  Volume2,
+  X,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-interface CoinData {
-    id: string;
-    symbol: string;
-    name: string;
-    sector: string;
-    image: string;
-    price: number;
-    market_cap: number;
-    volume_24h: number;
-    price_change_24h: number;
-    social_score: number;
-    developer_score: number;
-    volume_score: number;
+import { useHeatmap } from '@/hooks/queries';
+import type { HeatmapCoin, HeatmapSector } from '@/lib/api';
+import {
+  bucketFor,
+  PRICE_SCALE,
+  SCORE_SCALE,
+  TURNOVER_SCALE,
+  UNKNOWN_BUCKET,
+  VOLUME_SCALE,
+  type HeatBucket,
+} from '@/lib/heatmap-scale';
+import { insetTile, squarify, type TreemapTile } from '@/lib/treemap';
+import { formatLargeNumber, formatPrice, formatVolume } from './overview-utils';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Metrics
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const METRICS = ['price', 'volume', 'turnover', 'developer'] as const;
+export type MetricType = (typeof METRICS)[number];
+
+type Timeframe = '24h' | '7d';
+type ViewMode = 'treemap' | 'sector';
+
+interface MetricConfig {
+  label: string;
+  icon: LucideIcon;
+  /** Reads the value colour is derived from. An accessor, not a string key —
+   *  the previous `coin[field as keyof CoinData]` cast was unchecked, so
+   *  renaming a field compiled cleanly and rendered every tile as "—". */
+  value: (coin: HeatmapCoin, timeframe: Timeframe) => number | undefined;
+  /** What the tile prints. Always a real unit, never the 0-100 colour score:
+   *  showing a normalised number as though it were a measurement is part of
+   *  what made the old board feel invented. */
+  display: (coin: HeatmapCoin, timeframe: Timeframe) => string;
+  scale: readonly HeatBucket[];
+  /** Shown when the whole board has no reading for this metric. */
+  emptyHint: string;
 }
 
-interface HeatmapData {
-    coins: CoinData[];
-    sectors: Record<string, CoinData[]>;
-    timestamp: string;
+function formatPercent(value: number | undefined, signed: boolean): string {
+  if (value === undefined) return '—';
+  const sign = signed && value >= 0 ? '+' : '';
+  return `${sign}${value.toFixed(1)}%`;
 }
 
-type MetricType = 'price' | 'volume' | 'social' | 'developer';
-
-const METRIC_CONFIG = {
-    price: {
-        label: 'Fiyat Değişimi',
-        icon: TrendingUp,
-        field: 'price_change_24h',
-        suffix: '%',
-        colorPositive: true,
-    },
-    volume: {
-        label: 'Hacim',
-        icon: Volume2,
-        field: 'volume_score',
-        suffix: '',
-        colorPositive: false,
-    },
-    social: {
-        label: 'Sosyal Hype',
-        icon: MessageCircle,
-        field: 'social_score',
-        suffix: '',
-        colorPositive: false,
-    },
-    developer: {
-        label: 'Geliştirici',
-        icon: Code,
-        field: 'developer_score',
-        suffix: '',
-        colorPositive: false,
-    },
+export const METRIC_CONFIG: Record<MetricType, MetricConfig> = {
+  price: {
+    label: 'Price change',
+    icon: TrendingUp,
+    value: (coin, timeframe) =>
+      timeframe === '24h' ? coin.price_change_24h : coin.price_change_7d,
+    display: (coin, timeframe) =>
+      formatPercent(timeframe === '24h' ? coin.price_change_24h : coin.price_change_7d, true),
+    scale: PRICE_SCALE,
+    emptyHint: 'No price changes reported for these assets.',
+  },
+  volume: {
+    label: 'Volume',
+    icon: Volume2,
+    value: (coin) => coin.volume_score,
+    display: (coin) => (coin.volume_24h === undefined ? '—' : formatVolume(coin.volume_24h)),
+    scale: VOLUME_SCALE,
+    emptyHint: 'No trading volume reported for these assets.',
+  },
+  turnover: {
+    label: 'Turnover',
+    icon: Repeat,
+    value: (coin) => coin.turnover_pct,
+    display: (coin) => formatPercent(coin.turnover_pct, false),
+    scale: TURNOVER_SCALE,
+    emptyHint: 'Turnover needs both volume and market cap, and neither is reported yet.',
+  },
+  developer: {
+    label: 'Developer',
+    icon: Code,
+    value: (coin) => coin.developer_score,
+    display: (coin) =>
+      coin.developer_score === undefined ? '—' : String(Math.round(coin.developer_score)),
+    scale: SCORE_SCALE,
+    // The honest explanation: CoinGecko's anonymous tier refuses the per-coin
+    // endpoint these scores come from, so without a key they never resolve.
+    emptyHint:
+      'Developer activity comes from one CoinGecko request per asset. The anonymous ' +
+      'tier rate-limits that endpoint, so set COINGECKO_API_KEY to populate it.',
+  },
 };
 
-function getHeatmapColor(value: number, metric: MetricType): string {
-    if (metric === 'price') {
-        // Price change: red for negative, green for positive
-        if (value >= 5) return 'bg-green-500';
-        if (value >= 3) return 'bg-green-600';
-        if (value >= 1) return 'bg-green-700';
-        if (value >= 0) return 'bg-green-800/50';
-        if (value >= -1) return 'bg-red-800/50';
-        if (value >= -3) return 'bg-red-700';
-        if (value >= -5) return 'bg-red-600';
-        return 'bg-red-500';
-    } else {
-        // Score-based: gradient from low to high
-        if (value >= 80) return 'bg-purple-500';
-        if (value >= 60) return 'bg-indigo-500';
-        if (value >= 40) return 'bg-blue-600';
-        if (value >= 20) return 'bg-cyan-700';
-        return 'bg-gray-700';
-    }
+const TIMEFRAMES: { value: Timeframe; label: string }[] = [
+  { value: '24h', label: '24h' },
+  { value: '7d', label: '7d' },
+];
+
+const COIN_COUNTS = [25, 50, 100] as const;
+
+/** Gutter between tiles, applied as an inset so it never distorts the areas. */
+const TILE_GAP = 3;
+
+const UNCLASSIFIED_SECTOR = 'Unclassified';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Presentation helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+function relativeAge(seconds: number | undefined): string {
+  if (seconds === undefined) return 'a moment ago';
+  if (seconds < 90) return `${Math.round(seconds)}s ago`;
+  if (seconds < 5400) return `${Math.round(seconds / 60)} min ago`;
+  return `${Math.round(seconds / 3600)}h ago`;
 }
 
-function formatValue(value: number, metric: MetricType): string {
-    const config = METRIC_CONFIG[metric];
-    if (metric === 'price') {
-        return `${value >= 0 ? '+' : ''}${value.toFixed(1)}${config.suffix}`;
-    }
-    return `${Math.round(value)}`;
+function sectorLabel(coin: HeatmapCoin): string {
+  return coin.sector ?? 'not classified yet';
 }
 
-function formatPrice(price: number): string {
-    if (price >= 1000) return `$${(price / 1000).toFixed(1)}K`;
-    if (price >= 1) return `$${price.toFixed(2)}`;
-    return `$${price.toFixed(4)}`;
+/** What a screen reader hears instead of the tile's cramped visible text. */
+function tileDescription(coin: HeatmapCoin, metric: MetricType, timeframe: Timeframe): string {
+  const config = METRIC_CONFIG[metric];
+  return [
+    `${coin.name} (${coin.symbol}).`,
+    `Market cap ${formatLargeNumber(coin.market_cap)}.`,
+    `${config.label} ${timeframe === '7d' && metric === 'price' ? 'over 7 days' : ''} ${config.display(coin, timeframe)}.`.replace(
+      /\s+/g,
+      ' '
+    ),
+    `Sector ${sectorLabel(coin)}.`,
+  ].join(' ');
 }
 
-function formatMarketCap(cap: number): string {
-    if (cap >= 1e12) return `$${(cap / 1e12).toFixed(1)}T`;
-    if (cap >= 1e9) return `$${(cap / 1e9).toFixed(1)}B`;
-    if (cap >= 1e6) return `$${(cap / 1e6).toFixed(1)}M`;
-    return `$${cap.toLocaleString()}`;
+// ─────────────────────────────────────────────────────────────────────────────
+// Tile
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface TileProps {
+  coin: HeatmapCoin;
+  tile: TreemapTile;
+  metric: MetricType;
+  timeframe: Timeframe;
+  selected: boolean;
+  onSelect: (coin: HeatmapCoin) => void;
 }
+
+function Tile({ coin, tile, metric, timeframe, selected, onSelect }: TileProps) {
+  const config = METRIC_CONFIG[metric];
+  const bucket = bucketFor(config.value(coin, timeframe), config.scale);
+  const { x, y, w, h } = insetTile(tile, TILE_GAP);
+
+  // Content is chosen by measured size, not by rank. Deciding by index is how
+  // the previous board ended up printing a full name and price into a 60px box.
+  // Below the symbol threshold nothing is drawn at all: a single clipped letter
+  // is noise, and the aria-label and detail panel carry the whole row anyway.
+  const showSymbol = w >= 30 && h >= 18;
+  const showValue = w >= 56 && h >= 40;
+  const showDetail = w >= 96 && h >= 68;
+
+  return (
+    <button
+      type="button"
+      aria-label={tileDescription(coin, metric, timeframe)}
+      aria-pressed={selected}
+      onClick={() => onSelect(coin)}
+      onFocus={() => onSelect(coin)}
+      // Deliberately not on hover. The panel is an `aria-live` region and
+      // `aria-pressed` is real state: selecting on mouseover would make it
+      // chatter on every pass of the cursor and would silently overwrite a
+      // selection made with the keyboard.
+      style={{ left: x, top: y, width: w, height: h }}
+      // The ink comes from the bucket alongside its background — the brightest
+      // ramp stop needs dark text, every other stop needs light. Nothing here
+      // sets a text colour of its own, and nothing uses a muted or translucent
+      // one: on a saturated tile those land near 2:1, and the biggest movers
+      // are exactly the tiles worth reading.
+      className={`absolute overflow-hidden p-1.5 transition-shadow hover:shadow-lg
+        focus-visible:z-20 ${
+          // A 12px tile with a 6px radius reads as a dot, not a tile.
+          showSymbol ? 'rounded-md' : 'rounded-sm'
+        } ${bucket.className} ${selected ? 'z-10 ring-1 ring-fg/50' : ''}`}
+    >
+      <div
+        className={`flex h-full flex-col overflow-hidden ${
+          // Small tiles anchor top-left so the symbol survives the crop; large
+          // ones centre, otherwise a 700px BTC tile strands its label at the
+          // very top and its figure at the very bottom.
+          showValue ? 'items-center justify-center gap-0.5' : 'items-start justify-start'
+        }`}
+      >
+        {showSymbol && (
+          <span className="block max-w-full truncate text-xs font-semibold leading-tight">
+            {coin.symbol}
+          </span>
+        )}
+        {showValue && (
+          <span className="block max-w-full truncate text-base font-bold leading-tight">
+            {config.display(coin, timeframe)}
+          </span>
+        )}
+        {showDetail && (
+          <span className="block max-w-full truncate text-[11px] leading-tight opacity-90">
+            {coin.price === undefined ? '—' : formatPrice(coin.price)}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Treemap surface
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface BoardProps {
+  coins: HeatmapCoin[];
+  metric: MetricType;
+  timeframe: Timeframe;
+  selectedId: string | undefined;
+  onSelect: (coin: HeatmapCoin) => void;
+}
+
+function TreemapBoard({ coins, metric, timeframe, selectedId, onSelect }: BoardProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setSize({ width, height });
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  // Area is market cap, always — the one thing on the board that means
+  // "how much this asset matters". Colour carries the selected metric.
+  const tiles = useMemo(
+    () =>
+      squarify(
+        coins.map((coin) => ({ id: coin.id, value: coin.market_cap })),
+        size.width,
+        size.height
+      ),
+    [coins, size.width, size.height]
+  );
+
+  const byId = useMemo(() => new Map(coins.map((coin) => [coin.id, coin])), [coins]);
+
+  return (
+    <div ref={containerRef} className="relative h-full w-full">
+      {tiles.map((tile) => {
+        const coin = byId.get(tile.id);
+        if (!coin) return undefined;
+        return (
+          <Tile
+            key={tile.id}
+            coin={coin}
+            tile={tile}
+            metric={metric}
+            timeframe={timeframe}
+            selected={selectedId === coin.id}
+            onSelect={onSelect}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/** Sectors laid out by their own market cap, each holding its members' tiles. */
+function SectorBoard({
+  sectors,
+  metric,
+  timeframe,
+  selectedId,
+  onSelect,
+}: Omit<BoardProps, 'coins'> & { sectors: HeatmapSector[] }) {
+  return (
+    <div className="flex flex-col gap-3 overflow-y-auto pb-2">
+      {sectors.map((sector) => {
+        const change = sector.weighted_change_24h;
+        return (
+          <section
+            key={sector.sector}
+            className="rounded-lg border border-line bg-surface p-3"
+            aria-label={`${sector.sector} sector`}
+          >
+            <header className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h3 className="text-sm font-semibold text-fg">{sector.sector}</h3>
+              <span className="text-xs text-fg-muted">
+                {sector.coin_count} {sector.coin_count === 1 ? 'asset' : 'assets'} ·{' '}
+                {formatLargeNumber(sector.market_cap)}
+              </span>
+              <span
+                className={`text-xs font-medium ${
+                  change === undefined ? 'text-fg-muted' : change >= 0 ? 'text-up' : 'text-down'
+                }`}
+              >
+                {/* Weighted, and labelled as such: a plain mean of members lets
+                    a $300M token move a sector as much as a $2T one. */}
+                {change === undefined ? 'no reading' : `${formatPercent(change, true)} weighted`}
+              </span>
+              {sector.coverage < 1 && (
+                <span className="text-xs text-warn">
+                  {Math.round(sector.coverage * 100)}% measured
+                </span>
+              )}
+            </header>
+            <div className="relative h-32">
+              <TreemapBoard
+                coins={sector.coins}
+                metric={metric}
+                timeframe={timeframe}
+                selectedId={selectedId}
+                onSelect={onSelect}
+              />
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Detail panel
+// ─────────────────────────────────────────────────────────────────────────────
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="text-xs text-fg-muted">{label}</dt>
+      <dd className="text-xs font-medium text-fg">{value}</dd>
+    </div>
+  );
+}
+
+/**
+ * Replaces the hover tooltip entirely.
+ *
+ * The tooltip was absolutely positioned inside an `overflow-auto` ancestor, so
+ * the whole first row — the largest, most-looked-at tiles — had it clipped. It
+ * was also mouse-only, which put market cap, sector, turnover and developer
+ * activity permanently out of reach of a keyboard or a screen reader. A panel
+ * fed by both click and focus fixes both, and cannot be clipped.
+ */
+function DetailPanel({ coin, timeframe }: { coin: HeatmapCoin | undefined; timeframe: Timeframe }) {
+  // The live region is mounted whether or not anything is selected: a region
+  // that appears at the same moment as its content is not reliably announced,
+  // so an empty one has to be sitting there first.
+  if (!coin) {
+    return (
+      <aside
+        className="shrink-0 border-t border-line bg-surface px-4 py-2"
+        aria-live="polite"
+        aria-label="Selected asset"
+      >
+        <p className="text-xs text-fg-muted">
+          Select an asset — click, or Tab to it — to see its full figures.
+        </p>
+      </aside>
+    );
+  }
+
+  const change = timeframe === '24h' ? coin.price_change_24h : coin.price_change_7d;
+
+  return (
+    <aside
+      className="shrink-0 border-t border-line bg-surface px-4 py-2"
+      aria-live="polite"
+      aria-label="Selected asset"
+    >
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <h3 className="text-sm font-semibold text-fg">
+          {coin.name} <span className="text-xs font-normal text-fg-muted">{coin.symbol}</span>
+        </h3>
+        {coin.peg_type && (
+          <span className="rounded border border-line px-1.5 text-[11px] text-fg-muted">
+            {coin.peg_type}
+          </span>
+        )}
+        <span
+          className={`text-sm font-medium ${
+            change === undefined ? 'text-fg-muted' : change >= 0 ? 'text-up' : 'text-down'
+          }`}
+        >
+          {formatPercent(change, true)} <span className="text-xs">{timeframe}</span>
+        </span>
+      </div>
+      <dl className="mt-1 grid grid-cols-2 gap-x-6 gap-y-0.5 sm:grid-cols-3 lg:grid-cols-5">
+        <DetailRow label="Price" value={coin.price === undefined ? '—' : formatPrice(coin.price)} />
+        <DetailRow label="Market cap" value={formatLargeNumber(coin.market_cap)} />
+        <DetailRow
+          label="Volume 24h"
+          value={coin.volume_24h === undefined ? '—' : formatVolume(coin.volume_24h)}
+        />
+        <DetailRow label="Turnover" value={formatPercent(coin.turnover_pct, false)} />
+        <DetailRow
+          label="Developer"
+          value={
+            coin.developer_score === undefined ? '—' : String(Math.round(coin.developer_score))
+          }
+        />
+      </dl>
+      <p className="mt-1 text-xs text-fg-muted">Sector: {sectorLabel(coin)}</p>
+    </aside>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Chrome
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ToggleGroup<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: { value: T; label: string; icon?: LucideIcon }[];
+  value: T;
+  onChange: (next: T) => void;
+}) {
+  return (
+    <div role="group" aria-label={label} className="flex gap-0.5">
+      {options.map((option) => {
+        const Icon = option.icon;
+        const active = option.value === value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(option.value)}
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm transition-colors ${
+              active ? 'bg-surface-2 text-fg' : 'text-fg-muted hover:text-fg'
+            }`}
+          >
+            {Icon && <Icon className="h-3 w-3" aria-hidden="true" />}
+            <span>{option.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Rendered from the same array `bucketFor` walks.
+ *
+ * The hand-written legend this replaces disagreed with the colour function: it
+ * showed a swatch the price scale never produces and omitted two buckets it
+ * does. A test asserts every entry here maps back to its own bucket.
+ */
+function Legend({ metric }: { metric: MetricType }) {
+  const scale = METRIC_CONFIG[metric].scale;
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs">
+      {scale.map((bucket) => (
+        <span key={bucket.className + bucket.label} className="flex items-center gap-1">
+          <span className={`h-3 w-3 rounded ${bucket.className}`} aria-hidden="true" />
+          <span className="text-fg-muted">{bucket.label}</span>
+        </span>
+      ))}
+      <span className="flex items-center gap-1">
+        <span className={`h-3 w-3 rounded ${UNKNOWN_BUCKET.className}`} aria-hidden="true" />
+        <span className="text-fg-muted">{UNKNOWN_BUCKET.label}</span>
+      </span>
+    </div>
+  );
+}
+
+function StatusMessage({
+  icon: Icon,
+  children,
+  action,
+}: {
+  icon: LucideIcon;
+  children: React.ReactNode;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
+      <Icon className="h-4 w-4 text-fg-muted" aria-hidden="true" />
+      <p className="max-w-md text-sm text-fg-muted">{children}</p>
+      {action}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Board
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function AdvancedHeatmap() {
-    const [data, setData] = useState<HeatmapData | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [selectedMetric, setSelectedMetric] = useState<MetricType>('price');
-    const [viewMode, setViewMode] = useState<'grid' | 'sector'>('grid');
-    const [hoveredCoin, setHoveredCoin] = useState<CoinData | null>(null);
+  const [metric, setMetric] = useState<MetricType>('price');
+  const [timeframe, setTimeframe] = useState<Timeframe>('24h');
+  const [view, setView] = useState<ViewMode>('treemap');
+  const [limit, setLimit] = useState<number>(50);
+  const [includePegged, setIncludePegged] = useState(false);
+  const [sectorFilter, setSectorFilter] = useState<string>('all');
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
 
-    const fetchData = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const res = await fetch('http://localhost:8000/api/heatmap/data');
-            if (!res.ok) throw new Error('Failed to fetch data');
-            const json = await res.json();
-            setData(json);
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const { data, isLoading, isFetching, isError, error, refetch } = useHeatmap(limit, includePegged);
 
-    useEffect(() => {
-        fetchData();
-        const interval = setInterval(fetchData, 60000); // Refresh every minute
-        return () => clearInterval(interval);
-    }, []);
+  // Debounced so typing does not re-run the layout on every keystroke.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearch(searchInput.trim().toLowerCase()), 150);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
 
-    const sortedCoins = useMemo(() => {
-        if (!data?.coins) return [];
-        const field = METRIC_CONFIG[selectedMetric].field as keyof CoinData;
-        return [...data.coins].sort((a, b) => {
-            const aVal = Number(a[field]) || 0;
-            const bVal = Number(b[field]) || 0;
-            return bVal - aVal;
-        });
-    }, [data, selectedMetric]);
+  const coins = useMemo(() => {
+    if (!data) return [];
+    return data.coins.filter((coin) => {
+      if (sectorFilter === UNCLASSIFIED_SECTOR && coin.sector !== undefined) return false;
+      if (
+        sectorFilter !== 'all' &&
+        sectorFilter !== UNCLASSIFIED_SECTOR &&
+        coin.sector !== sectorFilter
+      ) {
+        return false;
+      }
+      if (!search) return true;
+      return coin.symbol.toLowerCase().includes(search) || coin.name.toLowerCase().includes(search);
+    });
+  }, [data, sectorFilter, search]);
 
-    if (loading && !data) {
-        return (
-            <div className="h-full flex items-center justify-center bg-oracle-darker">
-                <div className="text-center">
-                    <Loader2 className="w-8 h-8 text-purple-500 animate-spin mx-auto mb-3" />
-                    <p className="text-gray-400">Isı haritası yükleniyor...</p>
-                </div>
-            </div>
-        );
-    }
+  const sectors = useMemo(() => {
+    if (!data) return [];
+    const visible = new Set(coins.map((coin) => coin.id));
+    return data.sectors
+      .map((sector) => ({
+        ...sector,
+        coins: sector.coins.filter((coin) => visible.has(coin.id)),
+      }))
+      .filter((sector) => sector.coins.length > 0);
+  }, [data, coins]);
 
-    if (error) {
-        return (
-            <div className="h-full flex items-center justify-center bg-oracle-darker">
-                <div className="text-center">
-                    <p className="text-red-400 mb-4">Hata: {error}</p>
-                    <button onClick={fetchData} className="px-4 py-2 bg-purple-600 rounded-lg text-white hover:bg-purple-500">
-                        Tekrar Dene
-                    </button>
-                </div>
-            </div>
-        );
-    }
+  const selected = useMemo(() => coins.find((coin) => coin.id === selectedId), [coins, selectedId]);
 
-    return (
-        <div className="h-full flex flex-col bg-oracle-darker overflow-hidden">
-            {/* Metric Selector */}
-            <div className="shrink-0 p-4 border-b border-oracle-border bg-oracle-dark/50">
-                <div className="flex items-center justify-between">
-                    <div className="flex gap-2">
-                        {(Object.keys(METRIC_CONFIG) as MetricType[]).map((metric) => {
-                            const config = METRIC_CONFIG[metric];
-                            const Icon = config.icon;
-                            return (
-                                <button
-                                    key={metric}
-                                    onClick={() => setSelectedMetric(metric)}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedMetric === metric
-                                            ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50'
-                                            : 'bg-oracle-card text-gray-400 border border-oracle-border hover:text-white hover:border-gray-600'
-                                        }`}
-                                >
-                                    <Icon className="w-4 h-4" />
-                                    <span>{config.label}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={fetchData}
-                            disabled={loading}
-                            className="p-2 rounded-lg bg-oracle-card border border-oracle-border hover:border-gray-600 transition-colors"
-                        >
-                            <RefreshCw className={`w-4 h-4 text-gray-400 ${loading ? 'animate-spin' : ''}`} />
-                        </button>
-                        <div className="flex bg-oracle-card rounded-lg border border-oracle-border p-1">
-                            <button
-                                onClick={() => setViewMode('grid')}
-                                className={`px-3 py-1 rounded text-xs font-medium transition-all ${viewMode === 'grid' ? 'bg-purple-500/30 text-purple-400' : 'text-gray-400'
-                                    }`}
-                            >
-                                Grid
-                            </button>
-                            <button
-                                onClick={() => setViewMode('sector')}
-                                className={`px-3 py-1 rounded text-xs font-medium transition-all ${viewMode === 'sector' ? 'bg-purple-500/30 text-purple-400' : 'text-gray-400'
-                                    }`}
-                            >
-                                Sektör
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+  const handleSelect = useCallback((coin: HeatmapCoin) => setSelectedId(coin.id), []);
 
-            {/* Heatmap Grid */}
-            <div className="flex-1 overflow-auto p-4">
-                {viewMode === 'grid' ? (
-                    <div className="grid grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2">
-                        {sortedCoins.map((coin, index) => {
-                            const field = METRIC_CONFIG[selectedMetric].field as keyof CoinData;
-                            const value = Number(coin[field]) || 0;
-                            const colorClass = getHeatmapColor(value, selectedMetric);
-                            const size = index < 3 ? 'col-span-2 row-span-2' : index < 8 ? 'col-span-1 row-span-1' : '';
+  const clearFilters = useCallback(() => {
+    setSearchInput('');
+    setSectorFilter('all');
+  }, []);
 
-                            return (
-                                <div
-                                    key={coin.id}
-                                    className={`${size} ${colorClass} rounded-lg p-3 cursor-pointer transition-all hover:scale-105 hover:shadow-xl hover:z-10 relative group`}
-                                    onMouseEnter={() => setHoveredCoin(coin)}
-                                    onMouseLeave={() => setHoveredCoin(null)}
-                                >
-                                    <div className="flex flex-col h-full justify-between">
-                                        <div>
-                                            <div className="text-white font-bold text-sm">{coin.symbol}</div>
-                                            {index < 8 && (
-                                                <div className="text-white/60 text-xs truncate">{coin.name}</div>
-                                            )}
-                                        </div>
-                                        <div className="mt-auto">
-                                            <div className={`text-lg font-bold ${selectedMetric === 'price'
-                                                    ? value >= 0 ? 'text-white' : 'text-white'
-                                                    : 'text-white'
-                                                }`}>
-                                                {formatValue(value, selectedMetric)}
-                                            </div>
-                                            {index < 3 && (
-                                                <div className="text-white/50 text-xs">
-                                                    {formatPrice(coin.price)}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
+  const hasFilters = search !== '' || sectorFilter !== 'all';
+  const metricIsEmpty =
+    coins.length > 0 &&
+    coins.every((coin) => METRIC_CONFIG[metric].value(coin, timeframe) === undefined);
 
-                                    {/* Hover Tooltip */}
-                                    {hoveredCoin?.id === coin.id && (
-                                        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 bg-oracle-dark border border-oracle-border rounded-lg shadow-2xl pointer-events-none">
-                                            <div className="text-white font-bold mb-1">{coin.name}</div>
-                                            <div className="text-gray-400 text-xs mb-2">{coin.sector}</div>
-                                            <div className="space-y-1 text-xs">
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-500">Fiyat:</span>
-                                                    <span className="text-white">{formatPrice(coin.price)}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-500">Market Cap:</span>
-                                                    <span className="text-white">{formatMarketCap(coin.market_cap)}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-500">24h:</span>
-                                                    <span className={coin.price_change_24h >= 0 ? 'text-green-400' : 'text-red-400'}>
-                                                        {coin.price_change_24h >= 0 ? '+' : ''}{coin.price_change_24h.toFixed(1)}%
-                                                    </span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-500">Sosyal:</span>
-                                                    <span className="text-purple-400">{Math.round(coin.social_score)}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-500">Dev:</span>
-                                                    <span className="text-cyan-400">{Math.round(coin.developer_score)}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        {data?.sectors && Object.entries(data.sectors).map(([sector, coins]) => (
-                            <div key={sector} className="bg-oracle-card rounded-xl border border-oracle-border p-4">
-                                <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-                                    <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                                    {sector}
-                                </h3>
-                                <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
-                                    {coins.map((coin) => {
-                                        const field = METRIC_CONFIG[selectedMetric].field as keyof CoinData;
-                                        const value = Number(coin[field]) || 0;
-                                        const colorClass = getHeatmapColor(value, selectedMetric);
+  // A failed refresh must never blank a populated board — react-query retains
+  // the previous `data`, so the error becomes a badge rather than a full-screen
+  // takeover. Only a cold failure gets the error state.
+  const showColdError = isError && !data;
 
-                                        return (
-                                            <div
-                                                key={coin.id}
-                                                className={`${colorClass} rounded-lg p-2 text-center cursor-pointer hover:scale-105 transition-transform`}
-                                            >
-                                                <div className="text-white font-bold text-sm">{coin.symbol}</div>
-                                                <div className="text-white/80 text-xs">{formatValue(value, selectedMetric)}</div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* Legend */}
-            <div className="shrink-0 p-3 border-t border-oracle-border bg-oracle-dark/50">
-                <div className="flex items-center justify-center gap-4 text-xs">
-                    {selectedMetric === 'price' ? (
-                        <>
-                            <div className="flex items-center gap-1">
-                                <div className="w-4 h-4 rounded bg-red-500"></div>
-                                <span className="text-gray-400">{'< -5%'}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <div className="w-4 h-4 rounded bg-red-700"></div>
-                                <span className="text-gray-400">-3% ~ -5%</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <div className="w-4 h-4 rounded bg-gray-600"></div>
-                                <span className="text-gray-400">~0%</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <div className="w-4 h-4 rounded bg-green-700"></div>
-                                <span className="text-gray-400">1% ~ 3%</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <div className="w-4 h-4 rounded bg-green-500"></div>
-                                <span className="text-gray-400">{'> +5%'}</span>
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <div className="flex items-center gap-1">
-                                <div className="w-4 h-4 rounded bg-gray-700"></div>
-                                <span className="text-gray-400">Düşük</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <div className="w-4 h-4 rounded bg-cyan-700"></div>
-                                <span className="text-gray-400">Orta</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <div className="w-4 h-4 rounded bg-blue-600"></div>
-                                <span className="text-gray-400">İyi</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <div className="w-4 h-4 rounded bg-indigo-500"></div>
-                                <span className="text-gray-400">Yüksek</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <div className="w-4 h-4 rounded bg-purple-500"></div>
-                                <span className="text-gray-400">Çok Yüksek</span>
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
+  return (
+    <div className="flex h-full flex-col overflow-hidden">
+      {/* Toolbar */}
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-line bg-surface px-4 py-1.5">
+        <ToggleGroup
+          label="Metric"
+          value={metric}
+          onChange={setMetric}
+          options={METRICS.map((value) => ({
+            value,
+            label: METRIC_CONFIG[value].label,
+            icon: METRIC_CONFIG[value].icon,
+          }))}
+        />
+        <div className="flex items-center gap-3">
+          {metric === 'price' && (
+            <ToggleGroup
+              label="Timeframe"
+              value={timeframe}
+              onChange={setTimeframe}
+              options={TIMEFRAMES}
+            />
+          )}
+          <ToggleGroup
+            label="View"
+            value={view}
+            onChange={setView}
+            options={[
+              { value: 'treemap', label: 'Treemap' },
+              { value: 'sector', label: 'Sector' },
+            ]}
+          />
+          <button
+            type="button"
+            aria-label="Refresh heatmap"
+            title="Refresh heatmap"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="rounded-md border border-line p-1.5 text-fg-muted transition-colors hover:border-line-strong hover:text-fg disabled:opacity-50"
+          >
+            <RefreshCw
+              className={`h-3 w-3 ${isFetching ? 'animate-spin' : ''}`}
+              aria-hidden="true"
+            />
+          </button>
         </div>
-    );
+      </div>
+
+      {/* Filters + provenance */}
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-1.5 text-xs">
+        <label className="flex items-center gap-1.5">
+          <Search className="h-3 w-3 text-fg-muted" aria-hidden="true" />
+          <span className="sr-only">Search assets</span>
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="Search"
+            className="w-24 rounded-md border border-line bg-bg px-2 py-0.5 text-fg placeholder:text-fg-subtle focus:border-line-strong focus:outline-none"
+          />
+        </label>
+
+        <label className="flex items-center gap-1.5 text-fg-muted">
+          Sector
+          <select
+            value={sectorFilter}
+            onChange={(event) => setSectorFilter(event.target.value)}
+            className="rounded-md border border-line bg-bg px-1.5 py-0.5 text-fg focus:border-line-strong focus:outline-none"
+          >
+            <option value="all">All</option>
+            {(data?.sectors ?? []).map((sector) => (
+              <option key={sector.sector} value={sector.sector}>
+                {sector.sector}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex items-center gap-1.5 text-fg-muted">
+          Assets
+          <select
+            value={limit}
+            onChange={(event) => setLimit(Number(event.target.value))}
+            className="rounded-md border border-line bg-bg px-1.5 py-0.5 text-fg focus:border-line-strong focus:outline-none"
+          >
+            {COIN_COUNTS.map((count) => (
+              <option key={count} value={count}>
+                {count}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex items-center gap-1.5 text-fg-muted">
+          <input
+            type="checkbox"
+            checked={includePegged}
+            onChange={(event) => setIncludePegged(event.target.checked)}
+            className="accent-accent"
+          />
+          Include stablecoins &amp; wrapped
+          {data && data.excluded_pegged > 0 && !includePegged && (
+            <span className="text-fg-subtle">({data.excluded_pegged} hidden)</span>
+          )}
+        </label>
+
+        {hasFilters && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="flex items-center gap-1 text-fg-muted hover:text-fg"
+          >
+            <X className="h-3 w-3" aria-hidden="true" />
+            Clear filters
+          </button>
+        )}
+
+        {/* States the encoding out loud. Without it, area is an unexplained
+            visual channel — which is exactly how the old index-based sizing
+            went unnoticed. */}
+        <span className="ml-auto text-fg-subtle">
+          Area: market cap · Colour: {METRIC_CONFIG[metric].label.toLowerCase()}
+        </span>
+      </div>
+
+      {/* Staleness / refresh failure — a badge, never a takeover */}
+      {data && (data.stale || isError) && (
+        <div
+          role="status"
+          className="flex shrink-0 items-center gap-2 border-b border-line bg-warn-bg px-4 py-1 text-xs text-fg"
+        >
+          <AlertTriangle className="h-3 w-3 text-warn" aria-hidden="true" />
+          <span>
+            {isError ? "Couldn't refresh — showing data from " : 'Showing data from '}
+            {relativeAge(data.age_seconds)}.
+          </span>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="underline underline-offset-2 hover:text-fg"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Board */}
+      <div className="min-h-0 flex-1 p-3">
+        {isLoading && !data ? (
+          <StatusMessage icon={RefreshCw}>Loading the board…</StatusMessage>
+        ) : showColdError ? (
+          <StatusMessage
+            icon={AlertTriangle}
+            action={
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="mt-1 rounded-md border border-line px-2.5 py-1 text-sm text-fg-muted hover:text-fg"
+              >
+                Retry
+              </button>
+            }
+          >
+            {error instanceof Error
+              ? `Market data is unavailable right now. (${error.message})`
+              : 'Market data is unavailable right now.'}
+          </StatusMessage>
+        ) : coins.length === 0 ? (
+          <StatusMessage
+            icon={Search}
+            action={
+              hasFilters ? (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="mt-1 rounded-md border border-line px-2.5 py-1 text-sm text-fg-muted hover:text-fg"
+                >
+                  Clear filters
+                </button>
+              ) : undefined
+            }
+          >
+            {hasFilters
+              ? `No assets match ${search ? `"${searchInput}"` : 'this sector'}.`
+              : 'No assets on the board.'}
+          </StatusMessage>
+        ) : metricIsEmpty ? (
+          <StatusMessage icon={Gauge}>{METRIC_CONFIG[metric].emptyHint}</StatusMessage>
+        ) : view === 'treemap' ? (
+          <TreemapBoard
+            coins={coins}
+            metric={metric}
+            timeframe={timeframe}
+            selectedId={selectedId}
+            onSelect={handleSelect}
+          />
+        ) : (
+          <SectorBoard
+            sectors={sectors}
+            metric={metric}
+            timeframe={timeframe}
+            selectedId={selectedId}
+            onSelect={handleSelect}
+          />
+        )}
+      </div>
+
+      <DetailPanel coin={selected} timeframe={timeframe} />
+
+      <div className="shrink-0 border-t border-line bg-surface p-2">
+        <Legend metric={metric} />
+      </div>
+    </div>
+  );
 }

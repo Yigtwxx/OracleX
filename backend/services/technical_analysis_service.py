@@ -1,109 +1,60 @@
-# Technical Analysis Service v2
 """
-Technical Analysis Service - Real market data analysis
-Fetches OHLCV data from Binance and calculates accurate support/resistance levels.
+Technical Analysis Service — support/resistance, RSI, trend and targets.
 
-IMPROVED VERSION:
-- ATR-based support/resistance
-- Better target price calculation
-- More robust error handling
-- Works for all crypto pairs
+Everything here is computed from OKX OHLCV candles (`services.okx_market`).
+Binance used to be the source but is unreachable from some of the networks this
+runs on, which meant every call quietly degraded to a placeholder payload.
+
+Nothing is invented. When the candles are missing or too short, the function
+returns `None` and the caller reports the gap — a level that came out of a
+formula applied to no data reads exactly like a real level once it reaches the
+UI or an LLM prompt, which is the failure this module is written to avoid.
 """
+
 import logging
-import httpx
-from typing import Optional, List, Dict, Tuple
-from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
 
+from services.okx_market import fetch_candles, fetch_ticker_24h
 
 logger = logging.getLogger(__name__)
 
-@dataclass
-class TechnicalLevels:
-    """Container for technical analysis results."""
-    current_price: float
-    support_levels: List[str]
-    resistance_levels: List[str]
-    pivot_point: float
-    rsi: float
-    rsi_signal: str
-    target_price: str
+# Candles pulled per timeframe. 4h is the primary read; 1h is the fallback for
+# pairs listed too recently to have 4h history.
+CANDLE_LIMIT = 100
+# Below this many candles the indicators are not meaningful, so no analysis is
+# produced at all.
+MIN_CANDLES = 20
+# 4h is preferred only when it carries at least this much history.
+MIN_PRIMARY_CANDLES = 50
 
 
-# Binance API endpoint
-BINANCE_API_URL = "https://api.binance.com/api/v3"
-
-
-async def fetch_klines(symbol: str, interval: str = "1h", limit: int = 100) -> List[List]:
+def calculate_atr(candles: List[Dict[str, Any]], period: int = 14) -> Optional[float]:
     """
-    Fetch OHLCV (candlestick) data from Binance.
+    Average True Range — the volatility input for target ranges.
+
+    Returns None when there are not enough candles to compute one; callers must
+    treat that as "no volatility estimate", not as zero volatility.
     """
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.get(
-                f"{BINANCE_API_URL}/klines",
-                params={
-                    "symbol": symbol,
-                    "interval": interval,
-                    "limit": limit
-                }
-            )
-            if response.status_code == 200:
-                return response.json()
-            logger.warning(f"Binance API returned {response.status_code} for {symbol}")
-            return []
-    except Exception as e:
-        logger.error(f"Error fetching klines for {symbol}: {e}")
-        return []
-
-
-async def fetch_current_price(symbol: str) -> Optional[float]:
-    """Fetch current price from Binance."""
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(
-                f"{BINANCE_API_URL}/ticker/price",
-                params={"symbol": symbol}
-            )
-            if response.status_code == 200:
-                data = response.json()
-                return float(data["price"])
-            return None
-    except Exception as e:
-        logger.error(f"Error fetching price: {e}")
+    if len(candles) < period + 1:
         return None
 
-
-def calculate_atr(klines: List[List], period: int = 14) -> float:
-    """
-    Calculate Average True Range (ATR) for volatility measurement.
-    
-    ATR = Average of True Range over period
-    True Range = max(High - Low, abs(High - Previous Close), abs(Low - Previous Close))
-    """
-    if len(klines) < period + 1:
-        return 0.0
-    
     true_ranges = []
-    for i in range(1, len(klines)):
-        high = float(klines[i][2])
-        low = float(klines[i][3])
-        prev_close = float(klines[i-1][4])
-        
-        tr = max(
-            high - low,
-            abs(high - prev_close),
-            abs(low - prev_close)
-        )
+    for i in range(1, len(candles)):
+        high = candles[i]["high"]
+        low = candles[i]["low"]
+        prev_close = candles[i - 1]["close"]
+
+        tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
         true_ranges.append(tr)
-    
+
     if len(true_ranges) < period:
-        return sum(true_ranges) / len(true_ranges) if true_ranges else 0.0
-    
+        return sum(true_ranges) / len(true_ranges) if true_ranges else None
+
     # Calculate ATR using smoothed average
     atr = sum(true_ranges[:period]) / period
     for i in range(period, len(true_ranges)):
         atr = (atr * (period - 1) + true_ranges[i]) / period
-    
+
     return atr
 
 
@@ -112,61 +63,56 @@ def calculate_pivot_points(high: float, low: float, close: float) -> Dict[str, f
     Calculate classic pivot points.
     """
     pivot = (high + low + close) / 3
-    
+
     s1 = (2 * pivot) - high
     s2 = pivot - (high - low)
     s3 = low - 2 * (high - pivot)
-    
+
     r1 = (2 * pivot) - low
     r2 = pivot + (high - low)
     r3 = high + 2 * (pivot - low)
-    
-    return {
-        "pivot": pivot,
-        "s1": s1,
-        "s2": s2,
-        "s3": s3,
-        "r1": r1,
-        "r2": r2,
-        "r3": r3
-    }
+
+    return {"pivot": pivot, "s1": s1, "s2": s2, "s3": s3, "r1": r1, "r2": r2, "r3": r3}
 
 
-def find_significant_levels(klines: List[List], current_price: float, num_levels: int = 3) -> Tuple[List[float], List[float]]:
+def find_significant_levels(
+    candles: List[Dict[str, Any]], current_price: float, num_levels: int = 3
+) -> Tuple[List[float], List[float]]:
     """
     Find significant support and resistance levels from price action.
     Uses local highs/lows with volume weighting.
     """
-    if len(klines) < 20:
+    if len(candles) < MIN_CANDLES:
         return [], []
-    
-    # Get all highs and lows
-    highs = [float(k[2]) for k in klines]
-    lows = [float(k[3]) for k in klines]
-    volumes = [float(k[5]) for k in klines]
-    
+
+    highs = [c["high"] for c in candles]
+    lows = [c["low"] for c in candles]
+    volumes = [c["volume"] for c in candles]
+
     # Find local extremes (where price reversed)
     potential_resistances = []
     potential_supports = []
-    
-    for i in range(2, len(klines) - 2):
+
+    for i in range(2, len(candles) - 2):
         # High volume increases significance
         volume_weight = volumes[i] / (sum(volumes) / len(volumes)) if sum(volumes) > 0 else 1.0
-        
+        if volume_weight <= 0:
+            volume_weight = 1.0
+
         # Look for swing highs (local maxima)
-        if highs[i] >= max(highs[i-2:i]) and highs[i] >= max(highs[i+1:i+3]):
+        if highs[i] >= max(highs[i - 2 : i]) and highs[i] >= max(highs[i + 1 : i + 3]):
             if highs[i] > current_price:
                 potential_resistances.append((highs[i], volume_weight))
-        
+
         # Look for swing lows (local minima)
-        if lows[i] <= min(lows[i-2:i]) and lows[i] <= min(lows[i+1:i+3]):
+        if lows[i] <= min(lows[i - 2 : i]) and lows[i] <= min(lows[i + 1 : i + 3]):
             if lows[i] < current_price:
                 potential_supports.append((lows[i], volume_weight))
-    
+
     # Sort by proximity to current price and volume weight
     potential_resistances.sort(key=lambda x: (x[0] - current_price) / x[1])
     potential_supports.sort(key=lambda x: (current_price - x[0]) / x[1])
-    
+
     # Get unique levels (cluster similar prices)
     def cluster_levels(levels: List[Tuple[float, float]], threshold: float = 0.005) -> List[float]:
         if not levels:
@@ -184,43 +130,48 @@ def find_significant_levels(klines: List[List], current_price: float, num_levels
             if len(clustered) >= num_levels:
                 break
         return clustered
-    
+
     resistances = cluster_levels(potential_resistances)
     supports = cluster_levels(potential_supports)
-    
+
     return supports, resistances
 
 
-def calculate_rsi(closes: List[float], period: int = 14) -> float:
+def calculate_rsi(closes: List[float], period: int = 14) -> Optional[float]:
     """
-    Calculate RSI (Relative Strength Index).
+    Relative Strength Index.
+
+    Returns None below `period + 1` closes. A "neutral 50" would be a reading
+    the market never produced.
     """
     if len(closes) < period + 1:
-        return 50.0
-    
-    changes = [closes[i] - closes[i-1] for i in range(1, len(closes))]
-    
+        return None
+
+    changes = [closes[i] - closes[i - 1] for i in range(1, len(closes))]
+
     gains = [c if c > 0 else 0 for c in changes]
     losses = [-c if c < 0 else 0 for c in changes]
-    
+
     avg_gain = sum(gains[:period]) / period
     avg_loss = sum(losses[:period]) / period
-    
+
     for i in range(period, len(gains)):
         avg_gain = (avg_gain * (period - 1) + gains[i]) / period
         avg_loss = (avg_loss * (period - 1) + losses[i]) / period
-    
+
     if avg_loss == 0:
         return 100.0
-    
+
     rs = avg_gain / avg_loss
     rsi = 100 - (100 / (1 + rs))
-    
+
     return round(rsi, 2)
 
 
-def get_rsi_signal(rsi: float) -> str:
-    """Interpret RSI value as a signal."""
+def get_rsi_signal(rsi: Optional[float]) -> Optional[str]:
+    """Interpret RSI value as a signal, or None when there is no RSI."""
+    if rsi is None:
+        return None
     if rsi >= 70:
         return "Overbought"
     elif rsi <= 30:
@@ -233,23 +184,25 @@ def get_rsi_signal(rsi: float) -> str:
         return "Neutral"
 
 
-def calculate_trend(closes: List[float], short_period: int = 10, long_period: int = 30) -> str:
+def calculate_trend(
+    closes: List[float], short_period: int = 10, long_period: int = 30
+) -> Optional[str]:
     """
-    Determine trend using EMA crossover.
+    Determine trend using EMA crossover, or None below `long_period` closes.
     """
     if len(closes) < long_period:
-        return "neutral"
-    
+        return None
+
     def ema(data: List[float], period: int) -> float:
         multiplier = 2 / (period + 1)
         ema_val = sum(data[:period]) / period
         for price in data[period:]:
             ema_val = (price - ema_val) * multiplier + ema_val
         return ema_val
-    
+
     short_ema = ema(closes, short_period)
     long_ema = ema(closes, long_period)
-    
+
     if short_ema > long_ema * 1.01:
         return "bullish"
     elif short_ema < long_ema * 0.99:
@@ -274,20 +227,22 @@ def format_price(price: float) -> str:
 
 def calculate_target_price(
     current_price: float,
-    atr: float,
-    trend: str,
-    rsi: float,
+    atr: Optional[float],
+    trend: Optional[str],
+    rsi: Optional[float],
     supports: List[float],
-    resistances: List[float]
-) -> str:
+    resistances: List[float],
+) -> Optional[str]:
     """
-    Calculate realistic target price based on ATR, trend, and key levels.
-    
-    Target = Current Price ± (ATR * Multiplier) adjusted by trend and RSI
+    Project a target range from ATR, trend and the nearest key level.
+
+    Returns None unless all three inputs exist. The previous version substituted
+    2% of spot for a missing ATR, which turned "we could not measure volatility"
+    into a concrete-looking price range.
     """
-    if atr == 0:
-        atr = current_price * 0.02  # Fallback: 2% of price
-    
+    if atr is None or atr <= 0 or trend is None or rsi is None:
+        return None
+
     # Base multiplier based on trend strength
     if trend == "bullish":
         multiplier = 1.5 if rsi < 60 else 1.0  # Less upside if already overbought
@@ -295,7 +250,7 @@ def calculate_target_price(
         multiplier = -1.5 if rsi > 40 else -1.0  # Less downside if already oversold
     else:
         multiplier = 0.5 if rsi > 50 else -0.5
-    
+
     # Calculate targets
     if multiplier > 0:
         # Bullish target: aim for next resistance or ATR-based
@@ -326,147 +281,139 @@ def calculate_target_price(
         else:
             target_low = base_target
             target_high = current_price - (atr * 0.5)
-    
+
     # Ensure proper ordering
     if target_low > target_high:
         target_low, target_high = target_high, target_low
-    
+
     return f"{format_price(target_low)} - {format_price(target_high)}"
 
 
-async def get_technical_analysis(symbol: str) -> Optional[Dict]:
+async def get_technical_analysis(symbol: str) -> Optional[Dict[str, Any]]:
     """
-    Get complete technical analysis for a symbol.
-    
+    Complete technical analysis for a symbol, or None when it cannot be computed.
+
     Args:
-        symbol: TradingView format symbol (e.g., BINANCE:BTCUSDT, NASDAQ:AAPL)
-    
+        symbol: TradingView format symbol (e.g., BINANCE:BTCUSDT, NASDAQ:AAPL).
+            The exchange prefix is only a hint about asset class — the data
+            itself always comes from OKX.
+
     Returns:
-        Dictionary with technical analysis data
+        The computed levels, or None for stocks and for any crypto pair OKX has
+        too little history on. Callers must treat None as "no levels exist for
+        this asset" and never substitute their own.
     """
-    # Clean symbol
-    parts = symbol.split(':')
+    parts = symbol.split(":")
     exchange = parts[0] if len(parts) > 1 else ""
     clean_symbol = parts[-1]
-    
-    # Determine data source
-    is_crypto = exchange.upper() == "BINANCE" or clean_symbol.endswith('USDT')
-    
+
+    is_crypto = exchange.upper() in ("BINANCE", "OKX") or clean_symbol.endswith("USDT")
     if is_crypto:
         return await get_crypto_analysis(clean_symbol)
-    else:
-        # For stocks, use fallback percentage-based analysis
-        return get_stock_fallback_analysis(symbol)
+    return await get_stock_analysis(clean_symbol)
 
 
-async def get_crypto_analysis(symbol: str) -> Optional[Dict]:
+def analyse_candles(
+    candles: List[Dict[str, Any]], current_price: float, timeframe: str
+) -> Optional[Dict[str, Any]]:
     """
-    Get technical analysis for crypto using Binance API.
-    """
-    # Ensure symbol is in correct format
-    if not symbol.endswith('USDT'):
-        symbol = f"{symbol}USDT"
-    
-    try:
-        # Fetch OHLCV data - use 4h for better signals
-        klines_4h = await fetch_klines(symbol, "4h", 100)
-        klines_1h = await fetch_klines(symbol, "1h", 100)
-        
-        # Use 4h for main analysis, 1h for confirmation
-        klines = klines_4h if len(klines_4h) >= 50 else klines_1h
-        
-        if not klines or len(klines) < 20:
-            logger.info(f"Not enough data for {symbol}")
-            return get_fallback_analysis_for_symbol(symbol)
-        
-        # Get current price
-        current_price = await fetch_current_price(symbol)
-        if not current_price:
-            current_price = float(klines[-1][4])
-        
-        # Calculate ATR for volatility
-        atr = calculate_atr(klines, 14)
-        
-        # Calculate pivot points from last 24 candles
-        num_candles = min(24, len(klines))
-        recent = klines[-num_candles:]
-        
-        high_period = max(float(k[2]) for k in recent)
-        low_period = min(float(k[3]) for k in recent)
-        close = float(klines[-1][4])
-        
-        pivots = calculate_pivot_points(high_period, low_period, close)
-        
-        # Find significant levels
-        swing_supports, swing_resistances = find_significant_levels(klines, current_price, 3)
-        
-        # Combine pivot and swing levels
-        all_supports = [pivots['s1'], pivots['s2']] + swing_supports
-        all_resistances = [pivots['r1'], pivots['r2']] + swing_resistances
-        
-        # Filter valid levels (supports < current, resistances > current)
-        supports = sorted([s for s in all_supports if s < current_price], reverse=True)[:2]
-        resistances = sorted([r for r in all_resistances if r > current_price])[:2]
-        
-        # Ensure we have at least 2 levels each using ATR
-        while len(supports) < 2:
-            last_support = supports[-1] if supports else current_price
-            supports.append(last_support - atr)
-        while len(resistances) < 2:
-            last_resistance = resistances[-1] if resistances else current_price
-            resistances.append(last_resistance + atr)
-        
-        # Calculate RSI
-        closes = [float(k[4]) for k in klines]
-        rsi = calculate_rsi(closes, 14)
-        rsi_signal = get_rsi_signal(rsi)
-        
-        # Determine trend
-        trend = calculate_trend(closes, 10, 30)
-        
-        # Calculate target price
-        target_price = calculate_target_price(
-            current_price, atr, trend, rsi, supports, resistances
-        )
-        
-        return {
-            "current_price": current_price,
-            "support_levels": [format_price(s) for s in supports[:2]],
-            "resistance_levels": [format_price(r) for r in resistances[:2]],
-            "rsi_signal": rsi_signal,
-            "rsi_value": rsi,
-            "pivot_point": format_price(pivots['pivot']),
-            "target_price": target_price,
-            "atr": atr,
-            "trend": trend
-        }
-        
-    except Exception as e:
-        logger.error(f"Crypto analysis error for {symbol}: {e}")
-        return get_fallback_analysis_for_symbol(symbol)
+    Compute every level from an OHLCV series. Asset-class agnostic.
 
+    Crypto and equities reach this with the same candle shape, so the indicators
+    are computed once rather than duplicated per source.
+    """
+    if len(candles) < MIN_CANDLES:
+        return None
 
-def get_fallback_analysis_for_symbol(symbol: str) -> Dict:
-    """
-    Generate fallback analysis when API fails.
-    Uses percentage-based estimates.
-    """
-    # We don't have current price, so return placeholders
+    atr = calculate_atr(candles, 14)
+
+    # Pivots from the most recent stretch of candles.
+    recent = candles[-min(24, len(candles)) :]
+    high_period = max(c["high"] for c in recent)
+    low_period = min(c["low"] for c in recent)
+    pivots = calculate_pivot_points(high_period, low_period, candles[-1]["close"])
+
+    # Combine pivot and swing levels, keeping only the ones on the correct side
+    # of spot. However many survive is however many are reported — the list is
+    # never padded out to a fixed length with invented levels.
+    swing_supports, swing_resistances = find_significant_levels(candles, current_price, 3)
+    supports = sorted(
+        {s for s in [pivots["s1"], pivots["s2"], *swing_supports] if s < current_price},
+        reverse=True,
+    )[:2]
+    resistances = sorted(
+        {r for r in [pivots["r1"], pivots["r2"], *swing_resistances] if r > current_price}
+    )[:2]
+
+    closes = [c["close"] for c in candles]
+    rsi = calculate_rsi(closes, 14)
+    trend = calculate_trend(closes, 10, 30)
+
     return {
-        "current_price": 0,
-        "support_levels": ["Calculating...", "Calculating..."],
-        "resistance_levels": ["Calculating...", "Calculating..."],
-        "rsi_signal": "Unavailable",
-        "rsi_value": 50,
-        "pivot_point": "N/A",
-        "target_price": "Data unavailable",
-        "error": f"Could not fetch data for {symbol}"
+        "current_price": current_price,
+        "support_levels": [format_price(s) for s in supports],
+        "resistance_levels": [format_price(r) for r in resistances],
+        "rsi_signal": get_rsi_signal(rsi),
+        "rsi_value": rsi,
+        "pivot_point": format_price(pivots["pivot"]),
+        "target_price": calculate_target_price(
+            current_price, atr, trend, rsi, supports, resistances
+        ),
+        "atr": atr,
+        "trend": trend,
+        "timeframe": timeframe,
     }
 
 
-def get_stock_fallback_analysis(symbol: str) -> Dict:
+async def get_crypto_analysis(symbol: str) -> Optional[Dict[str, Any]]:
     """
-    Generate fallback analysis for stocks.
-    Since we don't have free stock OHLCV data, use the LLM's analysis.
+    Technical analysis for a crypto pair from OKX candles.
+
+    4h is the primary timeframe; a pair without enough 4h history falls back to
+    1h. Below `MIN_CANDLES` on both, this returns None.
     """
-    return None  # Return None to let LLM handle stocks
+    try:
+        timeframe = "4h"
+        candles = await fetch_candles(symbol, "4h", CANDLE_LIMIT, spot=True)
+        if len(candles) < MIN_PRIMARY_CANDLES:
+            hourly = await fetch_candles(symbol, "1h", CANDLE_LIMIT, spot=True)
+            if len(hourly) > len(candles):
+                candles, timeframe = hourly, "1h"
+
+        if len(candles) < MIN_CANDLES:
+            logger.info("Not enough OKX candles for %s — no analysis produced.", symbol)
+            return None
+
+        # Prefer the live ticker; the last close comes from the same series and
+        # is a real observation too, so it is a legitimate stand-in.
+        ticker = await fetch_ticker_24h(symbol)
+        current_price = ticker["price"] if ticker else candles[-1]["close"]
+
+        return analyse_candles(candles, current_price, timeframe)
+
+    except Exception as e:
+        logger.error("Crypto analysis error for %s: %s", symbol, e)
+        return None
+
+
+async def get_stock_analysis(symbol: str) -> Optional[Dict[str, Any]]:
+    """
+    Technical analysis for an equity or index from Yahoo Finance daily bars.
+
+    Equities used to get no levels at all here, which meant the news panel and
+    the chat prompt reported a gap for every stock. Yahoo publishes the daily
+    history for free, so the same indicators now run on real equity data.
+    """
+    try:
+        from services.stock_market_service import fetch_stock_candles
+
+        candles = await fetch_stock_candles(symbol)
+        if len(candles) < MIN_CANDLES:
+            logger.info("Not enough Yahoo bars for %s — no analysis produced.", symbol)
+            return None
+
+        return analyse_candles(candles, candles[-1]["close"], "1d")
+
+    except Exception as e:
+        logger.error("Stock analysis error for %s: %s", symbol, e)
+        return None

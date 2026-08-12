@@ -3,72 +3,54 @@
 import { useState } from 'react';
 import HeatmapWidget from './overview/HeatmapWidget';
 import AdvancedHeatmap from './overview/AdvancedHeatmap';
-import { Bitcoin, LineChart, Layers, Sparkles } from 'lucide-react';
+import LiquidationHeatmap from './charts/LiquidationHeatmap';
+import { Bitcoin, LineChart, Layers, LayoutGrid } from 'lucide-react';
+
+type HeatmapView = 'advanced' | 'crypto' | 'nasdaq' | 'liquidation';
+
+const VIEWS: { value: HeatmapView; label: string; icon: typeof Layers }[] = [
+  { value: 'advanced', label: 'Advanced', icon: LayoutGrid },
+  { value: 'crypto', label: 'Crypto', icon: Bitcoin },
+  { value: 'nasdaq', label: 'Nasdaq', icon: LineChart },
+  { value: 'liquidation', label: 'Liquidation', icon: Layers },
+];
 
 export default function HeatmapPage() {
-    const [marketType, setMarketType] = useState<'advanced' | 'crypto' | 'nasdaq' | 'liquidation'>('advanced');
+  const [view, setView] = useState<HeatmapView>('advanced');
 
-    return (
-        <div className="h-full flex flex-col bg-oracle-darker">
-            {/* Toolbar */}
-            <div className="h-14 border-b border-oracle-border flex items-center px-6 gap-4 bg-oracle-dark/50">
-                <h2 className="text-lg font-semibold text-white mr-4">Market Heatmap</h2>
+  return (
+    <div className="h-full flex flex-col">
+      {/* Toolbar */}
+      <div className="h-10 shrink-0 border-b border-line flex items-center px-4 gap-4 bg-surface">
+        <h2 className="text-md font-semibold text-fg">Market Heatmap</h2>
 
-                <div className="flex bg-oracle-dark rounded-lg p-1 border border-oracle-border">
-                    <button
-                        onClick={() => setMarketType('advanced')}
-                        className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all ${marketType === 'advanced'
-                            ? 'bg-purple-500/20 text-purple-400 shadow-sm'
-                            : 'text-gray-400 hover:text-white hover:bg-white/5'
-                            }`}
-                    >
-                        <Sparkles className="w-4 h-4" />
-                        <span>Gelişmiş</span>
-                    </button>
-                    <button
-                        onClick={() => setMarketType('crypto')}
-                        className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all ${marketType === 'crypto'
-                            ? 'bg-indigo-500/20 text-indigo-400 shadow-sm'
-                            : 'text-gray-400 hover:text-white hover:bg-white/5'
-                            }`}
-                    >
-                        <Bitcoin className="w-4 h-4" />
-                        <span>Crypto</span>
-                    </button>
-                    <button
-                        onClick={() => setMarketType('nasdaq')}
-                        className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all ${marketType === 'nasdaq'
-                            ? 'bg-cyan/20 text-cyan shadow-sm'
-                            : 'text-gray-400 hover:text-white hover:bg-white/5'
-                            }`}
-                    >
-                        <LineChart className="w-4 h-4" />
-                        <span>Nasdaq</span>
-                    </button>
-                    <button
-                        onClick={() => setMarketType('liquidation')}
-                        className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all ${marketType === 'liquidation'
-                            ? 'bg-red-500/20 text-red-400 shadow-sm'
-                            : 'text-gray-400 hover:text-white hover:bg-white/5'
-                            }`}
-                    >
-                        <Layers className="w-4 h-4" />
-                        <span>Likidasyon</span>
-                    </button>
-                </div>
-            </div>
-
-            {/* Heatmap Content */}
-            <div className="flex-1 overflow-hidden">
-                {marketType === 'advanced' ? (
-                    <AdvancedHeatmap />
-                ) : (
-                    <div className="p-4 h-full">
-                        <HeatmapWidget marketType={marketType} className="h-full w-full" />
-                    </div>
-                )}
-            </div>
+        <div className="flex gap-0.5">
+          {VIEWS.map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              onClick={() => setView(value)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm transition-colors ${
+                view === value ? 'bg-surface-2 text-fg' : 'text-fg-muted hover:text-fg'
+              }`}
+            >
+              <Icon className="w-3 h-3" />
+              <span>{label}</span>
+            </button>
+          ))}
         </div>
-    );
-}
+      </div>
 
+      {/* Heatmap Content — the advanced and liquidation views bring their own
+          toolbars, so only the TradingView embeds get the widget frame. */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        {view === 'advanced' && <AdvancedHeatmap />}
+        {view === 'liquidation' && <LiquidationHeatmap />}
+        {(view === 'crypto' || view === 'nasdaq') && (
+          <div className="p-3 h-full">
+            <HeatmapWidget marketType={view} className="h-full w-full" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

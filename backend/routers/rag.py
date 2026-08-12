@@ -2,6 +2,7 @@
 RAG Multi-Agent Router
 Handles all RAG agent endpoints: v2 (Core), v3 (Insights), v4 (Reasoning), v5 (Proactive).
 """
+from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -39,25 +40,28 @@ async def get_rag_statistics():
 async def query_rag_context(
     q: str,
     symbol: Optional[str] = None,
-    context_type: str = "all"
+    context_type: str = "all",
+    asset_type: Optional[str] = None
 ):
     """
     Query RAG 2.0 for historical context.
-    
+
     - q: Query text (e.g., "Bitcoin halving price behavior")
     - symbol: Filter by symbol (BTC, ETH, etc.)
     - context_type: 'all', 'events', 'prices', 'news'
+    - asset_type: 'crypto' or 'stock'; keeps the two sides of the catalogue apart
     """
     try:
-        from services.rag_v2_service import query_historical_context, get_rag_context_v2
-        
+        from services.rag_v2_service import query_historical_context
+
         results = query_historical_context(
             query=q,
             symbol=symbol,
             include_events=context_type in ["all", "events"],
             include_prices=context_type in ["all", "prices"],
             include_news=context_type in ["all", "news"],
-            k=5
+            k=5,
+            asset_type=asset_type
         )
         
         return {
@@ -116,7 +120,6 @@ async def get_event_at_date(symbol: str = "BTC", date: str = ""):
     if not date:
         date = datetime.now().strftime("%Y-%m-%d")
     try:
-        from datetime import datetime
         from services.rag_v3_service import get_event_at_date as _get_event
         return await _get_event(symbol.upper(), date)
     except Exception as e:

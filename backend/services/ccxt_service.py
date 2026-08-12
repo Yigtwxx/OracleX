@@ -10,6 +10,7 @@ import asyncio
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 import ccxt.async_support as ccxt
+from services.health_registry import health
 
 logger = logging.getLogger(__name__)
 
@@ -162,18 +163,24 @@ async def fetch_ticker(exchange_id: str, symbol: str) -> Optional[Dict]:
             "timestamp": datetime.now()
         }
         
+        health.record("prices_crypto", ok=True)
         return result
-        
+
     except ccxt.BadSymbol:
+        # A symbol this exchange does not list is an answer, not an outage —
+        # recording it as a failure would paint the badge red for a typo.
         logger.info(f"Symbol {symbol} not found on {exchange_id}")
         return None
     except ccxt.NetworkError as e:
+        health.record("prices_crypto", ok=False, error=e)
         logger.error(f"Network error fetching {symbol} from {exchange_id}: {e}")
         return None
     except ccxt.ExchangeError as e:
+        health.record("prices_crypto", ok=False, error=e)
         logger.error(f"Exchange error fetching {symbol} from {exchange_id}: {e}")
         return None
     except Exception as e:
+        health.record("prices_crypto", ok=False, error=e)
         logger.error(f"Unexpected error fetching {symbol} from {exchange_id}: {e}")
         return None
     finally:

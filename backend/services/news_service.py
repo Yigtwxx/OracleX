@@ -1,12 +1,19 @@
 """
 News Service - Fetches news from multiple sources
-Supports: CryptoCompare, NewsAPI, RSS feeds
+Crypto: Tree of Alpha, Decrypt, CoinDesk, CoinTelegraph, The Block, CryptoSlate
+Turkish crypto: Koin Bülteni, Uzmancoin
+Stocks: MarketWatch, Investing.com, Seeking Alpha (RSS)
+
+Which asset each item is about is not decided here. A feed's own beat is only a
+hint — CoinDesk covers Coinbase earnings, MarketWatch covers bitcoin ETFs — so
+the symbol and the asset class both come back from `news_attribution`, which
+resolves them from the text and remembers the answer.
 """
+
 import logging
-import httpx
 import asyncio
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from typing import List, Optional
 import hashlib
 import feedparser
@@ -15,7 +22,14 @@ from email.utils import parsedate_to_datetime
 logger = logging.getLogger(__name__)
 
 from models.schemas import NewsItem
-from services.symbol_detection_service import detect_symbol_smart
+from services import news_attribution
+from services.http_client import get_json
+from services.symbol_detection_service import (
+    Attribution,
+    asset_type_for_symbol,
+    is_uncashtagged_acronym,
+    resolve_crypto,
+)
 
 
 def parse_feed_date(entry) -> datetime:
@@ -24,7 +38,7 @@ def parse_feed_date(entry) -> datetime:
     Returns datetime in local time for accurate display.
     """
     now = datetime.now()
-    
+
     try:
         # First try raw published string with timezone info
         raw_pub = entry.get("published", "")
@@ -43,12 +57,12 @@ def parse_feed_date(entry) -> datetime:
                 return result
             except (ValueError, TypeError):
                 pass
-        
+
         # Fallback to parsed tuple (feedparser parses to UTC struct_time)
         published = entry.get("published_parsed")
         if published:
             # published_parsed is struct_time in UTC, convert to local (UTC+3)
-            dt = datetime(*published[:6], tzinfo=timezone.utc)
+            dt = datetime(*published[:6], tzinfo=UTC)
             local_tz = timezone(timedelta(hours=3))
             dt_local = dt.astimezone(local_tz)
             result = dt_local.replace(tzinfo=None)
@@ -58,326 +72,15 @@ def parse_feed_date(entry) -> datetime:
             return result
     except (ValueError, TypeError, AttributeError):
         pass
-    
+
     return now
 
 
-
-# Symbol mappings for different news sources
-# IMPORTANT: Listed in priority order - more specific names first
-# Using exchanges where these coins are actually listed on TradingView
-CRYPTO_SYMBOLS = [
-    # Pi Network - use OKX (Binance doesn't have PI)
-    ("PI NETWORK", "OKX:PIUSDT"),
-    ("PI TOKEN", "OKX:PIUSDT"),
-    ("PI COIN", "OKX:PIUSDT"),
-    (" PI ", "OKX:PIUSDT"),
-    ("(PI)", "OKX:PIUSDT"),
-    
-    # Bitcoin - specific patterns
-    ("BITCOIN", "BINANCE:BTCUSDT"),
-    ("BTCUSDT", "BINANCE:BTCUSDT"),
-    ("BTC/", "BINANCE:BTCUSDT"),
-    (" BTC ", "BINANCE:BTCUSDT"),
-    ("(BTC)", "BINANCE:BTCUSDT"),
-    
-    # Ethereum
-    ("ETHEREUM", "BINANCE:ETHUSDT"),
-    ("ETHUSDT", "BINANCE:ETHUSDT"),
-    ("ETH/", "BINANCE:ETHUSDT"),
-    (" ETH ", "BINANCE:ETHUSDT"),
-    ("(ETH)", "BINANCE:ETHUSDT"),
-    
-    # Solana
-    ("SOLANA", "BINANCE:SOLUSDT"),
-    ("SOLUSDT", "BINANCE:SOLUSDT"),
-    (" SOL ", "BINANCE:SOLUSDT"),
-    ("(SOL)", "BINANCE:SOLUSDT"),
-    
-    # XRP / Ripple
-    ("RIPPLE", "BINANCE:XRPUSDT"),
-    ("XRPUSDT", "BINANCE:XRPUSDT"),
-    (" XRP ", "BINANCE:XRPUSDT"),
-    ("(XRP)", "BINANCE:XRPUSDT"),
-    
-    # Cardano
-    ("CARDANO", "BINANCE:ADAUSDT"),
-    ("ADAUSDT", "BINANCE:ADAUSDT"),
-    (" ADA ", "BINANCE:ADAUSDT"),
-    ("(ADA)", "BINANCE:ADAUSDT"),
-    
-    # Dogecoin
-    ("DOGECOIN", "BINANCE:DOGEUSDT"),
-    ("DOGEUSDT", "BINANCE:DOGEUSDT"),
-    (" DOGE ", "BINANCE:DOGEUSDT"),
-    ("(DOGE)", "BINANCE:DOGEUSDT"),
-    
-    # Shiba Inu
-    ("SHIBA INU", "BINANCE:SHIBUSDT"),
-    ("SHIBA", "BINANCE:SHIBUSDT"),
-    ("SHIBUSDT", "BINANCE:SHIBUSDT"),
-    (" SHIB ", "BINANCE:SHIBUSDT"),
-    ("(SHIB)", "BINANCE:SHIBUSDT"),
-    
-    # Pepe
-    ("PEPE COIN", "BINANCE:PEPEUSDT"),
-    ("PEPEUSDT", "BINANCE:PEPEUSDT"),
-    (" PEPE ", "BINANCE:PEPEUSDT"),
-    ("(PEPE)", "BINANCE:PEPEUSDT"),
-    
-    # Polkadot
-    ("POLKADOT", "BINANCE:DOTUSDT"),
-    ("DOTUSDT", "BINANCE:DOTUSDT"),
-    (" DOT ", "BINANCE:DOTUSDT"),
-    ("(DOT)", "BINANCE:DOTUSDT"),
-    
-    # Avalanche
-    ("AVALANCHE", "BINANCE:AVAXUSDT"),
-    ("AVAXUSDT", "BINANCE:AVAXUSDT"),
-    (" AVAX ", "BINANCE:AVAXUSDT"),
-    ("(AVAX)", "BINANCE:AVAXUSDT"),
-    
-    # Polygon / MATIC
-    ("POLYGON", "BINANCE:MATICUSDT"),
-    ("MATICUSDT", "BINANCE:MATICUSDT"),
-    (" MATIC ", "BINANCE:MATICUSDT"),
-    ("(MATIC)", "BINANCE:MATICUSDT"),
-    
-    # Chainlink
-    ("CHAINLINK", "BINANCE:LINKUSDT"),
-    ("LINKUSDT", "BINANCE:LINKUSDT"),
-    (" LINK ", "BINANCE:LINKUSDT"),
-    ("(LINK)", "BINANCE:LINKUSDT"),
-    
-    # Uniswap
-    ("UNISWAP", "BINANCE:UNIUSDT"),
-    ("UNIUSDT", "BINANCE:UNIUSDT"),
-    (" UNI ", "BINANCE:UNIUSDT"),
-    ("(UNI)", "BINANCE:UNIUSDT"),
-    
-    # Litecoin
-    ("LITECOIN", "BINANCE:LTCUSDT"),
-    ("LTCUSDT", "BINANCE:LTCUSDT"),
-    (" LTC ", "BINANCE:LTCUSDT"),
-    ("(LTC)", "BINANCE:LTCUSDT"),
-    
-    # Tron
-    ("TRON", "BINANCE:TRXUSDT"),
-    ("TRXUSDT", "BINANCE:TRXUSDT"),
-    (" TRX ", "BINANCE:TRXUSDT"),
-    ("(TRX)", "BINANCE:TRXUSDT"),
-    
-    # BNB
-    ("BINANCE COIN", "BINANCE:BNBUSDT"),
-    ("BNBUSDT", "BINANCE:BNBUSDT"),
-    (" BNB ", "BINANCE:BNBUSDT"),
-    ("(BNB)", "BINANCE:BNBUSDT"),
-    
-    # Tether - use USDC pair
-    ("TETHER", "BINANCE:USDCUSDT"),
-    (" USDT ", "BINANCE:USDCUSDT"),
-    
-    # ATOM / Cosmos
-    ("COSMOS", "BINANCE:ATOMUSDT"),
-    ("ATOMUSDT", "BINANCE:ATOMUSDT"),
-    (" ATOM ", "BINANCE:ATOMUSDT"),
-    ("(ATOM)", "BINANCE:ATOMUSDT"),
-    
-    # Near Protocol
-    ("NEAR PROTOCOL", "BINANCE:NEARUSDT"),
-    ("NEARUSDT", "BINANCE:NEARUSDT"),
-    (" NEAR ", "BINANCE:NEARUSDT"),
-    ("(NEAR)", "BINANCE:NEARUSDT"),
-    
-    # Sui
-    ("SUI NETWORK", "BINANCE:SUIUSDT"),
-    ("SUIUSDT", "BINANCE:SUIUSDT"),
-    (" SUI ", "BINANCE:SUIUSDT"),
-    ("(SUI)", "BINANCE:SUIUSDT"),
-    
-    # Aptos
-    ("APTOS", "BINANCE:APTUSDT"),
-    ("APTUSDT", "BINANCE:APTUSDT"),
-    (" APT ", "BINANCE:APTUSDT"),
-    ("(APT)", "BINANCE:APTUSDT"),
-    
-    # Arbitrum
-    ("ARBITRUM", "BINANCE:ARBUSDT"),
-    ("ARBUSDT", "BINANCE:ARBUSDT"),
-    (" ARB ", "BINANCE:ARBUSDT"),
-    ("(ARB)", "BINANCE:ARBUSDT"),
-    
-    # Optimism
-    ("OPTIMISM", "BINANCE:OPUSDT"),
-    ("OPUSDT", "BINANCE:OPUSDT"),
-    (" OP ", "BINANCE:OPUSDT"),
-    ("(OP)", "BINANCE:OPUSDT"),
-]
-
-STOCK_SYMBOLS = {
-    # ETFs & Indices (Most common defaults)
-    "SPY": "AMEX:SPY", "S&P 500": "AMEX:SPY", "S&P500": "AMEX:SPY",
-    "QQQ": "NASDAQ:QQQ", "NASDAQ 100": "NASDAQ:QQQ",
-    "DIA": "AMEX:DIA", "DOW JONES": "AMEX:DIA",
-    "IWM": "AMEX:IWM", "RUSSELL": "AMEX:IWM",
-    "VTI": "AMEX:VTI",
-    "VOO": "AMEX:VOO",
-    
-    # Tech Giants
-    "AAPL": "NASDAQ:AAPL", "APPLE": "NASDAQ:AAPL",
-    "TSLA": "NASDAQ:TSLA", "TESLA": "NASDAQ:TSLA",
-    "MSFT": "NASDAQ:MSFT", "MICROSOFT": "NASDAQ:MSFT",
-    "NVDA": "NASDAQ:NVDA", "NVIDIA": "NASDAQ:NVDA",
-    "GOOGL": "NASDAQ:GOOGL", "GOOGLE": "NASDAQ:GOOGL", "ALPHABET": "NASDAQ:GOOGL",
-    "AMZN": "NASDAQ:AMZN", "AMAZON": "NASDAQ:AMZN",
-    "META": "NASDAQ:META", "FACEBOOK": "NASDAQ:META",
-    "NFLX": "NASDAQ:NFLX", "NETFLIX": "NASDAQ:NFLX",
-    "AMD": "NASDAQ:AMD",
-    "INTC": "NASDAQ:INTC", "INTEL": "NASDAQ:INTC",
-    "CRM": "NYSE:CRM", "SALESFORCE": "NYSE:CRM",
-    "ORCL": "NYSE:ORCL", "ORACLE": "NYSE:ORCL",
-    "CSCO": "NASDAQ:CSCO", "CISCO": "NASDAQ:CSCO",
-    "ADBE": "NASDAQ:ADBE", "ADOBE": "NASDAQ:ADBE",
-    
-    # Finance - Full names for proper matching
-    "JPM": "NYSE:JPM", "JPMORGAN": "NYSE:JPM", "JP MORGAN": "NYSE:JPM", "JPMORGAN CHASE": "NYSE:JPM",
-    "BAC": "NYSE:BAC", "BANK OF AMERICA": "NYSE:BAC",
-    "GS": "NYSE:GS", "GOLDMAN": "NYSE:GS", "GOLDMAN SACHS": "NYSE:GS",
-    "MS": "NYSE:MS", "MORGAN STANLEY": "NYSE:MS",
-    "WFC": "NYSE:WFC", "WELLS FARGO": "NYSE:WFC",
-    "C": "NYSE:C", "CITIGROUP": "NYSE:C", "CITI": "NYSE:C", "CITIBANK": "NYSE:C",
-    "V": "NYSE:V", "VISA": "NYSE:V", "VISA INC": "NYSE:V",
-    "MA": "NYSE:MA", "MASTERCARD": "NYSE:MA", "MASTERCARD INC": "NYSE:MA", "MASTER CARD": "NYSE:MA",
-    "AXP": "NYSE:AXP", "AMERICAN EXPRESS": "NYSE:AXP", "AMEX": "NYSE:AXP",
-    "BLK": "NYSE:BLK", "BLACKROCK": "NYSE:BLK",
-    "PYPL": "NASDAQ:PYPL", "PAYPAL": "NASDAQ:PYPL",
-    
-    # Industrial
-    "CAT": "NYSE:CAT", "CATERPILLAR": "NYSE:CAT",
-    "BA": "NYSE:BA", "BOEING": "NYSE:BA",
-    "GE": "NYSE:GE", "GENERAL ELECTRIC": "NYSE:GE",
-    "HON": "NASDAQ:HON", "HONEYWELL": "NASDAQ:HON",
-    "UPS": "NYSE:UPS",
-    "FDX": "NYSE:FDX", "FEDEX": "NYSE:FDX",
-    "DE": "NYSE:DE", "DEERE": "NYSE:DE", "JOHN DEERE": "NYSE:DE",
-    
-    # Airlines & Transport
-    "LUV": "NYSE:LUV", "SOUTHWEST": "NYSE:LUV", "SOUTHWEST AIRLINES": "NYSE:LUV",
-    "DAL": "NYSE:DAL", "DELTA": "NYSE:DAL", "DELTA AIRLINES": "NYSE:DAL",
-    "UAL": "NASDAQ:UAL", "UNITED AIRLINES": "NASDAQ:UAL",
-    "AAL": "NASDAQ:AAL", "AMERICAN AIRLINES": "NASDAQ:AAL",
-    
-    # Telecom
-    "VZ": "NYSE:VZ", "VERIZON": "NYSE:VZ",
-    "T": "NYSE:T", "AT&T": "NYSE:T",
-    "TMUS": "NASDAQ:TMUS", "T-MOBILE": "NASDAQ:TMUS",
-    
-    # Energy
-    "XOM": "NYSE:XOM", "EXXON": "NYSE:XOM", "EXXONMOBIL": "NYSE:XOM",
-    "CVX": "NYSE:CVX", "CHEVRON": "NYSE:CVX",
-    "COP": "NYSE:COP", "CONOCOPHILLIPS": "NYSE:COP",
-    "OXY": "NYSE:OXY", "OCCIDENTAL": "NYSE:OXY",
-    "SLB": "NYSE:SLB", "SCHLUMBERGER": "NYSE:SLB",
-    
-    # Consumer
-    "WMT": "NYSE:WMT", "WALMART": "NYSE:WMT",
-    "COST": "NASDAQ:COST", "COSTCO": "NASDAQ:COST",
-    "TGT": "NYSE:TGT", "TARGET": "NYSE:TGT",
-    "HD": "NYSE:HD", "HOME DEPOT": "NYSE:HD",
-    "LOW": "NYSE:LOW", "LOWES": "NYSE:LOW",
-    "KO": "NYSE:KO", "COCA-COLA": "NYSE:KO", "COKE": "NYSE:KO",
-    "PEP": "NASDAQ:PEP", "PEPSI": "NASDAQ:PEP", "PEPSICO": "NASDAQ:PEP",
-    "MCD": "NYSE:MCD", "MCDONALD": "NYSE:MCD", "MCDONALDS": "NYSE:MCD",
-    "SBUX": "NASDAQ:SBUX", "STARBUCKS": "NASDAQ:SBUX",
-    "NKE": "NYSE:NKE", "NIKE": "NYSE:NKE",
-    "DIS": "NYSE:DIS", "DISNEY": "NYSE:DIS", "WALT DISNEY": "NYSE:DIS",
-    
-    # Pharma & Healthcare
-    "JNJ": "NYSE:JNJ", "JOHNSON": "NYSE:JNJ", "JOHNSON & JOHNSON": "NYSE:JNJ",
-    "PFE": "NYSE:PFE", "PFIZER": "NYSE:PFE",
-    "MRNA": "NASDAQ:MRNA", "MODERNA": "NASDAQ:MRNA",
-    "UNH": "NYSE:UNH", "UNITEDHEALTH": "NYSE:UNH",
-    "CVS": "NYSE:CVS",
-    "ABBV": "NYSE:ABBV", "ABBVIE": "NYSE:ABBV",
-    "LLY": "NYSE:LLY", "ELI LILLY": "NYSE:LLY", "LILLY": "NYSE:LLY",
-    "MRK": "NYSE:MRK", "MERCK": "NYSE:MRK",
-    
-    # Semiconductors
-    "AVGO": "NASDAQ:AVGO", "BROADCOM": "NASDAQ:AVGO",
-    "QCOM": "NASDAQ:QCOM", "QUALCOMM": "NASDAQ:QCOM",
-    "TXN": "NASDAQ:TXN", "TEXAS INSTRUMENTS": "NASDAQ:TXN",
-    "MU": "NASDAQ:MU", "MICRON": "NASDAQ:MU",
-    "AMAT": "NASDAQ:AMAT", "APPLIED MATERIALS": "NASDAQ:AMAT",
-    "LRCX": "NASDAQ:LRCX", "LAM RESEARCH": "NASDAQ:LRCX",
-    "KLAC": "NASDAQ:KLAC",
-    "ASML": "NASDAQ:ASML",
-    "TSM": "NYSE:TSM", "TAIWAN SEMICONDUCTOR": "NYSE:TSM", "TSMC": "NYSE:TSM",
-}
-
-# Pre-computed sorted lists for efficient matching
-# Company names (4+ chars) sorted by length (longest first) for priority matching
-STOCK_COMPANY_NAMES = sorted(
-    [(k, v) for k, v in STOCK_SYMBOLS.items() if len(k) >= 4 and not k.isupper()],
-    key=lambda x: len(x[0]),
-    reverse=True
-)
-
-# Short ticker symbols (all caps, 1-4 chars) - need word boundary checking
-STOCK_SHORT_TICKERS = [(k, v) for k, v in STOCK_SYMBOLS.items() if k.isupper() and len(k) <= 4]
-
-
-def detect_symbol(text: str, asset_type: str, title: str = "") -> Optional[str]:
-    """
-    Detect trading symbol from news text with intelligent priority-based matching.
-    
-    Priority:
-    1. Exact company name match in title (most important)
-    2. Exact company name match in body
-    3. Ticker symbol with word boundary checking
-    4. Longer/more specific matches > shorter matches
-    """
-    # Normalize text for matching
-    title_upper = " " + title.upper() + " " if title else ""
-    text_upper = " " + text.upper() + " "  # Add spaces for boundary matching
-    combined_upper = title_upper + " " + text_upper
-    
-    if asset_type == "crypto":
-        # First, try to find matches in title (highest priority)
-        for keyword, tradingview in CRYPTO_SYMBOLS:
-            if keyword in title_upper:
-                return tradingview
-        
-        # Then try body text
-        for keyword, tradingview in CRYPTO_SYMBOLS:
-            if keyword in text_upper:
-                return tradingview
-        
-        return "BINANCE:BTCUSDT"  # Default
-    else:
-        # For stocks, use improved matching with proper priority
-        
-        # Step 1: Check for company names in title first (longest names first)
-        for keyword, tradingview in STOCK_COMPANY_NAMES:
-            if keyword.upper() in title_upper:
-                return tradingview
-        
-        # Step 2: Check for company names in body (longest names first)
-        for keyword, tradingview in STOCK_COMPANY_NAMES:
-            if keyword.upper() in text_upper:
-                return tradingview
-        
-        # Step 3: Check short ticker symbols with word boundary validation
-        # Only match if ticker appears as a standalone word
-        for ticker, tradingview in STOCK_SHORT_TICKERS:
-            # Use regex for word boundary checking on short symbols
-            # This prevents "BA" from matching inside "BANK" or "MASTERCARD"
-            pattern = r'\b' + re.escape(ticker) + r'\b'
-            if re.search(pattern, title_upper):
-                return tradingview
-            if re.search(pattern, text_upper):
-                return tradingview
-        
-        return "AMEX:SPY"  # Default to S&P 500 ETF
+# `detect_symbol` and its lookup tables used to live here. They were dead code
+# — nothing called them — and both branches ended in a hardcoded default:
+# BINANCE:BTCUSDT for anything crypto-shaped, AMEX:SPY for anything else.
+# Attribution now goes through `news_attribution`, which resolves against the
+# live exchange listings and returns None when it cannot identify an asset.
 
 
 def generate_news_id(title: str, source: str) -> str:
@@ -386,287 +89,250 @@ def generate_news_id(title: str, source: str) -> str:
     return hashlib.md5(data.encode()).hexdigest()[:12]
 
 
-async def fetch_cryptocompare_news() -> List[NewsItem]:
+async def _fetch_rss(source: str, url: str, hint: str, limit: int = 10) -> List[NewsItem]:
     """
-    Fetch crypto news from CryptoCompare API (free, no API key required).
+    Fetch and normalise one RSS feed.
+
+    Every source went through its own copy of these twenty lines, which is how
+    the crypto feeds ended up with an `asyncio.to_thread` around the blocking
+    parse and the equity feeds did not — those stalled the event loop while
+    every other source waited. One function, one behaviour.
+
+    `hint` is the feed's beat, passed to attribution as a tie-break only. The
+    asset class stored on the item is whatever attribution actually resolved.
     """
-    items = []
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(
-                "https://min-api.cryptocompare.com/data/v2/news/?lang=EN"
+        # `feedparser.parse` does blocking network I/O.
+        feed = await asyncio.to_thread(feedparser.parse, url)
+    except Exception as e:
+        logger.error("%s RSS fetch error: %s", source, e)
+        return []
+
+    parsed = []
+    for entry in feed.entries[:limit]:
+        title = entry.get("title", "")
+        if not title:
+            continue
+        # Koin Bülteni puts the body in `description`; the rest use `summary`.
+        raw_summary = entry.get("summary") or entry.get("description") or ""
+        parsed.append((entry, title, re.sub(r"<[^>]+>", "", raw_summary)))
+
+    # Attribution is the slow step, so the feed's items go through it together
+    # rather than one after another. The ceiling on how many actually run at
+    # once lives in `symbol_detection_service`, which is where it belongs —
+    # every source is being fetched concurrently too.
+    attributions = await asyncio.gather(
+        *(
+            news_attribution.get_or_detect(generate_news_id(title, source), title, summary, hint)
+            for _entry, title, summary in parsed
+        ),
+        return_exceptions=True,
+    )
+
+    items: List[NewsItem] = []
+    for (entry, title, summary), attribution in zip(parsed, attributions):
+        if isinstance(attribution, Exception):
+            logger.error("%s attribution error for %r: %s", source, title[:60], attribution)
+            continue
+
+        items.append(
+            NewsItem(
+                id=generate_news_id(title, source),
+                title=title,
+                summary=summary[:200] + "..." if len(summary) > 200 else summary,
+                source=source,
+                published_at=parse_feed_date(entry),
+                symbol=attribution.symbol,
+                asset_type=attribution.asset_type,
+                url=entry.get("link", ""),
             )
-            if response.status_code == 200:
-                data = response.json()
-                news_list = data.get("Data", [])[:15]  # Get top 15 news
-                
-                for news in news_list:
-                    title = news.get("title", "")
-                    body = news.get("body", "")
-                    
-                    # Detect crypto symbol from title/body using smart detection
-                    symbol = await detect_symbol_smart(body, title, "crypto")
-                    
-                    # CryptoCompare returns UTC timestamp, convert to local time (UTC+3)
-                    pub_timestamp = news.get("published_on", datetime.now().timestamp())
-                    pub_dt_utc = datetime.fromtimestamp(pub_timestamp, tz=timezone.utc)
-                    local_tz = timezone(timedelta(hours=3))
-                    pub_dt_local = pub_dt_utc.astimezone(local_tz).replace(tzinfo=None)
-                    
-                    # Sanity check: date shouldn't be in the future
-                    now = datetime.now()
-                    if pub_dt_local > now:
-                        pub_dt_local = now
-                    
-                    items.append(NewsItem(
-                        id=generate_news_id(title, news.get("source", "")),
-                        title=title,
-                        summary=body[:200] + "..." if len(body) > 200 else body,
-                        source=news.get("source", "CryptoCompare"),
-                        published_at=pub_dt_local,
-                        symbol=symbol,
-                        asset_type="crypto",
-                        url=news.get("url", "")
-                    ))
-    except Exception as e:
-        logger.error("CryptoCompare fetch error: %s", e)
+        )
 
     return items
 
 
-async def fetch_coindesk_rss() -> List[NewsItem]:
+TREE_OF_ALPHA_URL = "https://news.treeofalpha.com/api/news"
+# Items pulled per refresh. The feed is fast-moving (exchange listings, protocol
+# announcements, market-moving posts), so this is deliberately larger than the
+# ten a slow RSS feed contributes.
+TREE_OF_ALPHA_LIMIT = 40
+
+
+async def _treeofalpha_symbol(entry: dict, title: str) -> Optional[str]:
     """
-    Fetch news from CoinDesk RSS feed (free).
+    The ticker Tree of Alpha already tagged on an item, if any.
+
+    Pairs arrive as "POL_USDT" / "POL_BTC". The base is extracted and resolved
+    through the same gate as every other candidate, so the exchange on the
+    symbol is one that actually lists the pair — the tag says which coin, not
+    where it trades.
+
+    The tag is metadata rather than a guess, but it is produced by a tagger
+    that makes the same mistakes a model does: "MEXC expands offerings with AI
+    infrastructure" arrives tagged `AI_USDT`. Acronym tags therefore face the
+    same cashtag test as a model's answer.
+
+    Returns None when the item carries no usable tag, so the caller falls
+    through to the normal detection path instead of guessing.
     """
-    items = []
+    symbols = entry.get("symbols") or []
+    if not isinstance(symbols, list):
+        return None
+
+    pairs = [s for s in symbols if isinstance(s, str) and "_" in s]
+    if not pairs:
+        return None
+
+    preferred = next((p for p in pairs if p.endswith("_USDT")), pairs[0])
+    base = preferred.split("_")[0].upper()
+    if not base or is_uncashtagged_acronym(base, title):
+        return None
+
+    return await resolve_crypto(base)
+
+
+async def fetch_treeofalpha_news() -> List[NewsItem]:
+    """
+    Fetch the Tree of Alpha aggregated feed.
+
+    Tree of Alpha aggregates what actually moves crypto markets — exchange
+    listing and delisting notices, protocol accounts, and the news desks' own
+    posts — minutes before it reaches the RSS feeds. It also ships a `symbols`
+    field on the items it can tag, which is a real exchange pair rather than a
+    guess, so those items skip symbol detection entirely.
+    """
+    items: List[NewsItem] = []
+
     try:
-        feed = feedparser.parse("https://www.coindesk.com/arc/outboundfeeds/rss/")
-        
-        for entry in feed.entries[:10]:
-            title = entry.get("title", "")
-            summary = entry.get("summary", "")
-            
-            # Clean HTML from summary
-            summary = re.sub(r'<[^>]+>', '', summary)
-            
-            symbol = await detect_symbol_smart(summary, title, "crypto")
-            
-            pub_date = parse_feed_date(entry)
-            
-            items.append(NewsItem(
-                id=generate_news_id(title, "CoinDesk"),
-                title=title,
-                summary=summary[:200] + "..." if len(summary) > 200 else summary,
-                source="CoinDesk",
-                published_at=pub_date,
-                symbol=symbol,
-                asset_type="crypto",
-                url=entry.get("link", "")
-            ))
+        entries = await get_json(
+            TREE_OF_ALPHA_URL, params={"limit": TREE_OF_ALPHA_LIMIT}, timeout=15.0
+        )
     except Exception as e:
-        logger.error("CoinDesk RSS fetch error: %s", e)
+        logger.error("Tree of Alpha fetch error: %s", e)
+        return items
+
+    if not isinstance(entries, list):
+        logger.error("Tree of Alpha returned %s, expected a list", type(entries).__name__)
+        return items
+
+    usable = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        # `en` is the English rendering when the original is not; some items
+        # carry only one of the two.
+        title = entry.get("title") or entry.get("en") or ""
+        if title:
+            usable.append((entry, title))
+
+    async def attribute(entry: dict, title: str) -> Attribution:
+        """The item's asset: Tree of Alpha's own tag first, detection second."""
+        symbol = await _treeofalpha_symbol(entry, title)
+        if symbol:
+            return Attribution(symbol, asset_type_for_symbol(symbol, "crypto"))
+        return await news_attribution.get_or_detect(
+            generate_news_id(title, "Tree of Alpha"),
+            title,
+            str(entry.get("info") or ""),
+            "crypto",
+        )
+
+    attributions = await asyncio.gather(
+        *(attribute(entry, title) for entry, title in usable), return_exceptions=True
+    )
+
+    for (entry, title), attribution in zip(usable, attributions):
+        if isinstance(attribution, Exception):
+            logger.error("Tree of Alpha attribution error for %r: %s", title[:60], attribution)
+            continue
+
+        # The originating desk or account ("COINDESK", "Upbit"), which is more
+        # informative than labelling everything "Tree of Alpha".
+        origin = entry.get("sourceName") or entry.get("source") or "Tree of Alpha"
+        info = str(entry.get("info") or "")
+
+        published_at = datetime.now()
+        timestamp_ms = entry.get("time")
+        if isinstance(timestamp_ms, (int, float)) and timestamp_ms > 0:
+            published_at = datetime.fromtimestamp(timestamp_ms / 1000)
+
+        items.append(
+            NewsItem(
+                id=generate_news_id(title, "Tree of Alpha"),
+                title=title[:300],
+                summary=info[:200] or title[:200],
+                source=f"Tree of Alpha · {origin}",
+                published_at=published_at,
+                symbol=attribution.symbol,
+                asset_type=attribution.asset_type,
+                url=entry.get("url") or "",
+            )
+        )
 
     return items
 
-
-async def fetch_cointelegraph_rss() -> List[NewsItem]:
-    """
-    Fetch news from CoinTelegraph RSS feed (free).
-    """
-    items = []
-    try:
-        feed = feedparser.parse("https://cointelegraph.com/rss")
-        
-        for entry in feed.entries[:10]:
-            title = entry.get("title", "")
-            summary = entry.get("summary", "")
-            
-            # Clean HTML from summary
-            summary = re.sub(r'<[^>]+>', '', summary)
-            
-            symbol = await detect_symbol_smart(summary, title, "crypto")
-            
-            pub_date = parse_feed_date(entry)
-            
-            items.append(NewsItem(
-                id=generate_news_id(title, "CoinTelegraph"),
-                title=title,
-                summary=summary[:200] + "..." if len(summary) > 200 else summary,
-                source="CoinTelegraph",
-                published_at=pub_date,
-                symbol=symbol,
-                asset_type="crypto",
-                url=entry.get("link", "")
-            ))
-    except Exception as e:
-        logger.error("CoinTelegraph RSS fetch error: %s", e)
-
-    return items
-
-
-async def fetch_marketwatch_rss() -> List[NewsItem]:
-    """
-    Fetch stock news from MarketWatch RSS (free).
-    """
-    items = []
-    try:
-        # Use the correct redirect URL
-        feed = feedparser.parse("https://feeds.content.dowjones.io/public/rss/mw_topstories")
-        
-        for entry in feed.entries[:10]:
-            title = entry.get("title", "")
-            summary = entry.get("summary", "")
-            
-            # Clean HTML
-            summary = re.sub(r'<[^>]+>', '', summary)
-            
-            symbol = await detect_symbol_smart(summary, title, "stock")
-            pub_date = parse_feed_date(entry)
-            
-            items.append(NewsItem(
-                id=generate_news_id(title, "MarketWatch"),
-                title=title,
-                summary=summary[:200] + "..." if len(summary) > 200 else summary,
-                source="MarketWatch",
-                published_at=pub_date,
-                symbol=symbol,
-                asset_type="stock",
-                url=entry.get("link", "")
-            ))
-    except Exception as e:
-        logger.error("MarketWatch RSS fetch error: %s", e)
-
-    return items
-
-
-async def fetch_investing_rss() -> List[NewsItem]:
-    """
-    Fetch stock news from Investing.com RSS (free).
-    """
-    items = []
-    try:
-        feed = feedparser.parse("https://www.investing.com/rss/news.rss")
-        
-        for entry in feed.entries[:10]:
-            title = entry.get("title", "")
-            summary = entry.get("summary", "")
-            
-            # Clean HTML
-            summary = re.sub(r'<[^>]+>', '', summary)
-            
-            symbol = await detect_symbol_smart(summary, title, "stock")
-            pub_date = parse_feed_date(entry)
-            
-            items.append(NewsItem(
-                id=generate_news_id(title, "Investing.com"),
-                title=title,
-                summary=summary[:200] + "..." if len(summary) > 200 else summary,
-                source="Investing.com",
-                published_at=pub_date,
-                symbol=symbol,
-                asset_type="stock",
-                url=entry.get("link", "")
-            ))
-    except Exception as e:
-        logger.error("Investing.com RSS fetch error: %s", e)
-
-    return items
-
-
-async def fetch_seeking_alpha_rss() -> List[NewsItem]:
-    """
-    Fetch stock news from Seeking Alpha RSS (free).
-    """
-    items = []
-    try:
-        feed = feedparser.parse("https://seekingalpha.com/market_currents.xml")
-        
-        for entry in feed.entries[:10]:
-            title = entry.get("title", "")
-            summary = entry.get("summary", "")
-            
-            # Clean HTML
-            summary = re.sub(r'<[^>]+>', '', summary)
-            
-            symbol = await detect_symbol_smart(summary, title, "stock")
-            pub_date = parse_feed_date(entry)
-            
-            items.append(NewsItem(
-                id=generate_news_id(title, "Seeking Alpha"),
-                title=title,
-                summary=summary[:200] + "..." if len(summary) > 200 else summary,
-                source="Seeking Alpha",
-                published_at=pub_date,
-                symbol=symbol,
-                asset_type="stock",
-                url=entry.get("link", "")
-            ))
-    except Exception as e:
-        logger.error("Seeking Alpha RSS fetch error: %s", e)
-
-    return items
-
-
-async def fetch_koinbulteni_rss() -> List[NewsItem]:
-    """
-    Fetch Turkish crypto news from Koin Bülteni RSS (free).
-    """
-    items = []
-    try:
-        feed = feedparser.parse("https://koinbulteni.com/feed")
-        
-        for entry in feed.entries[:10]:
-            title = entry.get("title", "")
-            summary = entry.get("description", "")
-            
-            # Clean HTML
-            summary = re.sub(r'<[^>]+>', '', summary)
-            
-            symbol = await detect_symbol_smart(summary, title, "crypto")
-            
-            pub_date = parse_feed_date(entry)
-            
-            items.append(NewsItem(
-                id=generate_news_id(title, "Koin Bülteni"),
-                title=title,
-                summary=summary[:200] + "..." if len(summary) > 200 else summary,
-                source="Koin Bülteni",
-                published_at=pub_date,
-                symbol=symbol,
-                asset_type="crypto",
-                url=entry.get("link", "")
-            ))
-    except Exception as e:
-        logger.error("Koin Bülteni RSS fetch error: %s", e)
-
-    return items
 
 async def fetch_all_news() -> List[NewsItem]:
     """
     Fetch news from all sources concurrently and combine results.
     """
-    # Fetch from all sources concurrently
-    results = await asyncio.gather(
-        # Global crypto sources
-        fetch_cryptocompare_news(),
-        fetch_coindesk_rss(),
-        fetch_cointelegraph_rss(),
+    # (source name, coroutine) pairs - names are used for per-source logging.
+    #
+    # Several publishers are unreachable from some of the networks this runs on
+    # — cointelegraph.com and koinbulteni.com reset the TLS connection outright,
+    # the same way Binance does, which no client-side change can work around.
+    # They stay in the list because they work elsewhere, and the sources beside
+    # them cover the same ground where they do not: The Block and CryptoSlate
+    # for global crypto, Uzmancoin for Turkish, and Tree of Alpha for the
+    # exchange and protocol announcements that break before any of the desks
+    # publish. A blocked source contributes nothing and is logged; it never
+    # holds up the others.
+    sources = [
+        # Aggregated real-time feed
+        ("Tree of Alpha", fetch_treeofalpha_news()),
+        # Global crypto sources. No trailing slash on the CoinDesk URL: the
+        # slash variant returns a 308 redirect feedparser will not follow.
+        ("Decrypt", _fetch_rss("Decrypt", "https://decrypt.co/feed", "crypto", 15)),
+        (
+            "CoinDesk",
+            _fetch_rss("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss", "crypto"),
+        ),
+        ("CoinTelegraph", _fetch_rss("CoinTelegraph", "https://cointelegraph.com/rss", "crypto")),
+        ("The Block", _fetch_rss("The Block", "https://www.theblock.co/rss.xml", "crypto")),
+        ("CryptoSlate", _fetch_rss("CryptoSlate", "https://cryptoslate.com/feed/", "crypto")),
         # Turkish crypto sources
-        fetch_koinbulteni_rss(),
+        ("Koin Bülteni", _fetch_rss("Koin Bülteni", "https://koinbulteni.com/feed", "crypto")),
+        ("Uzmancoin", _fetch_rss("Uzmancoin", "https://uzmancoin.com/feed/", "crypto")),
         # Global stock sources
-        fetch_marketwatch_rss(),
-        fetch_investing_rss(),
-        fetch_seeking_alpha_rss(),
-        return_exceptions=True
-    )
-    
+        (
+            "MarketWatch",
+            _fetch_rss(
+                "MarketWatch",
+                "https://feeds.content.dowjones.io/public/rss/mw_topstories",
+                "stock",
+            ),
+        ),
+        (
+            "Investing.com",
+            _fetch_rss("Investing.com", "https://www.investing.com/rss/news.rss", "stock"),
+        ),
+        (
+            "Seeking Alpha",
+            _fetch_rss("Seeking Alpha", "https://seekingalpha.com/market_currents.xml", "stock"),
+        ),
+    ]
+
+    # Fetch from all sources concurrently
+    results = await asyncio.gather(*(coro for _, coro in sources), return_exceptions=True)
+
     all_items = []
-    for result in results:
+    for (name, _), result in zip(sources, results):
         if isinstance(result, list):
+            logger.info("News source %s: %d items", name, len(result))
             all_items.extend(result)
         else:
-            logger.error("News source fetch error: %s", result)
-    
+            logger.error("News source %s fetch error: %s", name, result)
+
     # Remove duplicates by title similarity
     seen_titles = set()
     unique_items = []
@@ -675,8 +341,11 @@ async def fetch_all_news() -> List[NewsItem]:
         if title_key not in seen_titles:
             seen_titles.add(title_key)
             unique_items.append(item)
-    
+
     # Sort by published date (newest first)
     unique_items.sort(key=lambda x: x.published_at, reverse=True)
-    
+
+    # Attribution buffers its writes; this is the end of the batch.
+    await news_attribution.flush()
+
     return unique_items

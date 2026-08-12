@@ -1,538 +1,727 @@
 """
-Symbol Detection Service - Smart detection of trading symbols from text
-Uses CoinGecko API for dynamic coin list and intelligent pattern matching
+Symbol Detection Service — which tradeable asset a piece of text is about.
+
+Attribution decides what the dashboard charts and what the analyser is told the
+news concerns, so a wrong answer is worse than no answer: it renders an
+unrelated price series and hands the model an asset the story never mentioned.
+The pipeline is therefore built around one rule — **no ticker leaves this module
+without being confirmed against a live listing**:
+
+    1. explicit market notation in the headline ($AAPL, BTC/USDT)
+    2. the LLM, which reads the text and may legitimately answer "no asset"
+    3. name matching, but only when the LLM could not be reached at all
+
+Crypto and equities are equal citizens. A story is not "a crypto story" because
+it arrived on a crypto feed — CoinDesk covers Coinbase earnings, MarketWatch
+covers bitcoin ETFs — so the asset class is derived from the symbol that was
+actually resolved, and the feed's own class is only the tie-break hint.
 """
-import logging
-import httpx
+
 import asyncio
+import logging
 import re
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
+from typing import Optional, Tuple
+
+from config import settings
+from services import asset_registry
+from services.ai_service import (
+    SYMBOL_DETECTION_TIMEOUT_S,
+    SymbolVerdict,
+    detect_asset_symbol,
+)
+from services.cache import ServiceCache
 
 logger = logging.getLogger(__name__)
 
-# Cache for coin data
-_coin_cache: Dict[str, dict] = {}
-_coin_cache_time: Optional[datetime] = None
-CACHE_TTL_MINUTES = 15
+CRYPTO_EXCHANGES = frozenset({"BINANCE", "OKX"})
+EQUITY_EXCHANGES = frozenset({"NASDAQ", "NYSE"})
 
 
-@dataclass
-class SymbolMatch:
-    """Represents a potential symbol match with confidence score"""
-    symbol: str  # TradingView format: EXCHANGE:SYMBOL
-    score: float
-    match_type: str  # 'name', 'ticker', 'pattern', 'alias'
+@dataclass(frozen=True)
+class Attribution:
+    """
+    What a news item was found to be about.
+
+    `confident` is False when the answer came out of a degraded path — the LLM
+    could not be reached and the name matcher had the last word. The attribution
+    is still the best available and is used as-is, but it is worth revisiting
+    once a model can read the item, so the cache does not treat it as settled.
+    """
+
+    symbol: Optional[str]
+    asset_type: str
+    confident: bool = True
 
 
-# Coins that should default to OKX (usually due to lack of Spot on Binance or user preference)
+# Quote currencies and contract suffixes that may arrive attached to a base.
+_QUOTE_SUFFIXES = ("USDT", "USDC", "USD", "PERP")
+
+# Where to chart a coin when no exchange listing could be reached at all. Seven
+# hand-maintained entries used to be the *only* exchange logic in this module,
+# which is why anything Binance did not list charted as an invalid symbol; they
+# now apply solely in that offline degraded mode.
 OKX_PREFERRED_TOKENS = {
-    "PI", 
-    "POPCAT", 
-    "BRETT", 
-    "MOG", 
-    "MEW", 
-    "WEN", 
-    "COQ"
+    "PI",
+    "POPCAT",
+    "BRETT",
+    "MOG",
+    "MEW",
+    "WEN",
+    "COQ",
 }
 
+# Coin/company names that are ordinary English or finance words. Every one of
+# these is a real asset name — Rain, Sky, Cash, Gate, Core, Just, Kite, Block,
+# Now, Net — and matching them on a bare mention is how "training data" became
+# a RAIN headline and "ServiceNow" swallowed every sentence containing "now".
+_AMBIGUOUS_NAMES = frozenset(
+    # Asset names that are ordinary words
+    "rain sky cash gate core just kite flow moon sun deep mask pump trump coco "
+    "dash link block now net team snow coin unity square shop story wave boost "
+    "grass myth vine beam step safe hive aster auto meta dear open next gold "
+    "silver star "
+    # Market vocabulary — a headline using these is describing the market, not
+    # naming the company that happens to be called after it.
+    "index market stock token chain swap nasdaq dow exchange trust fund invest "
+    "trade future option "
+    # Company names that are everyday nouns. Target Corp is a real company, but
+    # "raises its target" is not a headline about it.
+    "target match loop edge arrow pool range post wire bond share price rate "
+    "money public signal rocket spark surge shift focus vision mission peak "
+    "ridge sound light class board "
+    # Generic corporate words, which head hundreds of listings apiece
+    "prime first global capital united american national general advance alpha "
+    "apex credit premier summit liberty heritage community citizens peoples "
+    "home city state union allied associated consolidated universal superior "
+    "select value quality service business commercial industrial financial "
+    "investment income growth equity asset partners group holding enterprise "
+    "ventures resources energy power health medical digital data cloud cyber "
+    "smart micro west east north south bank banks banking western eastern "
+    "northern southern central pacific atlantic standard royal empire legacy "
+    "pioneer frontier horizon vista gateway bridge tower park".split()
+)
 
-
-# Common crypto aliases and their standard symbols
+# Name → current ticker, for the cases a listing lookup cannot cover: the coin's
+# common name differs from its ticker, or the ticker itself was migrated. This
+# is a *normalisation* table, not an asset list — every value still has to
+# survive `resolve_crypto`, so a stale entry produces no attribution rather than
+# a wrong one.
 CRYPTO_ALIASES = {
-    "btc": "BTC",
     "bitcoin": "BTC",
-    "eth": "ETH",
     "ethereum": "ETH",
-    "xrp": "XRP",
     "ripple": "XRP",
-    "sol": "SOL",
+    "xrpl": "XRP",
     "solana": "SOL",
-    "ada": "ADA",
     "cardano": "ADA",
-    "doge": "DOGE",
     "dogecoin": "DOGE",
-    "shib": "SHIB",
     "shiba inu": "SHIB",
-    "dot": "DOT",
     "polkadot": "DOT",
-    "link": "LINK",
     "chainlink": "LINK",
-    "ltc": "LTC",
     "litecoin": "LTC",
-    "bch": "BCH",
     "bitcoin cash": "BCH",
-    "etc": "ETC",
     "ethereum classic": "ETC",
-    "xlm": "XLM",
     "stellar": "XLM",
-    "vet": "VET",
     "vechain": "VET",
-    "uni": "UNI",
     "uniswap": "UNI",
-    "atom": "ATOM",
     "cosmos": "ATOM",
-    "algo": "ALGO",
     "algorand": "ALGO",
-    "fil": "FIL",
     "filecoin": "FIL",
-    "eos": "EOS",
-    "trx": "TRX",
     "tron": "TRX",
-    "xtz": "XTZ",
     "tezos": "XTZ",
-    "neo": "NEO",
-    "dash": "DASH",
-    "zec": "ZEC",
     "zcash": "ZEC",
-    "xmr": "XMR",
     "monero": "XMR",
-    "icp": "ICP",
     "internet computer": "ICP",
-    "avax": "AVAX",
     "avalanche": "AVAX",
-    "matic": "MATIC",
-    "polygon": "MATIC",
-    "luna": "LUNA",
-    "terra": "LUNA",
-    "ftm": "FTM",
-    "fantom": "FTM",
-    "sand": "SAND",
+    # Polygon completed the MATIC → POL migration; MATIC no longer trades.
+    "matic": "POL",
+    "polygon": "POL",
     "the sandbox": "SAND",
-    "mana": "MANA",
     "decentraland": "MANA",
-    "axs": "AXS",
     "axie infinity": "AXS",
-    "enj": "ENJ",
     "enjin coin": "ENJ",
-    "chz": "CHZ",
     "chiliz": "CHZ",
-    "aave": "AAVE",
-    "comp": "COMP",
     "compound": "COMP",
-    "snx": "SNX",
     "synthetix": "SNX",
-    "yfi": "YFI",
     "yearn.finance": "YFI",
-    "sushi": "SUSHI",
     "sushiswap": "SUSHI",
     "pancakeswap": "CAKE",
-    "cake": "CAKE",
-    "not": "NOT",
-    "xrpl": "XRP",
+    "hyperliquid": "HYPE",
 }
 
-# Stock company names and tickers
-STOCK_MAPPINGS = {
-    # Tech Giants
-    "apple": ("AAPL", "NASDAQ"),
-    "aapl": ("AAPL", "NASDAQ"),
-    "microsoft": ("MSFT", "NASDAQ"),
-    "msft": ("MSFT", "NASDAQ"),
-    "google": ("GOOGL", "NASDAQ"),
-    "alphabet": ("GOOGL", "NASDAQ"),
-    "googl": ("GOOGL", "NASDAQ"),
-    "amazon": ("AMZN", "NASDAQ"),
-    "amzn": ("AMZN", "NASDAQ"),
-    "nvidia": ("NVDA", "NASDAQ"),
-    "nvda": ("NVDA", "NASDAQ"),
-    "tesla": ("TSLA", "NASDAQ"),
-    "tsla": ("TSLA", "NASDAQ"),
-    "meta": ("META", "NASDAQ"),
-    "facebook": ("META", "NASDAQ"),
-    "netflix": ("NFLX", "NASDAQ"),
-    "nflx": ("NFLX", "NASDAQ"),
-    
-    # Software & Cloud
-    "adobe": ("ADBE", "NASDAQ"),
-    "adbe": ("ADBE", "NASDAQ"),
-    "salesforce": ("CRM", "NYSE"),
-    "crm": ("CRM", "NYSE"),
-    "oracle": ("ORCL", "NYSE"),
-    "orcl": ("ORCL", "NYSE"),
-    "sap": ("SAP", "NYSE"),
-    "servicenow": ("NOW", "NYSE"),
-    "now": ("NOW", "NYSE"),
-    "snowflake": ("SNOW", "NYSE"),
-    "snow": ("SNOW", "NYSE"),
-    "intuit": ("INTU", "NASDAQ"),
-    "intu": ("INTU", "NASDAQ"),
-    "autodesk": ("ADSK", "NASDAQ"),
-    "adsk": ("ADSK", "NASDAQ"),
-    "workday": ("WDAY", "NASDAQ"),
-    "wday": ("WDAY", "NASDAQ"),
-    "zscaler": ("ZS", "NASDAQ"),
-    "zs": ("ZS", "NASDAQ"),
-    "crowdstrike": ("CRWD", "NASDAQ"),
-    "crwd": ("CRWD", "NASDAQ"),
-    "palo alto networks": ("PANW", "NASDAQ"),
-    "panw": ("PANW", "NASDAQ"),
-    "fortinet": ("FTNT", "NASDAQ"),
-    "ftnt": ("FTNT", "NASDAQ"),
-    "cloudflare": ("NET", "NYSE"),
-    "net": ("NET", "NYSE"),
-    "databricks": ("DBX", "NASDAQ"), # Note: DBX is Dropbox, Databricks is private. This is a placeholder.
-    "mongodb": ("MDB", "NASDAQ"),
-    "mdb": ("MDB", "NASDAQ"),
-    "unity": ("U", "NYSE"),
-    "u": ("U", "NYSE"),
-    "roblox": ("RBLX", "NYSE"),
-    "rblx": ("RBLX", "NYSE"),
-    "atlassian": ("TEAM", "NASDAQ"),
-    "team": ("TEAM", "NASDAQ"),
-    "zoom": ("ZM", "NASDAQ"),
-    "zm": ("ZM", "NASDAQ"),
-    "okta": ("OKTA", "NASDAQ"),
-    "okta": ("OKTA", "NASDAQ"),
-    "docuSign": ("DOCU", "NASDAQ"),
-    "docu": ("DOCU", "NASDAQ"),
-    "coupa": ("COUP", "NASDAQ"),
-    "coup": ("COUP", "NASDAQ"),
-    "splunk": ("SPLK", "NASDAQ"),
-    "splk": ("SPLK", "NASDAQ"),
-    "vmware": ("VMW", "NYSE"),
-    "vmw": ("VMW", "NYSE"),
-    "cisco": ("CSCO", "NASDAQ"),
-    "csco": ("CSCO", "NASDAQ"),
-    "ibm": ("IBM", "NYSE"),
-    "accenture": ("ACN", "NYSE"),
-    "acn": ("ACN", "NYSE"),
-    "cognizant": ("CTSH", "NASDAQ"),
-    "ctsh": ("CTSH", "NASDAQ"),
-    "infosys": ("INFY", "NYSE"),
-    "infy": ("INFY", "NYSE"),
-    "wipro": ("WIT", "NYSE"),
-    "wit": ("WIT", "NYSE"),
-    "capgemini": ("CAP.PA", "EURONEXT"), # Example for non-US
-    "tata consultancy services": ("TCS.NS", "NSE"), # Example for non-US
-    "palantir": ("PLTR", "NASDAQ"),
-    "pltr": ("PLTR", "NASDAQ"),
-    "crowdstrike": ("CRWD", "NASDAQ"),
-    "crwd": ("CRWD", "NASDAQ"),
-    "salesforce": ("CRM", "NYSE"),
-    "crm": ("CRM", "NYSE"),
-    "oracle": ("ORCL", "NYSE"),
-    "orcl": ("ORCL", "NYSE"),
-    "servicenow": ("NOW", "NYSE"),
-    "now": ("NOW", "NYSE"),
-    "snowflake": ("SNOW", "NYSE"),
-    "snow": ("SNOW", "NYSE"),
-    "autodesk": ("ADSK", "NASDAQ"),
-    "adsk": ("ADSK", "NASDAQ"),
-
-    # Crypto-Adjacent Stocks
-    "coinbase": ("COIN", "NASDAQ"),
-    "coin": ("COIN", "NASDAQ"),
-    "microstrategy": ("MSTR", "NASDAQ"),
-    "mstr": ("MSTR", "NASDAQ"),
-    "marathon digital": ("MARA", "NASDAQ"),
-    "mara": ("MARA", "NASDAQ"),
-    "riot platforms": ("RIOT", "NASDAQ"),
-    "riot": ("RIOT", "NASDAQ"),
-    "cleanspark": ("CLSK", "NASDAQ"),
-    "clsk": ("CLSK", "NASDAQ"),
-    "blackrock": ("BLK", "NYSE"),
-    "blk": ("BLK", "NYSE"),
-    
-    # EV & Auto
-    "rivian": ("RIVN", "NASDAQ"),
-    "rivn": ("RIVN", "NASDAQ"),
-    "lucid": ("LCID", "NASDAQ"),
-    "lcid": ("LCID", "NASDAQ"),
-    "nio": ("NIO", "NYSE"),
-    "ford": ("F", "NYSE"),
-    "general motors": ("GM", "NYSE"),
-    "gm": ("GM", "NYSE"),
-    
-    # Fintech & Payments
-    "block": ("SQ", "NYSE"),
-    "square": ("SQ", "NYSE"),
-    "sq": ("SQ", "NYSE"),
-    "sofi": ("SOFI", "NASDAQ"),
-    "american express": ("AXP", "NYSE"),
-    "axp": ("AXP", "NYSE"),
-    "robinhood": ("HOOD", "NASDAQ"),
-    "hood": ("HOOD", "NASDAQ"),
-    
-    # Retail & E-commerce
-    "shopify": ("SHOP", "NYSE"),
-    "shop": ("SHOP", "NYSE"),
-    "uber": ("UBER", "NYSE"),
-    "airbnb": ("ABNB", "NASDAQ"),
-    "abnb": ("ABNB", "NASDAQ"),
-    "booking": ("BKNG", "NASDAQ"),
-    "bkng": ("BKNG", "NASDAQ"),
-    
-    # Biotech & Health
-    "eli lilly": ("LLY", "NYSE"),
-    "lly": ("LLY", "NYSE"),
-    "novo nordisk": ("NVO", "NYSE"),
-    "nvo": ("NVO", "NYSE"),
-    "viking therapeutics": ("VKTX", "NASDAQ"),
-    "vktx": ("VKTX", "NASDAQ"),
-    
-    # Energy & Industrial
-    "plug power": ("PLUG", "NASDAQ"),
-    "plug": ("PLUG", "NASDAQ"),
-    "first solar": ("FSLR", "NASDAQ"),
-    "fslr": ("FSLR", "NASDAQ"),
-    "ge": ("GE", "NYSE"),
-    "general electric": ("GE", "NYSE"),
-    "caterpillar": ("CAT", "NYSE"),
-    "cat": ("CAT", "NYSE"),
+# Colloquial company names the exchange listing does not carry. The listing has
+# "Alphabet Inc." and "Meta Platforms Inc.", not what people actually write.
+EQUITY_ALIASES = {
+    "google": "GOOGL",
+    "facebook": "META",
+    "instagram": "META",
+    "whatsapp": "META",
+    "youtube": "GOOGL",
+    "microstrategy": "MSTR",
+    "aws": "AMZN",
+    "azure": "MSFT",
+    "chatgpt": "MSFT",
+    # Written as one word in headlines, two in the listing.
+    "jpmorgan": "JPM",
+    "goldman": "GS",
+    "berkshire": "BRK.B",
+    "walmart": "WMT",
+    # AMEX is the company; AAME is Atlantic American, which a model reaching
+    # for the nearest four-letter ticker will otherwise land on.
+    "amex": "AXP",
 }
 
-
-async def fetch_coingecko_coins() -> List[dict]:
-    """
-    Fetch top 250 coins from CoinGecko API for dynamic matching.
-    Returns list of coin data with id, symbol, name.
-    """
-    global _coin_cache, _coin_cache_time
-    
-    # Check cache
-    if _coin_cache_time and (datetime.now() - _coin_cache_time) < timedelta(minutes=CACHE_TTL_MINUTES):
-        return list(_coin_cache.values())
-    
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.get(
-                "https://api.coingecko.com/api/v3/coins/markets",
-                params={
-                    "vs_currency": "usd",
-                    "order": "market_cap_desc",
-                    "per_page": 250,
-                    "page": 1,
-                    "sparkline": False
-                }
-            )
-            
-            if response.status_code == 200:
-                coins = response.json()
-                # Build cache with symbol as key
-                _coin_cache = {
-                    coin["symbol"].upper(): {
-                        "id": coin["id"],
-                        "symbol": coin["symbol"].upper(),
-                        "name": coin["name"].lower(),
-                    }
-                    for coin in coins
-                }
-                _coin_cache_time = datetime.now()
-                return list(_coin_cache.values())
-    except Exception as e:
-        logger.error(f"CoinGecko fetch error: {e}")
-    
-    # Return cached data if fetch fails
-    return list(_coin_cache.values()) if _coin_cache else []
-
-
-def find_pattern_matches(text: str) -> List[Tuple[str, str]]:
-    """
-    Find symbol patterns in text like $BTC, #ETH, @TSLA
-    Returns list of (symbol, match_type) tuples
-    """
-    matches = []
-    
-    # Pattern: $BTC, $ETH, $TSLA (crypto or stock)
-    dollar_pattern = re.findall(r'\$([A-Za-z]{2,10})', text)
-    for match in dollar_pattern:
-        matches.append((match.upper(), "dollar_sign"))
-    
-    # Pattern: #BTC, #ETH (social media style)
-    hashtag_pattern = re.findall(r'#([A-Za-z]{2,10})', text)
-    for match in hashtag_pattern:
-        matches.append((match.upper(), "hashtag"))
-    
-    # Pattern: (BTC), (ETH) - ticker in parentheses
-    paren_pattern = re.findall(r'\(([A-Z]{2,5})\)', text)
-    for match in paren_pattern:
-        matches.append((match, "parentheses"))
-    
-    # Pattern: BTC/USD, ETH/USDT - trading pairs
-    pair_pattern = re.findall(r'([A-Z]{2,5})/(USD[TC]?|BTC|ETH)', text.upper())
-    for match in pair_pattern:
-        matches.append((match[0], "trading_pair"))
-    
-    # Pattern: Turkish price mentions "95.000$", "95,000$" followed/preceded by coin name
-    # This helps identify the main subject of price news
-    
-    return matches
-
-
-def calculate_match_score(
-    text_lower: str,
-    title_lower: str,
-    match_term: str,
-    match_type: str,
-    is_title: bool = False
-) -> float:
-    """
-    Calculate confidence score for a symbol match.
-    Higher score = more likely to be the correct symbol.
-    """
-    base_score = 0.0
-    match_term_lower = match_term.lower()
-    
-    # Match type weights
-    type_weights = {
-        "dollar_sign": 3.0,    # $BTC is very explicit
-        "hashtag": 2.5,        # #ETH is quite explicit
-        "parentheses": 2.5,    # (BTC) is explicit
-        "trading_pair": 3.0,   # BTC/USD is very explicit
-        "name": 2.0,           # Full name match
-        "ticker": 1.5,         # Short ticker match
-        "alias": 1.5,          # Alias match
+# Tickers that are, in this app's copy, almost always an acronym rather than an
+# asset. Each of these is a genuine listing — AI is Sleepless AI, US is a token,
+# ETF is a ticker somewhere — but "AI infrastructure spending" is not a story
+# about a coin, and a model asked for a symbol will reach for one anyway. They
+# are only accepted when the author cashtagged them.
+_ACRONYM_TICKERS = frozenset(
+    {
+        "AI",
+        "US",
+        "IT",
+        "ID",
+        "ME",
+        "NOT",
+        "GO",
+        "ON",
+        "UP",
+        "NFT",
+        "APR",
+        "CEO",
+        "ETF",
+        "SEC",
+        "CPI",
+        "GDP",
+        "IPO",
+        "API",
+        "EU",
+        "UK",
+        "FED",
+        "DAO",
+        "NFA",
     }
-    
-    base_score = type_weights.get(match_type, 1.0)
-    
-    # Title match bonus (3x weight)
-    if is_title:
-        base_score *= 3.0
-    
-    # Position bonus - earlier in text = more relevant
-    pos = text_lower.find(match_term_lower)
-    if pos != -1 and pos < 50:
-        base_score *= 1.5
-    
-    # Context bonuses
-    context_keywords = [
-        "price", "fiyat", "usd", "dollar", "dolar", "$",
-        "rally", "surge", "crash", "drop", "yüksel", "düş",
-        "market", "piyasa", "trading", "trade", "işlem",
-        "buy", "sell", "al", "sat", "bullish", "bearish"
+)
+
+# Lookup tables derived from the registry, rebuilt on the registry's own TTL.
+_lookup_cache = ServiceCache(maxsize=4)
+_LOOKUP_TTL = 3600
+
+# One ceiling for the whole process rather than per source: every feed is
+# fetched concurrently, so without this the provider receives the entire
+# refresh at once and times out on all of it.
+_llm_gate = asyncio.Semaphore(settings.SYMBOL_DETECTION_CONCURRENCY)
+
+# Wall-clock ceiling for the whole LLM attempt, across every provider the chain
+# tries. Derived from the per-provider budget rather than hardcoded so the two
+# can never drift into the state where this one is the smaller of the pair and
+# silently disables the fallback chain.
+SYMBOL_DETECTION_BUDGET_S = SYMBOL_DETECTION_TIMEOUT_S * 2.5
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Resolution — the gate every candidate ticker passes through
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def _strip_quote(base: str) -> str:
+    """`BTCUSDT` → `BTC`. Leaves a base that is itself a quote name alone."""
+    base = base.upper()
+    for suffix in _QUOTE_SUFFIXES:
+        if base.endswith(suffix) and len(base) > len(suffix):
+            return base[: -len(suffix)]
+    return base
+
+
+async def resolve_crypto(candidate: str) -> Optional[str]:
+    """
+    A confirmed crypto symbol in TradingView form, or None.
+
+    The exchange comes from whichever venue actually lists the pair, so the
+    symbol the browser is handed is one TradingView can draw.
+    """
+    base = _strip_quote(CRYPTO_ALIASES.get(candidate.lower().strip(), candidate).strip())
+    if not base or not base.isalnum():
+        return None
+    # Everything here is quoted in USDT, so USDT itself has no pair. A Tether
+    # story is real news; "USDTUSDT" is not a chart.
+    if base == "USDT":
+        return None
+
+    exchange = await asset_registry.exchange_for_crypto(base)
+    if exchange:
+        return f"{exchange}:{base}USDT"
+
+    # Not on any listing we could read. Only a coin the market-cap universe
+    # knows gets the benefit of the doubt, and only while the listing that
+    # would have settled it is missing.
+    universe = {coin["symbol"] for coin in await asset_registry.get_crypto_universe()}
+    if base not in universe:
+        return None
+
+    listed = await asset_registry.get_listed_bases() or {}
+    if "BINANCE" in listed:
+        # Every listing was readable and none carries it. There is no venue
+        # left to guess at.
+        return None
+
+    # Binance is unreachable from some networks, so its listing may simply be
+    # missing rather than negative. A coin large enough to be in the top 250 is
+    # very likely to trade there; TradingView draws it from its own feed, which
+    # is not subject to this machine's network.
+    exchange = "OKX" if base in OKX_PREFERRED_TOKENS else "BINANCE"
+    logger.debug("Binance listing unreadable — charting %s on %s unverified", base, exchange)
+    return f"{exchange}:{base}USDT"
+
+
+async def resolve_equity(ticker: str, exchange_hint: Optional[str] = None) -> Optional[str]:
+    """A confirmed US equity symbol (`NASDAQ:AAPL`, `NYSE:JPM`), or None."""
+    ticker = EQUITY_ALIASES.get(ticker.lower().strip(), ticker).strip().upper()
+    if not ticker:
+        return None
+
+    exchange = await asset_registry.equity_exchange(ticker)
+    if exchange:
+        return f"{exchange}:{ticker}"
+
+    if await asset_registry.get_us_equity_index() is None:
+        # The listing could not be read from any layer, so "unknown ticker" and
+        # "unknown listing" are indistinguishable. Keep the caller's exchange
+        # rather than inventing one.
+        if exchange_hint in EQUITY_EXCHANGES:
+            logger.warning(
+                "US equity listing unavailable — charting %s:%s unverified",
+                exchange_hint,
+                ticker,
+            )
+            return f"{exchange_hint}:{ticker}"
+    return None
+
+
+async def resolve(candidate: str, hint: str = "crypto") -> Optional[str]:
+    """
+    Confirm one candidate — `"BINANCE:BTCUSDT"`, `"AAPL"`, `"pepe"` — or None.
+
+    Both asset classes are always tried. `hint` only decides which is tried
+    first, because a bare ticker can exist in both worlds; an explicit exchange
+    prefix on the candidate outranks it.
+    """
+    candidate = (candidate or "").strip().lstrip("$").strip()
+    if not candidate:
+        return None
+
+    exchange, _, ticker = candidate.rpartition(":")
+    exchange = exchange.upper()
+    ticker = ticker.strip()
+    if not ticker:
+        return None
+
+    if exchange in EQUITY_EXCHANGES:
+        order = ("equity", "crypto")
+    elif exchange in CRYPTO_EXCHANGES:
+        order = ("crypto", "equity")
+    else:
+        order = ("crypto", "equity") if hint == "crypto" else ("equity", "crypto")
+
+    for kind in order:
+        if kind == "crypto":
+            resolved = await resolve_crypto(ticker)
+        else:
+            resolved = await resolve_equity(ticker, exchange_hint=exchange or None)
+        if resolved:
+            return resolved
+    return None
+
+
+def asset_type_for_symbol(symbol: Optional[str], fallback: str = "crypto") -> str:
+    """The asset class a resolved symbol belongs to."""
+    if not symbol:
+        return fallback
+    exchange = symbol.split(":")[0].upper()
+    if exchange in EQUITY_EXCHANGES:
+        return "stock"
+    if exchange in CRYPTO_EXCHANGES:
+        return "crypto"
+    return fallback
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Strategy 1 — explicit market notation
+# ═══════════════════════════════════════════════════════════════════════════
+
+# $BTC, $AAPL — a cashtag is an author stating the subject outright.
+_CASHTAG_RE = re.compile(r"\$([A-Za-z][A-Za-z0-9.]{1,9})\b")
+# BTC/USDT, ETH/USD — a quoted pair, equally explicit.
+_PAIR_RE = re.compile(r"\b([A-Za-z]{2,10})/(USDT|USDC|USD|BTC|ETH)\b", re.IGNORECASE)
+# (NASDAQ: AAPL) — how wire copy tags the company it just named. The exchange
+# is required: a bare "(AI)" is almost always an acronym being defined, and
+# C3.ai really does trade as NYSE:AI.
+_PAREN_TICKER_RE = re.compile(
+    r"\(\s*(?:NASDAQ|NYSE(?:\s+Arca)?|AMEX)\s*:\s*([A-Z]{1,5})\s*\)", re.IGNORECASE
+)
+
+
+def find_pattern_matches(text: str) -> list[Tuple[str, str]]:
+    """
+    Candidate tickers written in explicit market notation, most explicit first.
+
+    Returns `(ticker, notation)` pairs. Only notation an author uses
+    deliberately counts. Bare uppercase words do not: "US inflation cools" is
+    not a headline about a token called US.
+    """
+    candidates: list[Tuple[str, str]] = []
+    for match in _CASHTAG_RE.finditer(text):
+        candidates.append((match.group(1).upper(), "cashtag"))
+    for match in _PAIR_RE.finditer(text):
+        candidates.append((match.group(1).upper(), "pair"))
+    for match in _PAREN_TICKER_RE.finditer(text):
+        candidates.append((match.group(1).upper(), "tagged"))
+    return candidates
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Strategy 3 — name matching, for when the LLM cannot be reached
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Corporate and industry boilerplate. Stripped from both the listing name and
+# the headline, so the two still line up: "Sensient Technologies" in the table
+# and "Sensient Technologies stock" in a headline both reduce to "sensient".
+# Without this, a company whose whole distinctive name is an industry word —
+# International Bancshares — claims that word, and every headline mentioning
+# any bancshares matches it.
+_COMPANY_SUFFIX_RE = re.compile(
+    r"\b(inc|corp|corporation|co|company|ltd|limited|plc|holdings?|group|"
+    r"technologies|technology|systems|solutions|international|industries|"
+    r"enterprises|labs?|nv|sa|ag|se|the|bancshares|bancorp|financial|"
+    r"communications|pharmaceuticals?|therapeutics|laboratories|brands|"
+    r"motors|airlines|resources|properties|realty|stores|foods|media|"
+    r"entertainment|networks|semiconductors?)\b\.?",
+    re.IGNORECASE,
+)
+_PUNCT_RE = re.compile(r"[^a-z0-9 ]+")
+
+
+def _normalise_name(raw: str) -> str:
+    """Company/coin name reduced to its brand words."""
+    name = _COMPANY_SUFFIX_RE.sub(" ", raw.lower())
+    name = _PUNCT_RE.sub(" ", name)
+    return " ".join(name.split())
+
+
+# How many companies the name matcher considers, by market cap. The listing
+# itself runs to ~6000 symbols, and its tail is full of names that are ordinary
+# words in a headline — Credit Acceptance Corp turning "Credit Suisse pursuit"
+# into a stock tip. News is about larger companies; the tail only adds noise.
+#
+# Measured against a set of headlines that name a company and a set that only
+# appear to: 500 catches 2 of 7 real mentions, 1500 catches 4, and both are
+# clean. 3000 catches 5 but starts turning "oil prices climb" into CLYM and
+# "the housing crisis" into UAA, which is the failure this whole module exists
+# to prevent. Re-measure before changing it.
+_NAME_MATCH_COMPANIES = 1500
+
+
+def _index_name(
+    table: dict[str, Tuple[str, int, float]],
+    key: str,
+    ticker: str,
+    weight: float,
+    exact: bool = True,
+) -> None:
+    """
+    Record a name → ticker mapping, keeping the best claim when two collide.
+
+    Both Apple Inc. and Apple Hospitality REIT answer to "Apple". Dropping the
+    key would lose the company every headline actually means, so the asset whose
+    *whole* name is the key wins first, and size breaks the remaining ties.
+    """
+    if len(key) < 4 or key in _AMBIGUOUS_NAMES:
+        return
+    rank = (1 if exact else 0, weight)
+    existing = table.get(key)
+    if existing is None or rank > (existing[1], existing[2]):
+        table[key] = (ticker, rank[0], weight)
+
+
+# Share classes that are not what a headline means by a company's name.
+_NON_COMMON_SHARE_RE = re.compile(
+    r"\b(preferred|warrant|depositary|debenture|note|unit|right|subordinated|"
+    r"perpetual|convertible)s?\b",
+    re.IGNORECASE,
+)
+
+
+async def _crypto_name_table() -> dict[str, Tuple[str, int, float]]:
+    """Coin name → ticker, built from the live market-cap universe."""
+    cached = _lookup_cache.get("crypto_names")
+    if cached is not None:
+        return cached
+
+    universe = await asset_registry.get_crypto_universe()
+    table: dict[str, Tuple[str, int, float]] = {}
+    for coin in universe:
+        name = _normalise_name(coin["name"])
+        if name:
+            _index_name(table, name, coin["symbol"], float(coin.get("market_cap") or 0))
+    # Aliases outrank listing names: they are curated, and "bitcoin" must never
+    # lose to some coin that registered "Bitcoin" as part of its own name.
+    for alias, ticker in CRYPTO_ALIASES.items():
+        _index_name(table, alias, ticker, float("inf"))
+
+    _lookup_cache.set("crypto_names", table, _LOOKUP_TTL)
+    return table
+
+
+async def _equity_name_table() -> dict[str, Tuple[str, int, float]]:
+    """Company name → ticker, built from the NASDAQ and NYSE listings."""
+    cached = _lookup_cache.get("equity_names")
+    if cached is not None:
+        return cached
+
+    index = await asset_registry.get_us_equity_index() or {}
+    largest = sorted(index.items(), key=lambda row: row[1].get("market_cap") or 0, reverse=True)[
+        :_NAME_MATCH_COMPANIES
     ]
-    
-    for keyword in context_keywords:
-        if keyword in text_lower:
-            base_score *= 1.1
-            break
-    
-    return base_score
+
+    table: dict[str, Tuple[str, int, float]] = {}
+    for ticker, record in largest:
+        if _NON_COMMON_SHARE_RE.search(record["name"]):
+            continue
+        name = _normalise_name(record["name"])
+        if not name:
+            continue
+        weight = float(record.get("market_cap") or 0)
+        _index_name(table, name, ticker, weight)
+        # Companies are written by their first word far more often than by
+        # their registered name — "Tesla", not "Tesla Inc".
+        head = name.split()[0]
+        if head != name:
+            _index_name(table, head, ticker, weight, exact=False)
+    for alias, ticker in EQUITY_ALIASES.items():
+        _index_name(table, alias, ticker, float("inf"))
+
+    _lookup_cache.set("equity_names", table, _LOOKUP_TTL)
+    return table
 
 
-from services.ollama_service import detect_asset_symbol
+def _lookup_ngrams(
+    title: str,
+    table: dict[str, Tuple[str, int, float]],
+    first_only: bool = True,
+    exact_only: bool = False,
+) -> list[str]:
+    """
+    Tickers whose names appear in the title, longest name first.
+
+    Word n-grams rather than substring search: "Sui" must not match "Credit
+    Suisse", and "Rain" must not match "training".
+
+    `exact_only` keeps just the assets whose *whole* name is in the headline,
+    dropping the first-word matches that let "Tesla" stand for Tesla Inc. Those
+    are useful evidence when there is none better, and much too weak to
+    overturn a decision made by something that read the article: "Community
+    West Bancshares" contains the first word of West Pharmaceutical.
+    """
+    words = _normalise_name(title).split()
+    found: list[str] = []
+    for size in (3, 2, 1):
+        for start in range(len(words) - size + 1):
+            entry = table.get(" ".join(words[start : start + size]))
+            if not entry or (exact_only and not entry[1]):
+                continue
+            if entry[0] not in found:
+                found.append(entry[0])
+                if first_only:
+                    return found
+    return found
+
+
+async def _match_by_name(title: str, hint: str) -> Optional[str]:
+    """Resolve a headline by the asset names it spells out."""
+    tables = (
+        (_crypto_name_table, resolve_crypto)
+        if hint == "crypto"
+        else (_equity_name_table, resolve_equity)
+    )
+    other = (
+        (_equity_name_table, resolve_equity)
+        if hint == "crypto"
+        else (_crypto_name_table, resolve_crypto)
+    )
+
+    for build_table, resolve_fn in (tables, other):
+        for ticker in _lookup_ngrams(title, await build_table()):
+            resolved = await resolve_fn(ticker)
+            if resolved:
+                return resolved
+    return None
+
+
+async def _names_in_title(title: str) -> list[Tuple[str, str]]:
+    """
+    Every asset named outright, in full, in the headline.
+
+    Returns `(ticker, kind)` pairs — the table a name came from already says
+    which asset class it is, so nothing has to be guessed back out of it.
+    """
+    crypto = _lookup_ngrams(title, await _crypto_name_table(), first_only=False, exact_only=True)
+    equity = _lookup_ngrams(title, await _equity_name_table(), first_only=False, exact_only=True)
+    return [(t, "crypto") for t in crypto] + [(t, "equity") for t in equity]
+
+
+async def _corrected_by_name(candidate: str, title: str) -> Optional[str]:
+    """
+    A ticker the headline actually names, when the model picked a different one.
+
+    Models reach for near-miss tickers: "Sensient Technologies stock surging"
+    came back as SNN (Smith & Nephew) rather than SXT. The exchange listing
+    says which company "Sensient" is, and that is harder evidence than recall.
+
+    The correction only applies when the model's own ticker is named nowhere in
+    the headline. A story that names two companies — "JPMorgan raises its
+    target for Nvidia" — must keep the model's choice of which one it is about,
+    since the headline names both and only the model read the article.
+    """
+    named = await _names_in_title(title)
+    if not named:
+        return None
+
+    _, _, ticker = candidate.rpartition(":")
+    ticker = _strip_quote(ticker.strip().upper())
+    if any(alternative == ticker for alternative, _kind in named):
+        return None
+
+    for alternative, kind in named:
+        resolved = (
+            await resolve_crypto(alternative)
+            if kind == "crypto"
+            else await resolve_equity(alternative)
+        )
+        if resolved:
+            return resolved
+    return None
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Detection
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def is_uncashtagged_acronym(candidate: str, title: str) -> bool:
+    """
+    True when the proposed ticker only reads as a ticker to a machine.
+
+    "MEXC expands offerings with AI infrastructure" is not a story about
+    Sleepless AI, and "US inflation cools" is not about a token called US — but
+    anything asked to name a symbol will produce one. Tree of Alpha's own
+    tagger makes this mistake as readily as a model does, so its tags go
+    through here too. Requiring the cashtag keeps the genuine mentions, which
+    is how these tickers are actually written.
+    """
+    _, _, ticker = candidate.rpartition(":")
+    ticker = _strip_quote(ticker.strip().upper())
+    if ticker not in _ACRONYM_TICKERS:
+        return False
+    return not any(
+        found == ticker for found, notation in find_pattern_matches(title) if notation == "cashtag"
+    )
+
+
+async def _ask_llm(title: str, text: str, asset_type: str) -> SymbolVerdict:
+    """
+    The model's reading of the item, under a concurrency and time ceiling.
+
+    A timeout is reported as `answered=False` so the caller falls back rather
+    than treating silence as "no asset". The budget has to exceed one provider's
+    own timeout, or this cancels the call before the LLM layer can try the next
+    provider in the chain.
+    """
+    llm_context = f"{title}\n{text[:300]}"
+    try:
+        async with _llm_gate:
+            return await asyncio.wait_for(
+                detect_asset_symbol(llm_context, asset_type=asset_type),
+                timeout=SYMBOL_DETECTION_BUDGET_S,
+            )
+    except TimeoutError:
+        # Logged with the budget spelled out because TimeoutError stringifies
+        # to nothing, which used to surface as a bare "LLM failed:".
+        logger.warning(
+            "[SymbolDetection] No LLM answer within %.0fs — using heuristics instead. "
+            "A local model still loading into memory is the usual cause.",
+            SYMBOL_DETECTION_BUDGET_S,
+        )
+    except Exception as e:
+        logger.error("[SymbolDetection] LLM failed: %s: %s", type(e).__name__, e)
+    return SymbolVerdict(symbol=None, answered=False)
+
 
 async def detect_symbol_smart(
     text: str,
     title: str = "",
-    asset_type: str = "crypto"
-) -> Optional[str]:
+    asset_type: str = "crypto",
+) -> Attribution:
     """
-    Smart symbol detection using Hybrid approach:
-    1. Explicit patterns ($BTC, #ETH) -> Fast & Reliable
-    2. LLM Analysis (Ollama) -> Smart & Context-aware
-    3. Legacy List Matching -> Fallback
-    
-    Returns TradingView symbol format: EXCHANGE:SYMBOL
+    Work out which asset a news item is about.
+
+    The symbol carried back is a confirmed TradingView symbol or None, and the
+    asset class is derived from it rather than from the feed it arrived on — a
+    crypto desk covering Coinbase earnings is reporting on a stock.
+
+    None is a real answer, not a failure. Plenty of market news — rate
+    decisions, index recaps, regulatory colour — is about no single tradeable
+    asset, and filing it under one charts it against a price it has nothing to
+    do with.
     """
-    text_lower = text.lower()
-    title_lower = title.lower()
-    combined_lower = title_lower + " " + text_lower
-    
-    # Strategy 1: Find explicit patterns ($BTC, BTC/USDT) - High Confidence
-    pattern_matches = find_pattern_matches(title + " " + text)
-    best_pattern_match = None
-    
-    for symbol, match_type in pattern_matches:
-        # We prioritize explicit trading signals
-        if match_type in ["dollar_sign", "trading_pair"]:
-            # Check if it's a known crypto alias to map it correctly (e.g. $BTC -> BTC)
-            clean_symbol = symbol.upper()
-            if clean_symbol in CRYPTO_ALIASES:
-                clean_symbol = CRYPTO_ALIASES[clean_symbol]
-                
-            # Construct symbol
-            if asset_type == "crypto":
-                exchange = "OKX" if clean_symbol in OKX_PREFERRED_TOKENS else "BINANCE"
-                return f"{exchange}:{clean_symbol}USDT"
-            else:
-                # For stocks, we need to verify it's a valid ticker if possible, 
-                # but valid $TICKER is usually strong enough.
-                pass 
-                
-    # Strategy 2: LLM Detection (The User's Request)
-    # If no explicit $TICKER found, ask the AI.
-    try:
-        # Combine title and start of text for context
-        llm_context = f"{title}\n{text[:300]}"
-        llm_symbol = await detect_asset_symbol(llm_context)
-        
-        # VALIDATION: Ensure LLM output matches the requested asset type using heuristic
-        if llm_symbol:
-            is_valid = True
-            
-            # 1. Check for mismatched exchange/asset_type
-            if asset_type == "crypto" and ("NASDAQ:" in llm_symbol or "NYSE:" in llm_symbol):
-                # LLM hallucinated a stock exchange for a crypto
-                # Try to fix if the ticker is a known crypto
-                ticker_part = llm_symbol.split(":")[-1]
-                if ticker_part in CRYPTO_ALIASES.values() or ticker_part.lower() in CRYPTO_ALIASES:
-                    final_ticker = CRYPTO_ALIASES.get(ticker_part.lower(), ticker_part)
-                    exchange = "OKX" if final_ticker in OKX_PREFERRED_TOKENS else "BINANCE"
-                    llm_symbol = f"{exchange}:{final_ticker}USDT"
-                else:
-                    # Invalid, force fallback
-                    is_valid = False
-                    
-            if is_valid:
-                logger.info(f"[SymbolDetection] LLM found: {llm_symbol}")
-                return llm_symbol
-            else:
-                logger.info(f"[SymbolDetection] LLM output rejected (invalid for {asset_type}): {llm_symbol}")
+    hint = asset_type if asset_type in ("crypto", "stock") else "crypto"
 
-    except Exception as e:
-        logger.error(f"[SymbolDetection] LLM failed: {e}")
+    # Strategy 1: explicit notation in the headline. Restricted to the title on
+    # purpose — a cashtag buried in a summary is usually a passing comparison,
+    # not the subject.
+    for candidate, _notation in find_pattern_matches(title):
+        resolved = await resolve(candidate, hint)
+        if resolved:
+            return Attribution(resolved, asset_type_for_symbol(resolved, hint))
 
-    # Strategy 3: Legacy List Matching (Fallback)
-    matches: List[SymbolMatch] = []
-    
-    # ... (Keep existing matching logic for fallback or remove if desired to be purely LLM)
-    # The user wanted to avoid "writing all coins by hand", so relying on LLM is key.
-    # We will keep the legacy logic as a "safety net" but it will rarely be reached 
-    # if LLM works well.
-    
-    # [Rest of original function logic would go here, simplified for this replacement]
-    
-    # Strategy 2a: Match against CoinGecko coin list (for crypto) [Legacy]
-    if asset_type == "crypto":
-        coins = await fetch_coingecko_coins()
-        for coin in coins:
-            # Check full name in TITLE only (to be safer)
-            if coin["name"] in title_lower:
-                symbol = coin["symbol"]
-                exchange = "OKX" if symbol in OKX_PREFERRED_TOKENS else "BINANCE"
-                return f"{exchange}:{symbol}USDT"
-            
-            # Check symbol (with word boundary) in TITLE matches
-            symbol_pattern = r'\b' + re.escape(coin["symbol"].lower()) + r'\b'
-            if re.search(symbol_pattern, title_lower):
-                 symbol = coin["symbol"]
-                 exchange = "OKX" if symbol in OKX_PREFERRED_TOKENS else "BINANCE"
-                 return f"{exchange}:{symbol}USDT"
+    # Strategy 2: the model reads the item.
+    verdict = await _ask_llm(title, text, hint)
+    if verdict.answered:
+        if not verdict.symbol:
+            # The model read it and found no tradeable subject. That is the
+            # answer; the name matcher below must not overrule it.
+            return Attribution(None, hint)
+        if is_uncashtagged_acronym(verdict.symbol, title):
+            logger.info(
+                "[SymbolDetection] %s reads as an acronym here, not a ticker — unattributed",
+                verdict.symbol,
+            )
+            return Attribution(None, hint)
+        corrected = await _corrected_by_name(verdict.symbol, title)
+        if corrected:
+            logger.info(
+                "[SymbolDetection] LLM said %s but the headline names %s",
+                verdict.symbol,
+                corrected,
+            )
+            return Attribution(corrected, asset_type_for_symbol(corrected, hint))
 
-    # Strategy 3a: Check aliases
-    for alias, symbol in CRYPTO_ALIASES.items():
-        if len(alias) >= 3:
-            alias_pattern = r'\b' + re.escape(alias) + r'\b'
-            if re.search(alias_pattern, title_lower): # Prioritize title
-                if symbol in OKX_PREFERRED_TOKENS:
-                    return f"OKX:{symbol}USDT"
-                return f"BINANCE:{symbol}USDT"
+        resolved = await resolve(verdict.symbol, hint)
+        if resolved:
+            logger.info("[SymbolDetection] LLM found: %s", resolved)
+            return Attribution(resolved, asset_type_for_symbol(resolved, hint))
+        logger.info(
+            "[SymbolDetection] LLM answer %s is not a listed asset — unattributed",
+            verdict.symbol,
+        )
+        return Attribution(None, hint)
 
-    # Strategy 4: Check stock mappings
-    if asset_type == "stock":
-        for name, (ticker, exchange) in STOCK_MAPPINGS.items():
-            name_pattern = r'\b' + re.escape(name) + r'\b'
-            if re.search(name_pattern, combined_lower):
-                 return f"{exchange}:{ticker}"
+    # Strategy 3: no answer from any provider. Fall back to the names the
+    # headline spells out — never to bare tickers, which collide with ordinary
+    # words far too often to be evidence of anything.
+    resolved = await _match_by_name(title, hint)
+    if resolved:
+        logger.info("[SymbolDetection] Name match: %s", resolved)
+        return Attribution(resolved, asset_type_for_symbol(resolved, hint), confident=False)
 
-    
-    # Fallback defaults
-    if asset_type == "crypto":
-        return "BINANCE:BTCUSDT"
-    else:
-        return "AMEX:SPY"
-
+    return Attribution(None, hint, confident=False)

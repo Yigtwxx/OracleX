@@ -1,0 +1,17 @@
+# Secrets — .env.local holds the real Supabase project keys.
+.env
+.env.local
+.env*.local
+
+# Build artifacts and dependencies — rebuilt inside the image.
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Tooling / OS
+.git/
+.DS_Store
+.vscode/
+.idea/
+*.log

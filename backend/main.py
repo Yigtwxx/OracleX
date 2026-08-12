@@ -29,6 +29,7 @@ from services.liquidation_service import liquidation_service
 # Import all routers
 from routers import (
     admin,
+    auth,
     news,
     llm as llm_router,
     market,
@@ -44,6 +45,7 @@ from routers import (
     exchanges,
     websocket,
     community,
+    social,
     ownership,
     system,
 )
@@ -389,10 +391,12 @@ def create_app() -> FastAPI:
     )  # /api/analysis/reports, /api/analysis/jobs, /api/analysis/notes
     app.include_router(rag.router)  # /api/rag/initialize, /api/rag/stats (v2), /api/rag/query
     app.include_router(chat.router)  # /api/chat, /api/chat/status, /api/chat/history
+    app.include_router(auth.router)  # /api/auth/email/precheck
     app.include_router(profile.router)  # /api/profile/*
     app.include_router(exchanges.router)  # /api/exchanges, /api/multi-exchange, /api/arbitrage
     app.include_router(websocket.router)  # /ws/prices, /api/websocket/status
     app.include_router(community.router)  # /api/community/*
+    app.include_router(social.router)  # /api/social/* — DMs, blocks, own activity
     app.include_router(ownership.router)  # /api/ownership/board, /api/ownership/entities/*
     app.include_router(ownership.admin_router)  # /api/admin/ownership/refresh
     # Two objects: `/api/admin/me` answers any signed-in caller, everything else

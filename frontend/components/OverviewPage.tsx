@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { fetchFearGreedIndex, fetchMarketOverview, FearGreedData, MarketOverview, API_BASE_URL } from '@/lib/api';
+import { useMemo } from 'react';
+import { useMarketOverview, useFearGreedIndex, useNasdaqOverview } from '@/hooks/queries';
+import { FearGreedData, MarketOverview } from '@/lib/api';
 import FearGreedGauge from './FearGreedGauge';
 import { TrendingUp, TrendingDown, Activity, Flame } from 'lucide-react';
 import MarketStatsBar from './overview/MarketStatsBar';
@@ -9,136 +10,139 @@ import AssetListCard from './overview/AssetListCard';
 import AssetTable from './overview/AssetTable';
 import BottomStatsGrid from './overview/BottomStatsGrid';
 
-export default function OverviewPage({ marketType = 'crypto' }: { marketType?: 'crypto' | 'nasdaq' }) {
-    const [fearGreedData, setFearGreedData] = useState<FearGreedData | null>(null);
-    const [marketData, setMarketData] = useState<MarketOverview | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+export default function OverviewPage({
+  marketType = 'crypto',
+}: {
+  marketType?: 'crypto' | 'nasdaq';
+}) {
+  const isCrypto = marketType === 'crypto';
 
-    const fetchData = async () => {
-        setIsLoading(true);
-        try {
-            if (marketType === 'nasdaq') {
-                // Fetch NASDAQ data (includes Fear & Greed)
-                const response = await fetch(`${API_BASE_URL}/api/nasdaq-overview`);
-                const nasdaqData = await response.json();
+  // Use the appropriate hooks based on market type
+  const cryptoMarket = useMarketOverview(isCrypto);
+  const fearGreed = useFearGreedIndex(isCrypto);
+  const nasdaq = useNasdaqOverview(!isCrypto);
 
-                // Set market data
-                setMarketData(nasdaqData);
+  // Derive the active data based on market type
+  const marketData = isCrypto
+    ? (cryptoMarket.data ?? null)
+    : ((nasdaq.data as MarketOverview | undefined) ?? null);
+  const isLoading = isCrypto ? cryptoMarket.isLoading || fearGreed.isLoading : nasdaq.isLoading;
+  const isFetching = isCrypto ? cryptoMarket.isFetching || fearGreed.isFetching : nasdaq.isFetching;
 
-                // Set Fear & Greed from NASDAQ response
-                if (nasdaqData.fear_greed) {
-                    setFearGreedData({
-                        value: nasdaqData.fear_greed.value,
-                        classification: nasdaqData.fear_greed.classification,
-                        timestamp: nasdaqData.fear_greed.timestamp,
-                        history: []
-                    });
-                }
-            } else {
-                // Fetch Crypto data
-                const [fgData, mktData] = await Promise.all([
-                    fetchFearGreedIndex(),
-                    fetchMarketOverview()
-                ]);
-                setFearGreedData(fgData);
-                setMarketData(mktData);
-            }
-            setLastUpdate(new Date());
-        } catch (error) {
-            console.error('Failed to fetch overview data:', error);
-        } finally {
-            setIsLoading(false);
-        }
+  // Build fearGreedData from the correct source
+  const fearGreedData: FearGreedData | null = useMemo(() => {
+    if (isCrypto) {
+      return fearGreed.data ?? null;
+    }
+    // For NASDAQ, extract from the nasdaq response
+    const nasdaqFg = nasdaq.data?.fear_greed;
+    if (nasdaqFg) {
+      return {
+        value: nasdaqFg.value,
+        classification: nasdaqFg.classification,
+        timestamp: nasdaqFg.timestamp,
+        history: [],
+      };
+    }
+    return null;
+  }, [isCrypto, fearGreed.data, nasdaq.data]);
+
+  const lastUpdate = isCrypto
+    ? cryptoMarket.dataUpdatedAt > 0
+      ? new Date(cryptoMarket.dataUpdatedAt)
+      : null
+    : nasdaq.dataUpdatedAt > 0
+      ? new Date(nasdaq.dataUpdatedAt)
+      : null;
+
+  const handleRefresh = () => {
+    if (isCrypto) {
+      cryptoMarket.refetch();
+      fearGreed.refetch();
+    } else {
+      nasdaq.refetch();
+    }
+  };
+
+  // Derived data for trending, gainers, losers.
+  //
+  // The tail of a 250-asset list is thin: assets that barely trade post the
+  // wildest percentage moves, so an unfiltered ranking surfaces names nobody
+  // can act on. Only assets with real turnover are eligible — and if the
+  // filter would empty the list (a quiet market, a partial payload), the
+  // unfiltered set is ranked instead.
+  const { topGainers, topLosers } = useMemo(() => {
+    if (!marketData?.coins?.length) return { topGainers: [], topLosers: [] };
+
+    const MIN_VOLUME_24H = 1_000_000;
+    const liquid = marketData.coins.filter((coin) => coin.volume_24h >= MIN_VOLUME_24H);
+    const pool = liquid.length >= 6 ? liquid : marketData.coins;
+
+    const sorted = [...pool].sort((a, b) => b.change_24h - a.change_24h);
+    return {
+      topGainers: sorted.slice(0, 3),
+      topLosers: sorted.slice(-3).reverse(),
     };
+  }, [marketData]);
 
-    useEffect(() => {
-        fetchData();
-        const interval = setInterval(fetchData, 120000);
-        return () => clearInterval(interval);
-    }, [marketType]);
+  return (
+    <div className="h-full overflow-y-auto custom-scrollbar">
+      {/* ===== TOP MARKET STATS BAR ===== */}
+      <MarketStatsBar
+        marketData={marketData}
+        fearGreedData={fearGreedData}
+        marketType={marketType}
+        isLoading={isLoading}
+        lastUpdate={lastUpdate}
+        onRefresh={handleRefresh}
+      />
 
-    // Derived data for trending, gainers, losers
-    const { topGainers, topLosers } = useMemo(() => {
-        if (!marketData?.coins) return { topGainers: [], topLosers: [] };
-        const sorted = [...marketData.coins].sort((a, b) => b.change_24h - a.change_24h);
-        return {
-            topGainers: sorted.slice(0, 3), // Top 3 best performers
-            topLosers: sorted.slice(-3).reverse() // Bottom 3 worst performers
-        };
-    }, [marketData]);
-
-    return (
-        <div className="h-full overflow-y-auto bg-oracle-darker">
-            {/* ===== TOP MARKET STATS BAR ===== */}
-            <MarketStatsBar
-                marketData={marketData}
-                fearGreedData={fearGreedData}
-                marketType={marketType}
-                isLoading={isLoading}
-                lastUpdate={lastUpdate}
-                onRefresh={fetchData}
-            />
-
-            <div className="max-w-[1800px] mx-auto px-4 py-6 space-y-6">
-                {/* ===== TRENDING / GAINERS / LOSERS CARDS ===== */}
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                    {/* Fear & Greed Card */}
-                    <div className="lg:col-span-1 p-4 rounded-xl bg-gradient-to-br from-oracle-card to-pink/5 border border-oracle-border">
-                        <div className="flex items-center gap-2 mb-3">
-                            <Activity className="w-4 h-4 text-pink" />
-                            <h3 className="font-semibold text-white text-sm">Fear & Greed Index</h3>
-                        </div>
-                        <FearGreedGauge data={fearGreedData} isLoading={isLoading} size="sm" />
-                    </div>
-
-                    {/* Trending Card */}
-                    <AssetListCard
-                        title="🔥 Trending"
-                        icon={Flame}
-                        iconColor="text-orange-400"
-                        data={marketData?.coins.slice(0, 3) || []}
-                        isLoading={isLoading}
-                        marketType={marketType}
-                        type="trending"
-                    />
-
-                    {/* Top Gainers Card */}
-                    <AssetListCard
-                        title="📈 Top Gainers"
-                        icon={TrendingUp}
-                        iconColor="text-green-400"
-                        data={topGainers}
-                        isLoading={isLoading}
-                        marketType={marketType}
-                        type="gainer"
-                    />
-
-                    {/* Top Losers Card */}
-                    <AssetListCard
-                        title="📉 Top Losers"
-                        icon={TrendingDown}
-                        iconColor="text-red-400"
-                        data={topLosers}
-                        isLoading={isLoading}
-                        marketType={marketType}
-                        type="loser"
-                    />
-                </div>
-
-                {/* ===== ASSET TABLE ===== */}
-                <AssetTable
-                    marketData={marketData}
-                    marketType={marketType}
-                    isLoading={isLoading}
-                />
-
-                {/* ===== BOTTOM STATS ===== */}
-                <BottomStatsGrid
-                    marketData={marketData}
-                    marketType={marketType}
-                />
+      <div className="max-w-[1800px] mx-auto px-4 py-4 space-y-4">
+        {/* ===== TRENDING / GAINERS / LOSERS CARDS ===== */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+          {/* Fear & Greed Card */}
+          <div className="lg:col-span-1 surface p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Activity className="w-3.5 h-3.5 text-fg-muted" />
+              <h3 className="label">Fear &amp; Greed Index</h3>
             </div>
+            <FearGreedGauge data={fearGreedData} isLoading={isLoading} size="sm" />
+          </div>
+
+          <AssetListCard
+            title="Trending"
+            icon={Flame}
+            data={marketData?.coins.slice(0, 3) || []}
+            isLoading={isLoading}
+            marketType={marketType}
+            type="trending"
+          />
+
+          <AssetListCard
+            title="Top Gainers"
+            icon={TrendingUp}
+            data={topGainers}
+            isLoading={isLoading}
+            marketType={marketType}
+            type="gainer"
+          />
+
+          <AssetListCard
+            title="Top Losers"
+            icon={TrendingDown}
+            data={topLosers}
+            isLoading={isLoading}
+            marketType={marketType}
+            type="loser"
+          />
         </div>
-    );
+
+        {/* ===== ASSET TABLE ===== */}
+        <AssetTable marketData={marketData} marketType={marketType} isLoading={isLoading} />
+
+        {/* ===== BOTTOM STATS ===== */}
+        <BottomStatsGrid marketData={marketData} marketType={marketType} />
+      </div>
+    </div>
+  );
 }
