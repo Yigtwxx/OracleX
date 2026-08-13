@@ -1,6 +1,9 @@
 [project]
 name = "oracle-x-backend"
-version = "0.1.0"
+# Single version for the whole repository: backend and frontend ship together
+# from one tag, so two independent numbers could only ever disagree. Kept in
+# step with frontend/package.json — bump both or neither.
+version = "1.0.0"
 # 3.11 is what CI has always run (.github/workflows/ci.yml); the local venv was
 # the one still on 3.9. Scrapling forces the issue — its current line needs
 # 3.10+, and staying below that would pin it to a frozen release.
