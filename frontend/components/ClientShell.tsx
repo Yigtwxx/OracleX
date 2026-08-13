@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect } from 'react';
+import { Suspense } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import BootGate from '@/components/BootGate';
@@ -11,14 +11,6 @@ import ToastProvider from '@/components/ToastProvider';
 import { usePriceAlerts } from '@/hooks/usePriceAlerts';
 
 export default function ClientShell({ children }: { children: React.ReactNode }) {
-  // Proof of life for the chunk-recovery watchdog in app/layout.tsx. This is
-  // the outermost client component, so if this effect never runs, nothing in
-  // the app is running — and a server-rendered boot splash with dead JS looks
-  // exactly like a working one. The watchdog reloads on the difference.
-  useEffect(() => {
-    document.documentElement.setAttribute('data-hydrated', '1');
-  }, []);
-
   // Initialize price alert monitoring globally
   usePriceAlerts();
 
