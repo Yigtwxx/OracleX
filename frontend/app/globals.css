@@ -43,6 +43,11 @@
   --warn-bg: rgba(245, 158, 11, 0.12);
   --accent: #2f6feb;
   --accent-bg: rgba(47, 111, 235, 0.12);
+  /* What text sits on a solid accent fill. A constant everywhere except the
+     landing page, which runs a white accent — the same button markup is shared
+     between the two (the auth forms render inside both), so the pairing has to
+     be a token rather than a hardcoded `text-white`. */
+  --accent-fg: #ffffff;
 
   /* Chat response mode. This is state, not decoration: the mode decides whether
      Oracle runs a reasoning pass and whether it answers in 120 or 450 words, so
@@ -234,6 +239,11 @@ body {
    and is simply painted over. Leave this on <html> alone. */
 html {
   background-color: var(--bg);
+  /* Modal locks body scroll. Inside the terminal the body never scrolls so this
+     never mattered; the landing page does, and without a stable gutter the
+     vanishing scrollbar shifts the whole layout by ~15px on Windows and Linux
+     every time a dialog opens. */
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -1793,6 +1803,463 @@ body {
 
 .animate-slide-in-right {
   animation: slide-in-right 0.2s ease-out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LANDING
+   The marketing page at `/`. Scoped under `.landing` (set by the marketing
+   layout) so none of it can reach the terminal.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* A softer accent than the terminal's.
+   The app's accent is a blue, #2f6feb, and this page used a softened version of
+   it. It is now white, and the page carries no third hue at all: the only
+   colours left on it are the up/down pair, which mean direction, and everything
+   else — brackets, leader wires, the moving average, the eyebrow, the CTA — is
+   the page's own black and white. A blue that means nothing next to a green and
+   a red that do was the one thing on the page asking to be read as decoration.
+
+   Pure white rather than `--fg`: the accent still has to sit a step above body
+   text to read as emphasis, and #fff against #e8e8ea is exactly that step.
+   Scoped to `.landing`, so the terminal keeps its blue. */
+/* The up/down pair is also nudged, and only here. In the terminal these sit in
+   dense tables where a more saturated pair would start vibrating against the
+   surface; on this page they are the only thing moving on a near-black field,
+   and #22c55e/#ef4444 read as muted rather than as a market. One step up in
+   lightness and saturation each — enough to look alive, not enough to become a
+   different palette. */
+.landing {
+  --accent: #ffffff;
+  --accent-bg: rgba(255, 255, 255, 0.1);
+  --accent-fg: var(--bg);
+  --up: #26d366;
+  --down: #f34949;
+}
+
+/* The light in the room, in the page's own colours.
+   No white: a neutral wash on a near-black field just lifts it to grey and
+   takes the candles' contrast with it. That rule is why the key light is a
+   green rather than the accent — the accent is now white, and pointing a white
+   radial at the board would be exactly the mistake this comment was written to
+   prevent. So the room is lit entirely by the up/down pair: the tape lighting
+   the room it prints in, which is the only ambient this page can carry without
+   looking borrowed.
+   Placed in the vertical band the scrim leaves open (roughly 30–75%) and away
+   from the hero column, because light under an opaque part of the scrim is
+   light nobody sees.
+   All three stay well under the candles: these are dark tints of hue on black,
+   and the tape is drawn over them at full strength. If a wash ever competes
+   with a bar, it is too strong — the ceiling is somewhere near 14%, not far
+   above where the key now sits. */
+.landing-glow {
+  background:
+    radial-gradient(
+      58% 46% at 26% 40%,
+      color-mix(in srgb, var(--up) 11%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      48% 40% at 88% 26%,
+      color-mix(in srgb, var(--down) 9%, transparent),
+      transparent 74%
+    ),
+    radial-gradient(
+      54% 44% at 70% 84%,
+      color-mix(in srgb, var(--up) 10%, transparent),
+      transparent 74%
+    );
+}
+
+/* Sits between the canvas and the copy. The candles are drawn at full strength
+   — dimming the scene to protect text is what makes a chart look like wallpaper
+   — so legibility is bought here instead: solid at the top and bottom edges
+   where the header and footer sit, transparent through the middle where the
+   tape is the point. */
+/* The left radial used to be `120% 65% at 12% 42%` — a radius wider than the
+   viewport, which reached past x=90% and dimmed the entire page to protect one
+   column of hero copy. It is now sized to that column: the copy still gets its
+   backing, and everything to the right of it is free to carry light. */
+.landing-scrim {
+  background:
+    linear-gradient(
+      to bottom,
+      var(--bg) 0%,
+      color-mix(in srgb, var(--bg) 55%, transparent) 14%,
+      transparent 32%,
+      transparent 72%,
+      color-mix(in srgb, var(--bg) 70%, transparent) 90%,
+      var(--bg) 100%
+    ),
+    radial-gradient(
+      64% 50% at 8% 36%,
+      color-mix(in srgb, var(--bg) 58%, transparent),
+      transparent 72%
+    );
+}
+
+/* Copy panels float over the tape. A local plate rather than a global dim: the
+   contrast guarantee holds no matter which candle happens to be behind it, and
+   it reads as a terminal panel instead of a washed-out background. */
+/* 78% was the contrast floor and nothing more; 92% is what the panel needs to
+   read as a drawn object rather than a smudge. The blur keeps the tape visible
+   as depth behind it rather than cutting off at the panel edge.
+   `--border`, not `--line`: the latter is a Tailwind colour alias with no CSS
+   custom property behind it, so the invalid `var()` took the whole `border`
+   shorthand down with it and these panels rendered with no border at all. */
+.landing-plate {
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  border: 1px solid var(--border-strong);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* The write head of the `›` lists, as a candle.
+   The page's one recurring object is a candle, and a block cursor would be the
+   only thing on it borrowed from a different picture. Colour and body geometry
+   are rolled fresh for every character, so it prints rather than blinks.
+
+   `position: absolute` with no offsets, which resolves to the static position —
+   where the box would have sat in the flow — while contributing no box at all.
+   An in-flow inline-block would be an atomic inline, and the browser would take
+   it as a line-break opportunity in the middle of whatever word is being typed:
+   the line would rewrap on almost every character. */
+.landing-caret {
+  position: absolute;
+  width: 0.42em;
+  height: 0.9em;
+  color: var(--up);
+  pointer-events: none;
+  transform: translateY(0.08em);
+}
+
+.landing-caret[data-tone='down'] {
+  color: var(--down);
+}
+
+/* Wick. */
+.landing-caret::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: currentColor;
+  opacity: 0.7;
+}
+
+/* Body. */
+.landing-caret::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--caret-body-top, 0.25) * 100%);
+  height: calc(var(--caret-body-height, 0.5) * 100%);
+  background: currentColor;
+}
+
+/* A note written on the chart.
+   Square, not rounded, and framed by corner brackets rather than a full border:
+   a rounded rectangle with a solid outline is a card, and a card floating over
+   a chart looks like a modal. Brackets are how a terminal marks a region — they
+   read as a selection on the tape, which is exactly what the panel is. The
+   hairline border only closes the shape; the brackets carry the weight. */
+/* `--note-tint` is stamped by the scene, not by the markup: the panel is tinted
+   with the direction of the bar its leader came from, and which bar that is
+   depends on the window on screen. Kept very low — the point is that the panel
+   belongs to a green or a red bar, not that it is a green or a red panel, and
+   anything stronger starts competing with the tape it sits on. */
+.landing-note {
+  position: relative;
+  --note-tint: transparent;
+  background:
+    linear-gradient(0deg, var(--note-tint), var(--note-tint)),
+    color-mix(in srgb, var(--bg) 94%, transparent);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 34px -16px rgb(0 0 0 / 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: background-color 400ms ease;
+}
+
+.landing-note[data-note-tone='up'] {
+  --note-tint: color-mix(in srgb, var(--up) 7%, transparent);
+}
+
+.landing-note[data-note-tone='down'] {
+  --note-tint: color-mix(in srgb, var(--down) 7%, transparent);
+}
+
+/* Two opposite corners rather than four: four brackets frame the panel like a
+   viewfinder and start competing with the chart. Two anchor it diagonally and
+   leave the eye somewhere to enter. */
+.landing-note::before,
+.landing-note::after {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+}
+
+.landing-note::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid var(--accent);
+  border-left: 2px solid var(--accent);
+}
+
+.landing-note::after {
+  right: -1px;
+  bottom: -1px;
+  border-right: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+}
+
+/* The picture on the empty half of a stage.
+
+   Framed rather than feathered. An earlier version faded the edges into the
+   page at 16% opacity, which made the photograph a suggestion — it read as a
+   smudge on the board rather than as a picture someone had put there. A
+   hairline frame states that it is deliberate, and once the edge is stated the
+   opacity can come up far enough to actually see the subject.
+
+   It lives in the content track, which is `z-10` and therefore above both the
+   canvas and its scrim, so the candles come through by opacity alone.
+   `mix-blend-mode` is not available for this: the track opens its own stacking
+   context, and a blend inside it can only ever reach the track's own backdrop,
+   never the canvas painted underneath the whole thing. */
+.landing-figure {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .landing-figure {
+    display: block;
+    width: clamp(260px, 27vw, 420px);
+    border: 1px solid var(--border-strong);
+    /* Lifts the frame off the tape. Without it the border is a line drawn on
+       the chart rather than the edge of something sitting in front of it. */
+    box-shadow: 0 18px 44px -20px rgb(0 0 0 / 0.75);
+  }
+
+  /* The photograph gets its own layer so that fading it does not fade the
+     frame with it — a 50%-opacity border would put the frame back to being a
+     suggestion, which is the thing this is trying to stop doing. */
+  .landing-figure-plate {
+    position: absolute;
+    inset: 0;
+    background-image: var(--figure-src);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    opacity: 0.52;
+  }
+
+  /* The same two-corner motif as `.landing-note`, for the same reason: the
+     pictures and the copy panels are one kind of object on this page — things
+     set down on top of the tape — and the brackets are what says so. Two
+     opposite corners rather than four, because four frame the contents like a
+     viewfinder and start competing with the chart behind them. */
+  .landing-figure::before,
+  .landing-figure::after {
+    content: '';
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    pointer-events: none;
+  }
+
+  .landing-figure::before {
+    top: -1px;
+    left: -1px;
+    border-top: 2px solid var(--accent);
+    border-left: 2px solid var(--accent);
+  }
+
+  .landing-figure::after {
+    right: -1px;
+    bottom: -1px;
+    border-right: 2px solid var(--accent);
+    border-bottom: 2px solid var(--accent);
+  }
+}
+
+/* The closing screen's backdrop.
+
+   `backdrop-filter` reaches the canvas from inside the content track — the same
+   thing `.landing-note` relies on — so the tape really is defocused rather than
+   covered by a translucent sheet. The tint on top of it is what stops a blurred
+   chart from still being the brightest thing on screen.
+
+   Masked in from the top: the veil is the full height of its section, and an
+   unmasked edge would arrive as a horizontal line sweeping up the viewport. The
+   ramp finishes well before the copy so the heading never sits on the gradient. */
+.landing-outro-veil {
+  background: color-mix(in srgb, var(--bg) 52%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 34%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 34%);
+}
+
+/* Transparency is a legibility device here, not decoration, so the fallback is
+   opaque rather than absent. */
+@media (prefers-reduced-transparency: reduce) {
+  .landing-plate {
+    background: var(--bg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* The figure has a real edge, so unlike the panels it has an opaque form
+     worth keeping: the picture simply stops letting the tape through. */
+  .landing-figure-plate {
+    opacity: 1;
+  }
+
+  /* No blur to soften the tape behind the closing line, so the veil has to do
+     the whole job on its own and goes solid. */
+  .landing-outro-veil {
+    background: var(--bg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* Opaque, but the tint layer stays: it identifies which bar the panel belongs
+     to, which is information rather than transparency for its own sake. */
+  .landing-note {
+    background: linear-gradient(0deg, var(--note-tint), var(--note-tint)), var(--bg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* No translate. The panel does not travel — the dotted leader the canvas draws
+   from its candle is what carries the movement, and a panel sliding up at the
+   same time reads as two unrelated animations fighting.
+   A transition, never an animation: the reduced-motion block below collapses
+   every animation to 0.01ms, which would strand anything that starts at
+   `opacity: 0` inside a keyframe. A transition simply lands on its end state. */
+.landing-reveal {
+  opacity: 0;
+  transition: opacity 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.landing-reveal[data-inview] {
+  opacity: 1;
+}
+
+/* Hover fill that rises out of the bottom edge.
+   Two stacked copies rather than one element being recoloured: the base has to
+   stay legible while the fill is only part of the way up, and there is no way
+   to paint half a glyph in a second colour with a single element. The overlay
+   is clipped to nothing and the clip opens upward, so the fill has a direction
+   — which is the whole effect. */
+.landing-riser {
+  position: relative;
+}
+
+/* Positioning only. The clip lives on the ink inside it, not here: this box is
+   the whole padded control, and clipping across it spends the first and last
+   third of the travel crossing padding where there is nothing to reveal. That
+   reads as a pause, a jump, and another pause rather than as a fill. */
+.landing-riser-fill {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+/* The clipped copy. Its box is the glyphs' own line box, so every millisecond
+   of the travel is spent revealing something. */
+.landing-riser-ink {
+  display: block;
+  clip-path: inset(100% 0 0 0);
+  transition:
+    clip-path 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 420ms ease;
+}
+
+.landing-riser:hover .landing-riser-ink,
+.landing-riser:focus-visible .landing-riser-ink {
+  clip-path: inset(0 0 0 0);
+}
+
+/* The mark: plain white, because the icon has no colour of its own to honour.
+   A tight halo rather than a soft one — at 7px the light spread past the icon
+   and read as haze on the bar instead of as the icon lighting up. */
+.landing-riser-fill[data-tone='mark'] .landing-riser-ink {
+  color: #fff;
+}
+
+.landing-riser:hover .landing-riser-fill[data-tone='mark'] .landing-riser-ink,
+.landing-riser:focus-visible .landing-riser-fill[data-tone='mark'] .landing-riser-ink {
+  filter: drop-shadow(0 0 3px rgb(255 255 255 / 0.7));
+}
+
+/* `.landing-cta` used to live here — a hover lift and an accent glow on the
+   primary button. Both are gone: the label now carries React Bits' shine, and
+   the two effects together read as the button leaving the surface and lighting
+   the chart behind it, on a page where nothing else is a physical object. */
+
+/* The fixed header would otherwise cover the top of any in-page anchor target. */
+.landing [id] {
+  scroll-margin-top: 4rem;
+}
+
+/* The cover the page waits behind until the scene is running.
+   Held by default and released by `LandingGate`, rather than the other way
+   round: the window this closes is the one before any of this page's JS has
+   run, so it has to be shut by markup and CSS alone. */
+.landing-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 420ms ease;
+}
+
+.landing-gate[data-hold] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Scrolling a covered page is scrolling a page that cannot answer yet, so it is
+   locked at the document level for as long as the cover is up. `scrollbar-gutter`
+   keeps the classic scrollbar's width reserved while it is — without it the whole
+   page shifts sideways at the moment the cover lifts. */
+html:has(.landing-gate[data-hold]) {
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
+
+.landing-gate-mark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* An animation, not a transition: the mark is already in its held state on
+     the first paint, and a transition has nothing to transition from. The delay
+     is the substance of it — a load that finishes quickly shows a plain dark
+     hold rather than a spinner flashing in and straight back out. */
+  animation: landing-gate-mark 320ms ease 520ms both;
+}
+
+@keyframes landing-gate-mark {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

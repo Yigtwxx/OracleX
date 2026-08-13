@@ -6,7 +6,20 @@ import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm';
 import SignInForm from '@/components/auth/SignInForm';
 import SignUpForm from '@/components/auth/SignUpForm';
 
-type Mode = 'signin' | 'signup' | 'forgot';
+export type AuthMode = 'signin' | 'signup' | 'forgot';
+
+type Mode = AuthMode;
+
+interface AuthCardProps {
+  /** Which tab opens first. The user can still switch once inside. */
+  initialMode?: Mode;
+  /**
+   * `modal` drops the lead paragraph and the outer card chrome, because the
+   * dialog around it already supplies both. Defaults to `page` so the three
+   * existing call sites render exactly as before.
+   */
+  variant?: 'page' | 'modal';
+}
 
 const TITLES: Record<Mode, string> = {
   signin: 'Sign in',
@@ -25,8 +38,8 @@ const TITLES: Record<Mode, string> = {
  * the automatic switch when a sign-up hits an address that is already taken —
  * carries the address across instead of making the user type it twice.
  */
-export default function AuthCard() {
-  const [mode, setMode] = useState<Mode>('signin');
+export default function AuthCard({ initialMode = 'signin', variant = 'page' }: AuthCardProps = {}) {
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -37,11 +50,13 @@ export default function AuthCard() {
 
   return (
     <div className="mx-auto w-full max-w-sm space-y-3">
-      <p className="text-center text-base text-fg-muted">
-        Sign in to sync your watchlist, notes and chat history across devices.
-      </p>
+      {variant === 'page' && (
+        <p className="text-center text-base text-fg-muted">
+          Sign in to sync your watchlist, notes and chat history across devices.
+        </p>
+      )}
 
-      <section className="surface overflow-hidden">
+      <section className={variant === 'page' ? 'surface overflow-hidden' : 'overflow-hidden'}>
         <header className="border-b border-line px-4 py-3">
           {mode === 'forgot' ? (
             <h2 className="text-md font-semibold text-fg">{TITLES.forgot}</h2>

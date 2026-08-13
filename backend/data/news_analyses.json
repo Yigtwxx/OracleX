@@ -1775,5 +1775,183 @@
     },
     "stored_at": "2026-08-11T14:25:59.553391",
     "outcome": null
+  },
+  "f9ee68584ae5:1bb726cffee8": {
+    "news_id": "f9ee68584ae5",
+    "pipeline_version": "1bb726cffee8",
+    "analysis": {
+      "sentiment": "neutral",
+      "confidence": 0.45,
+      "reasoning": "The headline reports a CPI figure of 3.4% that 'hits... in line with forecasts,' indicating no surprise component to drive immediate repricing; the article body is unavailable for verification. The market regime confirms this lack of momentum: BTC dominance is stable at 56.30%, breadth is weak (80/250 advancing), and Fear & Greed remains low at 27, suggesting any minor bullish nuance from rate-cut bets is being absorbed by broader risk-off sentiment.",
+      "historical_context": "Risk Level: LOW | Time Horizon: Short-term (1-7 days). Key factors: CPI in line with forecasts (no surprise), Weak market breadth (80/250 advancing), Fear & Greed index at 27 (Fear). Expected impact: no material impact expected",
+      "technical_signals": {
+        "rsi_signal": "Neutral",
+        "support_levels": [
+          "$63,881",
+          "$63,262"
+        ],
+        "resistance_levels": [
+          "$64,086",
+          "$64,500"
+        ],
+        "target_price": "$63,691 - $63,881"
+      },
+      "prediction_hash": "39b1ca9c37d3b480cebd14ccfc9553f0b78e9b36db78f735b688bd752830883e",
+      "tx_hash": null,
+      "source": null,
+      "key_factors": [
+        "CPI in line with forecasts (no surprise)",
+        "Weak market breadth (80/250 advancing)",
+        "Fear & Greed index at 27 (Fear)"
+      ],
+      "price_impact": "no material impact expected",
+      "risk_level": "low",
+      "time_horizon": "short-term",
+      "materiality": "routine",
+      "mechanism": "no mechanism identified",
+      "invalidation": "If the full article reveals that CPI came in significantly lower than consensus (e.g., <3.2%) or if Treasury yields drop sharply enough to force a re-rating of real rates, contradicting the 'in line' characterization.",
+      "regime_note": "The backdrop is dampened by weak breadth (80/250 advancing) and low sentiment (Fear & Greed: 27), which typically suppresses upside reactions even when macro data aligns with dovish expectations.",
+      "evidence": [
+        {
+          "claim": "CPI matched forecasts, implying no new information shock to rate cut probabilities.",
+          "quote": "U.S. CPI hits 3.4% in line with forecasts",
+          "direction": "neutral",
+          "weight": "primary"
+        },
+        {
+          "claim": "Market breadth is negative and sentiment is fearful, limiting upside potential regardless of macro alignment.",
+          "quote": null,
+          "direction": "bearish",
+          "weight": "supporting"
+        }
+      ],
+      "precedents": [
+        {
+          "title": "Trump crypto executive order establishes a strategic reserve",
+          "date": "2025-01-23",
+          "symbol": "BTC",
+          "similarity": 0.631,
+          "outcome": "bearish",
+          "price_change": -13.5926,
+          "apparent_sentiment": "bullish",
+          "durable_direction": "bearish",
+          "horizons": {
+            "7": 0.9866,
+            "365": -13.5926,
+            "1": 1.1205,
+            "90": -9.6698,
+            "30": -6.8965,
+            "180": 15.6704
+          },
+          "max_drawdown_pct": -28.1594,
+          "max_runup_pct": 21.6924,
+          "surprised": true,
+          "inverted": true,
+          "source": "event"
+        },
+        {
+          "title": "US House passes the CLARITY Act on digital asset market structure",
+          "date": "2025-07-17",
+          "symbol": "BTC",
+          "similarity": 0.552,
+          "outcome": "bearish",
+          "price_change": -46.1035,
+          "apparent_sentiment": "bullish",
+          "durable_direction": "bearish",
+          "horizons": {
+            "1": -0.5864,
+            "30": -1.0483,
+            "365": -46.1035,
+            "7": -0.2427,
+            "90": -6.6311,
+            "180": -19.5717
+          },
+          "max_drawdown_pct": -51.269,
+          "max_runup_pct": 6.3815,
+          "surprised": true,
+          "inverted": false,
+          "source": "event"
+        },
+        {
+          "title": "Mt. Gox begins repaying creditors in bitcoin",
+          "date": "2024-07-05",
+          "symbol": "BTC",
+          "similarity": 0.553,
+          "outcome": "bullish",
+          "price_change": 89.6577,
+          "apparent_sentiment": "bearish",
+          "durable_direction": "bullish",
+          "horizons": {
+            "7": 1.4866,
+            "30": 1.9458,
+            "90": 6.4922,
+            "1": 2.0796,
+            "365": 89.6577,
+            "180": 65.8011
+          },
+          "max_drawdown_pct": -14.2247,
+          "max_runup_pct": 96.2542,
+          "surprised": true,
+          "inverted": false,
+          "source": "event"
+        },
+        {
+          "title": "Bitcoin all-time high near $109K on the inauguration rally",
+          "date": "2025-01-20",
+          "symbol": "BTC",
+          "similarity": 0.595,
+          "outcome": "bearish",
+          "price_change": -12.7454,
+          "apparent_sentiment": "bullish",
+          "durable_direction": "bearish",
+          "horizons": {
+            "180": 16.2869,
+            "90": -15.9377,
+            "7": 0.7323,
+            "365": -12.7454,
+            "1": 4.7527,
+            "30": -4.628
+          },
+          "max_drawdown_pct": -26.4792,
+          "max_runup_pct": 24.5387,
+          "surprised": true,
+          "inverted": true,
+          "source": "event"
+        }
+      ],
+      "citations": [
+        {
+          "label": "Tree of Alpha \u00b7 Twitter",
+          "url": "https://x.com/CoinDesk/status/2087538659805315094",
+          "kind": "article"
+        }
+      ],
+      "coverage": {
+        "article_text": "summary-only",
+        "article_chars": 0,
+        "unavailable": [
+          "Source article"
+        ]
+      },
+      "analysed_at": "2026-08-12T16:58:47.488917",
+      "duration_seconds": 26.3,
+      "model": "qwen3.6:35b-a3b",
+      "stages_run": [
+        "gathering",
+        "judging"
+      ]
+    },
+    "news": {
+      "id": "f9ee68584ae5",
+      "title": "CoinDesk (@CoinDesk): MARKETS: U.S. CPI hits 3.4% in line with forecasts, Treasury yields fall, and $BTC holds near $64K as rate-cut bets stay intact.",
+      "summary": "{'twitterId': '1333467482', 'truthId': None, 'isReply': False, 'isRetweet': False, 'isQuote': False, 'isSelfReply': False}",
+      "source": "Tree of Alpha \u00b7 Twitter",
+      "symbol": "BINANCE:BTCUSDT",
+      "asset_type": "crypto",
+      "url": "https://x.com/CoinDesk/status/2087538659805315094",
+      "published_at": "2026-08-12 16:56:16.044000"
+    },
+    "stored_at": "2026-08-12T16:58:47.489002",
+    "outcome": null
   }
 }

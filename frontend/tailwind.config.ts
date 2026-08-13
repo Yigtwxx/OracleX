@@ -48,6 +48,10 @@ const config: Config = {
         accent: {
           DEFAULT: 'var(--accent)',
           bg: 'var(--accent-bg)',
+          // Label colour for a solid accent fill. Always paired with
+          // `bg-accent`, never used on its own — the landing page flips the
+          // accent to white and this flips with it.
+          fg: 'var(--accent-fg)',
         },
 
         // Chat response mode — identifies which Oracle is answering
@@ -117,6 +121,26 @@ const config: Config = {
         lg: ['16px', { lineHeight: '24px' }],
         xl: ['20px', { lineHeight: '28px' }],
         '2xl': ['24px', { lineHeight: '32px' }],
+
+        // Marketing only — the terminal scale above deliberately stops at 24px,
+        // and these are namespaced rather than continued as 3xl/4xl so that a
+        // `text-display-1` inside the app reads as a mistake at a glance.
+        // Fluid because a fixed headline overflows a 360px phone and the app has
+        // no responsive type scale to fall back on.
+        //
+        // Kept close to the terminal scale on purpose. The page is a chart with
+        // notes written on it, and a 72px headline over a 11px mono annotation
+        // is two products stapled together — the copy has to sound like it came
+        // off the same desk as the tape it sits on.
+        'display-1': [
+          'clamp(32px, 5.4vw, 52px)',
+          { lineHeight: '1.06', letterSpacing: '-0.025em' },
+        ],
+        'display-2': [
+          'clamp(24px, 3.2vw, 30px)',
+          { lineHeight: '1.15', letterSpacing: '-0.015em' },
+        ],
+        lead: ['16px', { lineHeight: '26px' }],
       },
       transitionDuration: {
         DEFAULT: '120ms',

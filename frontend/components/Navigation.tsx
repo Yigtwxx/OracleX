@@ -43,7 +43,9 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { key: 'home', href: '/', label: 'Home', icon: Home, tint: 'var(--nav-home)' },
+  // '/home', not '/': the root is the marketing landing page, which lives
+  // outside this shell entirely.
+  { key: 'home', href: '/home', label: 'Home', icon: Home, tint: 'var(--nav-home)' },
   {
     key: 'dashboard',
     href: '/dashboard',
@@ -129,11 +131,8 @@ const ADMIN_ITEM: NavItem = {
 const DROPDOWN_CLOSE_DELAY_MS = 200;
 
 function resolveActiveKey(pathname: string): string {
-  if (pathname === '/') return 'home';
   // Matched against the admin item too, or /admin would light up Home.
-  const match = [...NAV_ITEMS, ADMIN_ITEM].find(
-    (item) => item.href !== '/' && pathname.startsWith(item.href)
-  );
+  const match = [...NAV_ITEMS, ADMIN_ITEM].find((item) => pathname.startsWith(item.href));
   if (match) return match.key;
   if (pathname.startsWith('/overview')) return 'overview';
   return 'home';
@@ -235,7 +234,10 @@ export default function Navigation() {
     // rotated diagonal) needs to play out whole. Anything past this and the bar
     // stops reading as a terminal chrome strip and starts eating the board.
     <header className="h-14 shrink-0 border-b border-line bg-surface flex items-center px-4 sticky top-0 z-50">
-      <Link href="/" className="flex items-center gap-2 pr-4 shrink-0">
+      {/* '/home', not '/': a logo inside the terminal that ejects you to the
+          marketing page is a trap. The landing page is reachable from its own
+          footer link instead. */}
+      <Link href="/home" className="flex items-center gap-2 pr-4 shrink-0">
         <Logo size={18} className="text-fg shrink-0" />
         <span className="text-md font-semibold tracking-tight text-fg whitespace-nowrap">
           Oracle-X

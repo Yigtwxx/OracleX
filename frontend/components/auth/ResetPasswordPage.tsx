@@ -181,7 +181,7 @@ export default function ResetPasswordPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex w-full items-center justify-center gap-2 rounded-md bg-accent px-3 py-1.5 text-base text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-md bg-accent px-3 py-1.5 text-base text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-50"
               >
                 {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 Update password

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
-import ClientShell from '@/components/ClientShell';
+import HydrationBeacon from '@/components/HydrationBeacon';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -86,8 +86,8 @@ const CHUNK_RECOVERY = `
 
   // The failure mode neither listener can see: a chunk request that hangs
   // rather than fails. Nothing errors, so the splash simply sits there
-  // server-rendered and inert. ClientShell stamps data-hydrated the moment the
-  // React tree is alive; if that has not happened by the deadline, it never
+  // server-rendered and inert. HydrationBeacon stamps data-hydrated the moment
+  // the React tree is alive; if that has not happened by the deadline, it never
   // will without a reload.
   setTimeout(function () {
     if (!document.documentElement.hasAttribute('data-hydrated')) recover();
@@ -103,7 +103,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="font-sans text-base antialiased">
         <AuthProvider>
-          <ClientShell>{children}</ClientShell>
+          <HydrationBeacon />
+          {children}
         </AuthProvider>
       </body>
     </html>
