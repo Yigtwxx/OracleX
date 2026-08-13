@@ -43,6 +43,11 @@
   --warn-bg: rgba(245, 158, 11, 0.12);
   --accent: #2f6feb;
   --accent-bg: rgba(47, 111, 235, 0.12);
+  /* What text sits on a solid accent fill. A constant everywhere except the
+     landing page, which runs a white accent — the same button markup is shared
+     between the two (the auth forms render inside both), so the pairing has to
+     be a token rather than a hardcoded `text-white`. */
+  --accent-fg: #ffffff;
 
   /* Chat response mode. This is state, not decoration: the mode decides whether
      Oracle runs a reasoning pass and whether it answers in 120 or 450 words, so

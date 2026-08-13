@@ -48,6 +48,10 @@ const config: Config = {
         accent: {
           DEFAULT: 'var(--accent)',
           bg: 'var(--accent-bg)',
+          // Label colour for a solid accent fill. Always paired with
+          // `bg-accent`, never used on its own — the landing page flips the
+          // accent to white and this flips with it.
+          fg: 'var(--accent-fg)',
         },
 
         // Chat response mode — identifies which Oracle is answering
