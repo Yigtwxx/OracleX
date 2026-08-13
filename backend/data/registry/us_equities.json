@@ -87,7 +87,7 @@
   "AARD": {
     "name": "Aardvark Therapeutics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 143778918.0
+    "market_cap": 143783438.0
   },
   "ABAT": {
     "name": "American Battery Technology Company",
@@ -109,11 +109,6 @@
     "exchange": "NASDAQ",
     "market_cap": 38519200.0
   },
-  "ABLVW": {
-    "name": "Able View Global Inc. Warrant",
-    "exchange": "NASDAQ",
-    "market_cap": 923592.0
-  },
   "ABNB": {
     "name": "Airbnb Inc.",
     "exchange": "NASDAQ",
@@ -127,7 +122,7 @@
   "ABSI": {
     "name": "Absci Corporation",
     "exchange": "NASDAQ",
-    "market_cap": 1481098032.0
+    "market_cap": 1630333095.0
   },
   "ABTC": {
     "name": "American Bitcoin Corp.",
@@ -137,7 +132,7 @@
   "ABTS": {
     "name": "Abits Group Inc",
     "exchange": "NASDAQ",
-    "market_cap": 3849881.0
+    "market_cap": 4178779.0
   },
   "ABUS": {
     "name": "Arbutus Biopharma Corporation",
@@ -227,7 +222,7 @@
   "ACHV": {
     "name": "Achieve Life Sciences Inc. Common Shares",
     "exchange": "NASDAQ",
-    "market_cap": 686789091.0
+    "market_cap": 688417658.0
   },
   "ACIC": {
     "name": "American Coastal Insurance Corporation",
@@ -314,11 +309,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "ADACU": {
-    "name": "American Drive Acquisition Company Units",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "ADAG": {
     "name": "Adagene Inc. American Depositary Shares",
     "exchange": "NASDAQ",
@@ -392,7 +382,7 @@
   "ADIL": {
     "name": "Adial Pharmaceuticals Inc",
     "exchange": "NASDAQ",
-    "market_cap": 9239007.0
+    "market_cap": 11317586.0
   },
   "ADMA": {
     "name": "ADMA Biologics Inc",
@@ -459,11 +449,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "AEAQW": {
-    "name": "Activate Energy Acquisition Corp. Warrant",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "AEBI": {
     "name": "Aebi Schmidt Holding AG",
     "exchange": "NASDAQ",
@@ -526,11 +511,6 @@
   },
   "AESP": {
     "name": "Aeon Acquisition I Corp.",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "AESPR": {
-    "name": "Aeon Acquisition I Corp. Rights",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -707,7 +687,7 @@
   "AIFF": {
     "name": "Firefly Neuroscience Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 17322461.0
+    "market_cap": 17416251.0
   },
   "AIFU": {
     "name": "AIFU Inc. Ordinary Share",
@@ -837,7 +817,7 @@
   "AKTS": {
     "name": "Aktis Oncology Inc. Common stock",
     "exchange": "NASDAQ",
-    "market_cap": 3710182032.0
+    "market_cap": 1326658728.0
   },
   "AKTX": {
     "name": "Akari Therapeutics plc ADS",
@@ -864,11 +844,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "ALDFU": {
-    "name": "Aldel Financial II Inc. Units",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "ALDX": {
     "name": "Aldeyra Therapeutics Inc.",
     "exchange": "NASDAQ",
@@ -881,11 +856,6 @@
   },
   "ALF": {
     "name": "Centurion Acquisition Corp.",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "ALFUW": {
-    "name": "Centurion Acquisition Corp. Warrant",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -962,7 +932,7 @@
   "ALMR": {
     "name": "Alamar Biosciences Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 2295586480.0
+    "market_cap": 2298288410.0
   },
   "ALMS": {
     "name": "Alumis Inc.",
@@ -1274,16 +1244,6 @@
     "exchange": "NASDAQ",
     "market_cap": 63729406.0
   },
-  "ANSC": {
-    "name": "Agriculture & Natural Solutions Acquisition Corporation",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "ANSCW": {
-    "name": "Agriculture & Natural Solutions Acquisition Corporation Warrant",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "ANTA": {
     "name": "Antalpha Platform Holding Company",
     "exchange": "NASDAQ",
@@ -1292,7 +1252,7 @@
   "ANTX": {
     "name": "AN2 Therapeutics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 226181491.0
+    "market_cap": 236983568.0
   },
   "ANY": {
     "name": "Sphere 3D Corp. Common Shares",
@@ -1429,11 +1389,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "APXTU": {
-    "name": "Apex Treasury Corporation Units",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "APXTW": {
     "name": "Apex Treasury Corporation Warrants",
     "exchange": "NASDAQ",
@@ -1457,7 +1412,7 @@
   "AQST": {
     "name": "Aquestive Therapeutics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 530725359.0
+    "market_cap": 530914271.0
   },
   "ARAI": {
     "name": "Arrive AI Inc.",
@@ -1511,16 +1466,6 @@
   },
   "ARCL": {
     "name": "ARC Group Acquisition I Corp",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "ARCLR": {
-    "name": "ARC Group Acquisition I Corp Right",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "ARCLW": {
-    "name": "ARC Group Acquisition I Corp Warrants",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -1767,7 +1712,7 @@
   "ATAI": {
     "name": "AtaiBeckley Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 2661845053.0
+    "market_cap": 2681351557.0
   },
   "ATAT": {
     "name": "Atour Lifestyle Holdings Limited American Depositary Shares",
@@ -1792,7 +1737,7 @@
   "ATEX": {
     "name": "Anterix Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 1731464402.0
+    "market_cap": 1741348997.0
   },
   "ATGL": {
     "name": "Alpha Technology Group Limited",
@@ -1907,7 +1852,7 @@
   "AUBN": {
     "name": "Auburn National Bancorporation Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 92920610.0
+    "market_cap": 92682167.0
   },
   "AUC": {
     "name": "ATIF Holdings Limited",
@@ -1942,7 +1887,7 @@
   "AURA": {
     "name": "Aura Biosciences Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 801632224.0
+    "market_cap": 803712270.0
   },
   "AURE": {
     "name": "Aurelion Inc.",
@@ -1957,7 +1902,7 @@
   "AUTL": {
     "name": "Autolus Therapeutics plc American Depositary Share",
     "exchange": "NASDAQ",
-    "market_cap": 564250266.0
+    "market_cap": 564264585.0
   },
   "AUUD": {
     "name": "Auddia Inc.",
@@ -2022,7 +1967,7 @@
   "AVR": {
     "name": "Anteris Technologies Global Corp.",
     "exchange": "NASDAQ",
-    "market_cap": 863425341.0
+    "market_cap": 864456664.0
   },
   "AVT": {
     "name": "Avnet Inc.",
@@ -2199,11 +2144,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "BBCQU": {
-    "name": "Bleichroeder Acquisition Corp. II Units",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "BBCQW": {
     "name": "Bleichroeder Acquisition Corp. II Warrants",
     "exchange": "NASDAQ",
@@ -2224,11 +2164,6 @@
     "exchange": "NASDAQ",
     "market_cap": 1191230.0
   },
-  "BBLGW": {
-    "name": "Bone Biologics Corp Warrants",
-    "exchange": "NASDAQ",
-    "market_cap": 10807969.0
-  },
   "BBNX": {
     "name": "Beta Bionics Inc.",
     "exchange": "NASDAQ",
@@ -2237,7 +2172,7 @@
   "BBOT": {
     "name": "BridgeBio Oncology Therapeutics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 754608920.0
+    "market_cap": 755241595.0
   },
   "BBSI": {
     "name": "Barrett Business Services Inc.",
@@ -2272,7 +2207,7 @@
   "BCAX": {
     "name": "Bicara Therapeutics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 1618286220.0
+    "market_cap": 1629839364.0
   },
   "BCBP": {
     "name": "BCB Bancorp Inc. (NJ)",
@@ -2417,7 +2352,7 @@
   "BEEP": {
     "name": "Mobile Infrastructure Corporation",
     "exchange": "NASDAQ",
-    "market_cap": 114536000.0
+    "market_cap": 114814000.0
   },
   "BELFA": {
     "name": "Bel Fuse Inc.",
@@ -2442,12 +2377,7 @@
   "BETR": {
     "name": "Better Home & Finance Holding Company",
     "exchange": "NASDAQ",
-    "market_cap": 279933824.0
-  },
-  "BETRW": {
-    "name": "Better Home & Finance Holding Company Warrant",
-    "exchange": "NASDAQ",
-    "market_cap": 2302118.0
+    "market_cap": 281843919.0
   },
   "BFC": {
     "name": "Bank First Corporation",
@@ -2589,11 +2519,6 @@
     "exchange": "NASDAQ",
     "market_cap": 35672088770.0
   },
-  "BIDWU": {
-    "name": "Tribeca Strategic Acquisition Corp. Unit",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "BIIB": {
     "name": "Biogen Inc.",
     "exchange": "NASDAQ",
@@ -2627,7 +2552,7 @@
   "BIRD": {
     "name": "Smartbird Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 22543491.0
+    "market_cap": 30231534.0
   },
   "BIVI": {
     "name": "BioVie Inc.",
@@ -2922,7 +2847,7 @@
   "BOLT": {
     "name": "Bolt Biotherapeutics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 6629406.0
+    "market_cap": 6645890.0
   },
   "BON": {
     "name": "Bon Natural Life Limited",
@@ -3044,11 +2969,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "BRKHW": {
-    "name": "Burtech Acquisition Corp II Warrants",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "BRKR": {
     "name": "Bruker Corporation",
     "exchange": "NASDAQ",
@@ -3063,11 +2983,6 @@
     "name": "Borealis Foods Inc. Common Shares",
     "exchange": "NASDAQ",
     "market_cap": 18050640.0
-  },
-  "BRLSW": {
-    "name": "Borealis Foods Inc. Warrant",
-    "exchange": "NASDAQ",
-    "market_cap": 549461.0
   },
   "BRLT": {
     "name": "Brilliant Earth Group Inc.",
@@ -3142,7 +3057,7 @@
   "BSIN": {
     "name": "Big Sky Industrial Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 72725396.0
+    "market_cap": 72965865.0
   },
   "BSP": {
     "name": "Bending Spoons S.p.A.",
@@ -3292,7 +3207,7 @@
   "BWEN": {
     "name": "Broadwind Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 127318391.0
+    "market_cap": 128696109.0
   },
   "BWFG": {
     "name": "Bankwell Financial Group Inc.",
@@ -3437,7 +3352,7 @@
   "CALC": {
     "name": "CalciMedica Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 19053495.0
+    "market_cap": 21164291.0
   },
   "CALM": {
     "name": "Cal-Maine Foods Inc.",
@@ -3466,11 +3381,6 @@
   },
   "CAPNR": {
     "name": "Cayson Acquisition Corp Right",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "CAPNU": {
-    "name": "Cayson Acquisition Corp Unit",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -3637,7 +3547,7 @@
   "CCCC": {
     "name": "C4 Therapeutics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 431212166.0
+    "market_cap": 479798030.0
   },
   "CCCT": {
     "name": "Columbus Circle Capital Corp III",
@@ -3677,7 +3587,7 @@
   "CCHH": {
     "name": "CCH Holdings Ltd",
     "exchange": "NASDAQ",
-    "market_cap": 7280724.0
+    "market_cap": 26156760.0
   },
   "CCII": {
     "name": "Cohen Circle Acquisition Corp. II",
@@ -3732,7 +3642,7 @@
   "CD": {
     "name": "Chaince Digital Holdings Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 328102894.0
+    "market_cap": 454315694.0
   },
   "CDIO": {
     "name": "Cardio Diagnostics Holdings Inc. Common stock",
@@ -3797,7 +3707,7 @@
   "CDXS": {
     "name": "Codexis Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 145434507.0
+    "market_cap": 175209224.0
   },
   "CDZI": {
     "name": "CADIZ Inc.",
@@ -4026,11 +3936,6 @@
   },
   "CHEC": {
     "name": "Chenghe Acquisition III Co. Ordinary Share",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "CHECU": {
-    "name": "Chenghe Acquisition III Co. Units",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -4422,7 +4327,7 @@
   "CNL": {
     "name": "Collective Mining Ltd. Common Shares",
     "exchange": "NASDAQ",
-    "market_cap": 1320610580.0
+    "market_cap": 1320656148.0
   },
   "CNOB": {
     "name": "ConnectOne Bancorp Inc.",
@@ -4487,7 +4392,7 @@
   "COAG": {
     "name": "Hemab Therapeutics Holdings Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 2497805327.0
+    "market_cap": 2498164017.0
   },
   "COCH": {
     "name": "Envoy Medical Inc.",
@@ -4579,11 +4484,6 @@
     "exchange": "NASDAQ",
     "market_cap": 13237856.0
   },
-  "COOTW": {
-    "name": "Australian Oilseeds Holdings Limited Warrant",
-    "exchange": "NASDAQ",
-    "market_cap": 532862.0
-  },
   "CORT": {
     "name": "Corcept Therapeutics Incorporated",
     "exchange": "NASDAQ",
@@ -4617,7 +4517,7 @@
   "COYA": {
     "name": "Coya Therapeutics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 110014188.0
+    "market_cap": 110017312.0
   },
   "CPB": {
     "name": "The Campbell's Company",
@@ -4652,7 +4552,7 @@
   "CPSH": {
     "name": "CPS Technologies Corp.",
     "exchange": "NASDAQ",
-    "market_cap": 80765963.0
+    "market_cap": 86664101.0
   },
   "CPSS": {
     "name": "Consumer Portfolio Services Inc.",
@@ -4671,11 +4571,6 @@
   },
   "CRACR": {
     "name": "Crown Reserve Acquisition Corp. I Rights",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "CRACW": {
-    "name": "Crown Reserve Acquisition Corp. I Warrant",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -4704,11 +4599,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "CRAQR": {
-    "name": "Cal Redwood Acquisition Corp. Right",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "CRBP": {
     "name": "Corbus Pharmaceuticals Holdings Inc.",
     "exchange": "NASDAQ",
@@ -4727,7 +4617,7 @@
   "CRDF": {
     "name": "Cardiff Oncology Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 77056193.0
+    "market_cap": 77056194.0
   },
   "CRDL": {
     "name": "Cardiol Therapeutics Inc. Common Shares",
@@ -4934,11 +4824,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "CTAAU": {
-    "name": "ClearThink 1 Acquisition Corp. Units",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "CTAS": {
     "name": "Cintas Corporation",
     "exchange": "NASDAQ",
@@ -5142,7 +5027,7 @@
   "CYAB": {
     "name": "Cyabra Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 5295588.0
+    "market_cap": 5910856.0
   },
   "CYCN": {
     "name": "Cyclerion Therapeutics Inc.",
@@ -5209,11 +5094,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "DAAQW": {
-    "name": "Digital Asset Acquisition Corp. Warrant",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "DAIC": {
     "name": "CID HoldCo Inc.",
     "exchange": "NASDAQ",
@@ -5242,7 +5122,7 @@
   "DASH": {
     "name": "DoorDash Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 92070993518.0
+    "market_cap": 92071478633.0
   },
   "DAVE": {
     "name": "Dave Inc.",
@@ -5261,11 +5141,6 @@
   },
   "DBCAU": {
     "name": "D. Boral Acquisition I Corp. Unit",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "DBCAW": {
-    "name": "D. Boral Acquisition I Corp. Warrants",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -5504,11 +5379,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "DMIIR": {
-    "name": "Drugs Made In America Acquisition II Corp. Right",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "DMIIU": {
     "name": "Drugs Made In America Acquisition II Corp. Unit",
     "exchange": "NASDAQ",
@@ -5544,11 +5414,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "DNMXW": {
-    "name": "Dynamix Corporation III Warrants",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "DNTH": {
     "name": "Dianthus Therapeutics Inc.",
     "exchange": "NASDAQ",
@@ -5572,7 +5437,7 @@
   "DOMH": {
     "name": "Dominari Holdings Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 66032241.0
+    "market_cap": 70791446.0
   },
   "DOMO": {
     "name": "Domo Inc.",
@@ -5632,7 +5497,7 @@
   "DRIO": {
     "name": "DarioHealth Corp.",
     "exchange": "NASDAQ",
-    "market_cap": 54917158.0
+    "market_cap": 73300118.0
   },
   "DRMA": {
     "name": "Dermata Therapeutics Inc.",
@@ -5671,11 +5536,6 @@
   },
   "DSAC": {
     "name": "Daedalus Special Acquisition Corp.",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "DSACU": {
-    "name": "Daedalus Special Acquisition Corp. Unit",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -5746,11 +5606,6 @@
   },
   "DTSQR": {
     "name": "DT Cloud Star Acquisition Corporation Right",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "DTSQU": {
-    "name": "DT Cloud Star Acquisition Corporation Units",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -5844,11 +5699,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "DYNCW": {
-    "name": "Dynamix Corporation Warrant",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "DYOR": {
     "name": "Insight Digital Partners II",
     "exchange": "NASDAQ",
@@ -5902,12 +5752,12 @@
   "EDBL": {
     "name": "Edible Garden AG Incorporated",
     "exchange": "NASDAQ",
-    "market_cap": 3228006.0
+    "market_cap": 3337080.0
   },
   "EDBLW": {
     "name": "Edible Garden AG Incorporated Warrant",
     "exchange": "NASDAQ",
-    "market_cap": 41719.0
+    "market_cap": 43128.0
   },
   "EDHL": {
     "name": "Everbright Digital Holding Limited",
@@ -5952,7 +5802,7 @@
   "EFOI": {
     "name": "Energy Focus Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 19067885.0
+    "market_cap": 19266897.0
   },
   "EFSC": {
     "name": "Enterprise Financial Services Corporation",
@@ -6042,7 +5892,7 @@
   "ELE": {
     "name": "Elemental Royalty Corporation",
     "exchange": "NASDAQ",
-    "market_cap": 1318564454.0
+    "market_cap": 1316989092.0
   },
   "ELMT": {
     "name": "The Elmet Group Co.",
@@ -6057,12 +5907,12 @@
   "ELOX": {
     "name": "Eloxx Pharmaceuticals Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 73723275.0
+    "market_cap": 73725924.0
   },
   "ELPW": {
     "name": "Elong Power Holding Limited",
     "exchange": "NASDAQ",
-    "market_cap": 3498691.0
+    "market_cap": 3560580.0
   },
   "ELTK": {
     "name": "Eltek Ltd.",
@@ -6114,15 +5964,10 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "EMISR": {
-    "name": "Emmis Acquisition Corp. Rights",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "EML": {
     "name": "Eastern Company (The)",
     "exchange": "NASDAQ",
-    "market_cap": 154692944.0
+    "market_cap": 154350363.0
   },
   "EMPD": {
     "name": "Empery Digital Inc. Common stock",
@@ -6222,7 +6067,7 @@
   "EPRX": {
     "name": "Eupraxia Pharmaceuticals Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 423318617.0
+    "market_cap": 427074975.0
   },
   "EPSM": {
     "name": "Epsium Enterprise Limited",
@@ -6252,7 +6097,7 @@
   "ERAS": {
     "name": "Erasca Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 6358734847.0
+    "market_cap": 6498578610.0
   },
   "ERIC": {
     "name": "Ericsson American Depositary Shares",
@@ -6293,11 +6138,6 @@
     "name": "Estrella Immunopharma Inc.",
     "exchange": "NASDAQ",
     "market_cap": 31849632.0
-  },
-  "ESLAW": {
-    "name": "Estrella Immunopharma Inc. Warrant",
-    "exchange": "NASDAQ",
-    "market_cap": 2999486.0
   },
   "ESLT": {
     "name": "Elbit Systems Ltd.",
@@ -6354,11 +6194,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "EURKU": {
-    "name": "Eureka Acquisition Corp Unit",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "EVAX": {
     "name": "Evaxion A/S American Depositary Share",
     "exchange": "NASDAQ",
@@ -6387,7 +6222,7 @@
   "EVLV": {
     "name": "Evolv Technologies Holdings Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 1028864465.0
+    "market_cap": 1036041555.0
   },
   "EVO": {
     "name": "Evotec SE American Depositary Shares",
@@ -6794,11 +6629,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "FGIIU": {
-    "name": "FG Imperii Acquisition Corp. Units",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "FGIWW": {
     "name": "FGI Industries Ltd. Warrant",
     "exchange": "NASDAQ",
@@ -6907,12 +6737,12 @@
   "FLD": {
     "name": "Fold Holdings Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 23563474.0
+    "market_cap": 25555815.0
   },
   "FLDDW": {
     "name": "Fold Holdings Inc. Warrant",
     "exchange": "NASDAQ",
-    "market_cap": 3869691.0
+    "market_cap": 4196882.0
   },
   "FLEX": {
     "name": "Flex Ltd.",
@@ -6967,7 +6797,7 @@
   "FLY": {
     "name": "Firefly Aerospace Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 4252642659.0
+    "market_cap": 4442919278.0
   },
   "FLYE": {
     "name": "Fly-E Group Inc.",
@@ -6986,11 +6816,6 @@
   },
   "FMAC": {
     "name": "Future Money Acquisition Corporation",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "FMACR": {
-    "name": "Future Money Acquisition Corporation Rights",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -7022,12 +6847,12 @@
   "FMST": {
     "name": "Foremost Clean Energy Ltd. Common Shares",
     "exchange": "NASDAQ",
-    "market_cap": 22259930.0
+    "market_cap": 23425393.0
   },
   "FMSTW": {
     "name": "Foremost Clean Energy Ltd. Warrant",
     "exchange": "NASDAQ",
-    "market_cap": 4461879.0
+    "market_cap": 4695490.0
   },
   "FNGR": {
     "name": "FingerMotion Inc.",
@@ -7113,11 +6938,6 @@
     "name": "Foxx Development Holdings Inc.",
     "exchange": "NASDAQ",
     "market_cap": 18166275.0
-  },
-  "FOXXW": {
-    "name": "Foxx Development Holdings Inc. Warrant",
-    "exchange": "NASDAQ",
-    "market_cap": 492883.0
   },
   "FRAF": {
     "name": "Franklin Financial Services Corporation",
@@ -7277,7 +7097,7 @@
   "FTCI": {
     "name": "FTC Solar Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 38683940.0
+    "market_cap": 38825281.0
   },
   "FTDR": {
     "name": "Frontdoor Inc.",
@@ -7344,11 +7164,6 @@
     "exchange": "NASDAQ",
     "market_cap": 216649677.0
   },
-  "FUFUW": {
-    "name": "BitFuFu Inc. Warrant",
-    "exchange": "NASDAQ",
-    "market_cap": 22098267.0
-  },
   "FULC": {
     "name": "Fulcrum Therapeutics Inc.",
     "exchange": "NASDAQ",
@@ -7406,16 +7221,6 @@
   },
   "FVN": {
     "name": "Future Vision II Acquisition Corporation Ordinary shares",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "FVNNR": {
-    "name": "Future Vision II Acquisition Corporation Right",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "FVNNU": {
-    "name": "Future Vision II Acquisition Corporation Units",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -7522,7 +7327,7 @@
   "GANX": {
     "name": "Gain Therapeutics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 90426561.0
+    "market_cap": 92524472.0
   },
   "GASS": {
     "name": "StealthGas Inc.",
@@ -7714,11 +7519,6 @@
     "exchange": "NASDAQ",
     "market_cap": 10890349.0
   },
-  "GFAIW": {
-    "name": "Guardforce AI Co. Limited Warrant",
-    "exchange": "NASDAQ",
-    "market_cap": 627867.0
-  },
   "GFS": {
     "name": "GlobalFoundries Inc.",
     "exchange": "NASDAQ",
@@ -7758,11 +7558,6 @@
     "name": "GH Research PLC",
     "exchange": "NASDAQ",
     "market_cap": 2073168942.0
-  },
-  "GHXIU": {
-    "name": "Gores Holdings XI Inc. Units",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
   },
   "GIBO": {
     "name": "GIBO Holdings Limited",
@@ -7811,11 +7606,6 @@
   },
   "GIW": {
     "name": "GigCapital8 Corp.",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "GIWWR": {
-    "name": "GigCapital8 Corp. Rights",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -8049,11 +7839,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "GPATW": {
-    "name": "GP-Act III Acquisition Corp. Warrants",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "GPCR": {
     "name": "Structure Therapeutics Inc. American Depositary Shares",
     "exchange": "NASDAQ",
@@ -8162,7 +7947,7 @@
   "GRWG": {
     "name": "GrowGeneration Corp.",
     "exchange": "NASDAQ",
-    "market_cap": 106961811.0
+    "market_cap": 104878399.0
   },
   "GSAT": {
     "name": "Globalstar Inc.",
@@ -8187,7 +7972,7 @@
   "GSIT": {
     "name": "GSI Technology",
     "exchange": "NASDAQ",
-    "market_cap": 254790565.0
+    "market_cap": 255192398.0
   },
   "GSIW": {
     "name": "Garden Stage Limited",
@@ -8201,11 +7986,6 @@
   },
   "GSRF": {
     "name": "GSR IV Acquisition Corp. ordinary share",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "GSRFR": {
-    "name": "GSR IV Acquisition Corp. Rights",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -8244,11 +8024,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "GTENU": {
-    "name": "Gores Holdings X Inc. Units",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "GTENW": {
     "name": "Gores Holdings X Inc. Warrants",
     "exchange": "NASDAQ",
@@ -8256,11 +8031,6 @@
   },
   "GTERA": {
     "name": "Globa Terra Acquisition Corporation",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "GTERR": {
-    "name": "Globa Terra Acquisition Corporation Rights",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -8286,11 +8056,6 @@
   },
   "GUAC": {
     "name": "Berto Acquisition Corp. II",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "GUACU": {
-    "name": "Berto Acquisition Corp. II Unit",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -8341,11 +8106,6 @@
   },
   "HACQ": {
     "name": "HCM IV Acquisition Corp. Ordinary Share",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "HACQU": {
-    "name": "HCM IV Acquisition Corp. Unit",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -8417,7 +8177,7 @@
   "HBIO": {
     "name": "Harvard Bioscience Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 27827823.0
+    "market_cap": 28087722.0
   },
   "HBNB": {
     "name": "Hotel101 Global Holdings Corp.",
@@ -8707,7 +8467,7 @@
   "HOUR": {
     "name": "Hour Loop Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 66470442.0
+    "market_cap": 66485420.0
   },
   "HOVNP": {
     "name": "Hovnanian Enterprises Inc Dep Shr Srs A Pfd",
@@ -9179,11 +8939,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "IEAGR": {
-    "name": "Infinite Eagle Acquisition Corp. Rights",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "IEAGU": {
     "name": "Infinite Eagle Acquisition Corp. Unit",
     "exchange": "NASDAQ",
@@ -9242,7 +8997,7 @@
   "IKT": {
     "name": "Inhibikase Therapeutics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 316878326.0
+    "market_cap": 334886160.0
   },
   "ILAG": {
     "name": "Intelligent Living Application Group Inc.",
@@ -9317,12 +9072,12 @@
   "IMNM": {
     "name": "Immunome Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 3169878528.0
+    "market_cap": 3179037836.0
   },
   "IMNN": {
     "name": "Imunon Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 6765410.0
+    "market_cap": 9034359.0
   },
   "IMOS": {
     "name": "ChipMOS TECHNOLOGIES INC. American Depositary Shares",
@@ -9372,7 +9127,7 @@
   "IMUX": {
     "name": "Immunic Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 216990909.0
+    "market_cap": 217356359.0
   },
   "IMVT": {
     "name": "Immunovant Inc.",
@@ -9552,7 +9307,7 @@
   "INTS": {
     "name": "Intensity Therapeutics Inc. Common stock",
     "exchange": "NASDAQ",
-    "market_cap": 11243731.0
+    "market_cap": 13581897.0
   },
   "INTU": {
     "name": "Intuit Inc.",
@@ -9562,7 +9317,7 @@
   "INTZ": {
     "name": "Intrusion Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 15021945.0
+    "market_cap": 16177040.0
   },
   "INV": {
     "name": "Innventure Inc.",
@@ -9621,11 +9376,6 @@
   },
   "IPCX": {
     "name": "Inflection Point Acquisition Corp. III",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "IPCXR": {
-    "name": "Inflection Point Acquisition Corp. III Rights",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -9749,11 +9499,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "IRHOR": {
-    "name": "Iron Horse Acquisitions Corp. II Rights",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "IRIX": {
     "name": "IRIDEX Corporation",
     "exchange": "NASDAQ",
@@ -9791,11 +9536,6 @@
   },
   "ISNRU": {
     "name": "Snow Rothschild Acquisition Corp. Units",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "ISNRW": {
-    "name": "Snow Rothschild Acquisition Corp. Warrants",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -9887,7 +9627,7 @@
   "IZEA": {
     "name": "IZEA Worldwide Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 53765988.0
+    "market_cap": 53467998.0
   },
   "IZM": {
     "name": "ICZOOM Group Inc.",
@@ -9896,11 +9636,6 @@
   },
   "JAB": {
     "name": "JAB Acquisition Corp I",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "JABRR": {
-    "name": "JAB Acquisition Corp I Rights",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -10147,7 +9882,7 @@
   "KARD": {
     "name": "Kardigan Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 1909506070.0
+    "market_cap": 2036510564.0
   },
   "KARO": {
     "name": "Karooooo Ltd.",
@@ -10181,11 +9916,6 @@
   },
   "KCHV": {
     "name": "Kochav Defense Acquisition Corp.",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "KCHVR": {
-    "name": "Kochav Defense Acquisition Corp. Right",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -10241,11 +9971,6 @@
   },
   "KFII": {
     "name": "K&F Growth Acquisition Corp. II Ordinary shares",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "KFIIR": {
-    "name": "K&F Growth Acquisition Corp. II Rights",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -10312,7 +10037,7 @@
   "KLRS": {
     "name": "Kalaris Therapeutics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 93741575.0
+    "market_cap": 93791625.0
   },
   "KLTR": {
     "name": "Kaltura Inc.",
@@ -10322,7 +10047,7 @@
   "KLXE": {
     "name": "KLX Energy Services Holdings Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 32854402.0
+    "market_cap": 35100547.0
   },
   "KMB": {
     "name": "Kimberly-Clark Corporation",
@@ -10362,7 +10087,7 @@
   "KOPN": {
     "name": "Kopin Corporation",
     "exchange": "NASDAQ",
-    "market_cap": 918259956.0
+    "market_cap": 933080522.0
   },
   "KOSS": {
     "name": "Koss Corporation",
@@ -10406,11 +10131,6 @@
   },
   "KRAQU": {
     "name": "KRAKacquisition Corp Unit",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "KRAQW": {
-    "name": "KRAKacquisition Corp Warrants",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -10494,11 +10214,6 @@
     "exchange": "NASDAQ",
     "market_cap": 201413658.0
   },
-  "KTWOR": {
-    "name": "K2 Capital Acquisition Corporation Rights",
-    "exchange": "NASDAQ",
-    "market_cap": 4008232.0
-  },
   "KURA": {
     "name": "Kura Oncology Inc.",
     "exchange": "NASDAQ",
@@ -10552,7 +10267,7 @@
   "KYTX": {
     "name": "Kyverna Therapeutics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 489401457.0
+    "market_cap": 497839724.0
   },
   "KZIA": {
     "name": "Kazia Therapeutics Limited American Depositary Shares",
@@ -10662,7 +10377,7 @@
   "LBRX": {
     "name": "LB Pharmaceuticals Inc",
     "exchange": "NASDAQ",
-    "market_cap": 1301346468.0
+    "market_cap": 1463921362.0
   },
   "LBTYA": {
     "name": "Liberty Global Ltd. Common Shares",
@@ -10737,12 +10452,12 @@
   "LEGN": {
     "name": "Legend Biotech Corporation American Depositary Shares",
     "exchange": "NASDAQ",
-    "market_cap": 3835526705.0
+    "market_cap": 3985450000.0
   },
   "LENZ": {
     "name": "LENZ Therapeutics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 158026146.0
+    "market_cap": 158358529.0
   },
   "LESL": {
     "name": "Leslie's Inc.",
@@ -10756,11 +10471,6 @@
   },
   "LFAC": {
     "name": "Leapfrog Acquisition Corporation",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "LFACU": {
-    "name": "Leapfrog Acquisition Corporation Units",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -10907,7 +10617,7 @@
   "LIME": {
     "name": "Neutron Holdings Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 2411216750.0
+    "market_cap": 2447304595.0
   },
   "LIMN": {
     "name": "Liminatus Pharma Inc.",
@@ -11139,11 +10849,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "LPCVW": {
-    "name": "Launchpad Cadenza Acquisition Corp I Warrant",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "LPLA": {
     "name": "LPL Financial Holdings Inc.",
     "exchange": "NASDAQ",
@@ -11197,7 +10902,7 @@
   "LSBK": {
     "name": "Lake Shore Bancorp Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 135475872.0
+    "market_cap": 135320767.0
   },
   "LSCC": {
     "name": "Lattice Semiconductor Corporation",
@@ -11422,7 +11127,7 @@
   "MASS": {
     "name": "908 Devices Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 378892482.0
+    "market_cap": 414163724.0
   },
   "MAT": {
     "name": "Mattel Inc.",
@@ -11447,7 +11152,7 @@
   "MAZE": {
     "name": "Maze Therapeutics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 1523655035.0
+    "market_cap": 1529268595.0
   },
   "MB": {
     "name": "MasterBeef Group",
@@ -11457,7 +11162,7 @@
   "MBAI": {
     "name": "Check-Cap Ltd. Ordinary Share",
     "exchange": "NASDAQ",
-    "market_cap": 12018089.0
+    "market_cap": 1716870.0
   },
   "MBBC": {
     "name": "Marathon Bancorp Inc.",
@@ -11516,11 +11221,6 @@
   },
   "MBVI": {
     "name": "M3-Brigade Acquisition VI Corp.",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "MBVIU": {
-    "name": "M3-Brigade Acquisition VI Corp. Units",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -11602,12 +11302,12 @@
   "MDAI": {
     "name": "Spectral AI Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 49963656.0
+    "market_cap": 50530337.0
   },
   "MDAIW": {
     "name": "Spectral AI Inc. Warrants",
     "exchange": "NASDAQ",
-    "market_cap": 14782241.0
+    "market_cap": 14949899.0
   },
   "MDB": {
     "name": "MongoDB Inc.",
@@ -11709,11 +11409,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "MESHU": {
-    "name": "Meshflow Acquisition Corp. Units",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "MESHW": {
     "name": "Meshflow Acquisition Corp. Warrants",
     "exchange": "NASDAQ",
@@ -11797,7 +11492,7 @@
   "MGN": {
     "name": "Megan Holdings Limited",
     "exchange": "NASDAQ",
-    "market_cap": 1660750.0
+    "market_cap": 3781400.0
   },
   "MGNI": {
     "name": "Magnite Inc.",
@@ -11857,7 +11552,7 @@
   "MIMI": {
     "name": "Mint Incorporation Limited",
     "exchange": "NASDAQ",
-    "market_cap": 13844472.0
+    "market_cap": 26249537.0
   },
   "MIND": {
     "name": "MIND Technology Inc. (DE)",
@@ -11929,11 +11624,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "MLAAU": {
-    "name": "Mountain Lake Acquisition Corp. II Units",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "MLAB": {
     "name": "Mesa Laboratories Inc.",
     "exchange": "NASDAQ",
@@ -11982,7 +11672,7 @@
   "MLYS": {
     "name": "Mineralys Therapeutics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 2231573632.0
+    "market_cap": 2391406239.0
   },
   "MMED": {
     "name": "MiniMed Group Inc.",
@@ -12067,7 +11757,7 @@
   "MNTS": {
     "name": "Momentus Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 91542061.0
+    "market_cap": 106742129.0
   },
   "MNY": {
     "name": "MoneyHero Limited",
@@ -12087,7 +11777,7 @@
   "MOBI": {
     "name": "Mobia Medical Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 383028549.0
+    "market_cap": 383513426.0
   },
   "MOBX": {
     "name": "Mobix Labs Inc.",
@@ -12402,7 +12092,7 @@
   "MYPS": {
     "name": "PLAYSTUDIOS Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 72110079.0
+    "market_cap": 67291998.0
   },
   "MYRG": {
     "name": "MYR Group Inc.",
@@ -12592,7 +12282,7 @@
   "NCMI": {
     "name": "National CineMedia Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 208192242.0
+    "market_cap": 208836383.0
   },
   "NCNA": {
     "name": "NuCana plc American Depositary Share",
@@ -12614,20 +12304,10 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "NCOOW": {
-    "name": "Southern Cross Acquisition I Corp. Warrants",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "NCPL": {
     "name": "Netcapital Inc.",
     "exchange": "NASDAQ",
     "market_cap": 2600009.0
-  },
-  "NCPLW": {
-    "name": "Netcapital Inc. Warrants",
-    "exchange": "NASDAQ",
-    "market_cap": 194628.0
   },
   "NCRA": {
     "name": "Nocera Inc.",
@@ -12697,12 +12377,12 @@
   "NEOV": {
     "name": "NeoVolta Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 142655745.0
+    "market_cap": 196603245.0
   },
   "NEOVW": {
     "name": "NeoVolta Inc. Warrant",
     "exchange": "NASDAQ",
-    "market_cap": 51253561.0
+    "market_cap": 70635896.0
   },
   "NEPH": {
     "name": "Nephros Inc.",
@@ -12743,11 +12423,6 @@
     "name": "NewtekOne Inc. 8.00% Fixed Rate Senior Notes due 2028",
     "exchange": "NASDAQ",
     "market_cap": 670417570.0
-  },
-  "NEWTO": {
-    "name": "NewtekOne Inc. 8.50% Fixed Rate Senior Notes due 2031",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
   },
   "NEWTP": {
     "name": "NewtekOne Inc. Depositary Shares Non-Cumulative Perpetual Preferred Stock Series B",
@@ -12797,20 +12472,10 @@
   "NGNE": {
     "name": "Neurogene Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 706901766.0
+    "market_cap": 740020906.0
   },
   "NHIC": {
     "name": "NewHold Investment Corp III",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "NHICU": {
-    "name": "NewHold Investment Corp III Units",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "NHICW": {
-    "name": "NewHold Investment Corp III Warrants",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -12929,11 +12594,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "NMPAU": {
-    "name": "NMP Acquisition Corp. Units",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "NMRA": {
     "name": "Neumora Therapeutics Inc.",
     "exchange": "NASDAQ",
@@ -12952,7 +12612,7 @@
   "NN": {
     "name": "NextNav Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 2623682337.0
+    "market_cap": 3246214569.0
   },
   "NNBR": {
     "name": "NN Inc.",
@@ -13027,7 +12687,7 @@
   "NPCE": {
     "name": "Neuropace Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 496404927.0
+    "market_cap": 499761429.0
   },
   "NPT": {
     "name": "Texxon Holding Limited Ordinary shares",
@@ -13297,7 +12957,7 @@
   "NWGL": {
     "name": "CL Workshop Group Limited American Depositary Shares",
     "exchange": "NASDAQ",
-    "market_cap": 5798574.0
+    "market_cap": 10107264.0
   },
   "NWL": {
     "name": "Newell Brands Inc.",
@@ -13549,23 +13209,13 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "OGGWZ": {
-    "name": "Osisko Gold Group Inc. Warrant expiring 5/27/2027",
-    "exchange": "NASDAQ",
-    "market_cap": 23121340.0
-  },
   "OGI": {
     "name": "Organigram Global Inc. Common Shares",
     "exchange": "NASDAQ",
-    "market_cap": 181599778.0
+    "market_cap": 181898381.0
   },
   "OHAC": {
     "name": "Oceanhawk Acquisition Corp.",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "OHACU": {
-    "name": "Oceanhawk Acquisition Corp. Units",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -13647,7 +13297,7 @@
   "OMEX": {
     "name": "Odyssey Marine Exploration Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 49782140.0
+    "market_cap": 49881812.0
   },
   "OMH": {
     "name": "Ohmyhome Limited",
@@ -13733,11 +13383,6 @@
     "name": "OneMedNet Corp",
     "exchange": "NASDAQ",
     "market_cap": 42070924.0
-  },
-  "ONMDW": {
-    "name": "OneMedNet Corp Warrant",
-    "exchange": "NASDAQ",
-    "market_cap": 2050295.0
   },
   "OPAL": {
     "name": "OPAL Fuels Inc.",
@@ -14104,11 +13749,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "PALOU": {
-    "name": "Paloma Acquisition Corp I Units",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "PALOW": {
     "name": "Paloma Acquisition Corp I Warrants",
     "exchange": "NASDAQ",
@@ -14278,11 +13918,6 @@
     "name": "PureCycle Technologies Inc. Common stock",
     "exchange": "NASDAQ",
     "market_cap": 1440487488.0
-  },
-  "PCTTU": {
-    "name": "PureCycle Technologies Inc. Unit",
-    "exchange": "NASDAQ",
-    "market_cap": 2209952910.0
   },
   "PCTTW": {
     "name": "PureCycle Technologies Inc. Warrant",
@@ -14454,11 +14089,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "PGACU": {
-    "name": "Pantages Capital Acquisition Corporation Unit",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "PGC": {
     "name": "Peapack-Gladstone Financial Corporation",
     "exchange": "NASDAQ",
@@ -14617,7 +14247,7 @@
   "PLRX": {
     "name": "Pliant Therapeutics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 66254666.0
+    "market_cap": 66256430.0
   },
   "PLRZ": {
     "name": "Polyrizon Ltd.",
@@ -14922,7 +14552,7 @@
   "PRLD": {
     "name": "Prelude Therapeutics Incorporated",
     "exchange": "NASDAQ",
-    "market_cap": 456367609.0
+    "market_cap": 457273969.0
   },
   "PRME": {
     "name": "Prime Medicine Inc.",
@@ -14952,7 +14582,7 @@
   "PRPL": {
     "name": "Purple Innovation Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 28424253.0
+    "market_cap": 28382271.0
   },
   "PRPO": {
     "name": "Precipio Inc.",
@@ -15157,7 +14787,7 @@
   "PXLW": {
     "name": "Pixelworks Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 42315666.0
+    "market_cap": 40228463.0
   },
   "PXS": {
     "name": "Pyxis Tankers Inc.",
@@ -15242,7 +14872,7 @@
   "QMCO": {
     "name": "Quantum Corporation",
     "exchange": "NASDAQ",
-    "market_cap": 864257272.0
+    "market_cap": 864458372.0
   },
   "QMLS": {
     "name": "QumulusAI Inc.",
@@ -15304,11 +14934,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "QSEAR": {
-    "name": "Quartzsea Acquisition Corporation Rights",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "QSEAU": {
     "name": "Quartzsea Acquisition Corporation Units",
     "exchange": "NASDAQ",
@@ -15361,11 +14986,6 @@
   },
   "QUMSR": {
     "name": "Quantumsphere Acquisition Corp. Rights",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "QUMSU": {
-    "name": "Quantumsphere Acquisition Corp. Units",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -15534,18 +15154,8 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "RDACR": {
-    "name": "Rising Dragon Acquisition Corp. Rights",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "RDAG": {
     "name": "Republic Digital Acquisition Company",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "RDAGU": {
-    "name": "Republic Digital Acquisition Company Unit",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -15582,7 +15192,7 @@
   "RDNW": {
     "name": "RideNow Group Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 245414439.0
+    "market_cap": 248110520.0
   },
   "RDVT": {
     "name": "Red Violet Inc.",
@@ -15627,7 +15237,7 @@
   "REFI": {
     "name": "Chicago Atlantic Real Estate Finance Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 221615533.0
+    "market_cap": 267740976.0
   },
   "REFR": {
     "name": "Research Frontiers Incorporated",
@@ -15714,18 +15324,8 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "RFAIU": {
-    "name": "RF Acquisition Corp II Unit",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "RFAM": {
     "name": "RF Acquisition Corp III",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "RFAMR": {
-    "name": "RF Acquisition Corp III Rights",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -16089,11 +15689,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "RREVW": {
-    "name": "RRE Ventures Acquisition Corp. Warrants",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "RRGB": {
     "name": "Red Robin Gourmet Burgers Inc.",
     "exchange": "NASDAQ",
@@ -16266,11 +15861,6 @@
   },
   "SAAQU": {
     "name": "Space Asset Acquisition Corp. Units",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "SAAQW": {
-    "name": "Space Asset Acquisition Corp. Warrants",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -16487,7 +16077,7 @@
   "SCWO": {
     "name": "374Water Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 40589569.0
+    "market_cap": 41106134.0
   },
   "SCYX": {
     "name": "SCYNEXIS Inc.",
@@ -16511,11 +16101,6 @@
   },
   "SDHI": {
     "name": "Siddhi Acquisition Corp Common stock",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "SDHIU": {
-    "name": "Siddhi Acquisition Corp Unit",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -16557,7 +16142,7 @@
   "SEER": {
     "name": "Seer Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 117660519.0
+    "market_cap": 118496112.0
   },
   "SEGG": {
     "name": "Sports Entertainment Gaming Global Corporation",
@@ -16627,7 +16212,7 @@
   "SFD": {
     "name": "Smithfield Foods Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 8947672961.0
+    "market_cap": 8954271381.0
   },
   "SFHG": {
     "name": "Samfine Creation Holdings Group Limited Ordinary Share",
@@ -16687,7 +16272,7 @@
   "SGMT": {
     "name": "Sagimet Biosciences Inc. Series A",
     "exchange": "NASDAQ",
-    "market_cap": 579849468.0
+    "market_cap": 578340983.0
   },
   "SGP": {
     "name": "SpyGlass Pharma Inc.",
@@ -16723,11 +16308,6 @@
     "name": "SHF Holdings Inc.",
     "exchange": "NASDAQ",
     "market_cap": 2173067.0
-  },
-  "SHFSW": {
-    "name": "SHF Holdings Inc. Warrants",
-    "exchange": "NASDAQ",
-    "market_cap": 246659.0
   },
   "SHIM": {
     "name": "Shimmick Corporation",
@@ -16802,7 +16382,7 @@
   "SIEB": {
     "name": "Siebert Financial Corp.",
     "exchange": "NASDAQ",
-    "market_cap": 70827819.0
+    "market_cap": 71104619.0
   },
   "SIFY": {
     "name": "Sify Technologies Limited American Depositary Shares",
@@ -16857,7 +16437,7 @@
   "SINT": {
     "name": "SiNtx Technologies Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 9981479.0
+    "market_cap": 10463318.0
   },
   "SION": {
     "name": "Sionna Therapeutics Inc.",
@@ -16932,7 +16512,7 @@
   "SLAB": {
     "name": "Silicon Laboratories Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 7217412327.0
+    "market_cap": 7301648310.0
   },
   "SLBT": {
     "name": "SL Science Holding Limited",
@@ -17022,7 +16602,7 @@
   "SLS": {
     "name": "SELLAS Life Sciences Group Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 2189603396.0
+    "market_cap": 2376900995.0
   },
   "SLSN": {
     "name": "Solesence Inc.",
@@ -17082,7 +16662,7 @@
   "SMTI": {
     "name": "Sanara MedTech Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 314599056.0
+    "market_cap": 315425242.0
   },
   "SMTK": {
     "name": "SmartKem Inc.",
@@ -17107,12 +16687,12 @@
   "SNAL": {
     "name": "Snail Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 25734568.0
+    "market_cap": 26061410.0
   },
   "SND": {
     "name": "Smart Sand Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 213208978.0
+    "market_cap": 210299343.0
   },
   "SNDK": {
     "name": "Sandisk Corporation",
@@ -17249,11 +16829,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "SORNU": {
-    "name": "Soren Acquisition Corp. Unit",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "SORNW": {
     "name": "Soren Acquisition Corp. Warrant",
     "exchange": "NASDAQ",
@@ -17296,16 +16871,6 @@
   },
   "SPEG": {
     "name": "Silver Pegasus Acquisition Corp",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "SPEGR": {
-    "name": "Silver Pegasus Acquisition Corp Rights.",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "SPEGU": {
-    "name": "Silver Pegasus Acquisition Corp Unit",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -17449,6 +17014,11 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
+  "SSACR": {
+    "name": "SPACSphere Acquisition Corp. Rights",
+    "exchange": "NASDAQ",
+    "market_cap": 0.0
+  },
   "SSACU": {
     "name": "SPACSphere Acquisition Corp. Unit",
     "exchange": "NASDAQ",
@@ -17466,11 +17036,6 @@
   },
   "SSEA": {
     "name": "Starry Sea Acquisition Corp\tOrdinary Shares",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "SSEAR": {
-    "name": "Starry Sea Acquisition Corp Rights",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -17557,7 +17122,7 @@
   "STIM": {
     "name": "Neuronetics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 223376966.0
+    "market_cap": 244593083.0
   },
   "STKE": {
     "name": "Sol Strategies Inc. Common Shares",
@@ -17567,7 +17132,7 @@
   "STKH": {
     "name": "Steakholder Foods Ltd. American Depositary Shares",
     "exchange": "NASDAQ",
-    "market_cap": 2011743.0
+    "market_cap": 3449038.0
   },
   "STKS": {
     "name": "The ONE Group Hospitality Inc.",
@@ -17657,7 +17222,7 @@
   "STTK": {
     "name": "Shattuck Labs Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 574337072.0
+    "market_cap": 751720765.0
   },
   "STX": {
     "name": "Seagate Technology Holdings PLC (Ireland)",
@@ -17686,11 +17251,6 @@
   },
   "SUMAR": {
     "name": "SUMA Acquisition Corporation Rights",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "SUMAU": {
-    "name": "SUMA Acquisition Corporation Units",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -17724,11 +17284,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "SVAQU": {
-    "name": "Silicon Valley Acquisition Corp. Units",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "SVAQW": {
     "name": "Silicon Valley Acquisition Corp. Warrants",
     "exchange": "NASDAQ",
@@ -17759,25 +17314,15 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "SVIVW": {
-    "name": "Spring Valley Acquisition Corp. IV Warrants",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "SVRA": {
     "name": "Savara Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 1168085108.0
+    "market_cap": 1171122086.0
   },
   "SVRE": {
     "name": "SaverOne 2014 Ltd. American Depositary Shares",
     "exchange": "NASDAQ",
     "market_cap": 3466034.0
-  },
-  "SVREW": {
-    "name": "SaverOne 2014 Ltd. Warrant",
-    "exchange": "NASDAQ",
-    "market_cap": 427807527.0
   },
   "SVRN": {
     "name": "OceanPal Inc.",
@@ -17787,7 +17332,7 @@
   "SWAG": {
     "name": "Stran & Company Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 37352612.0
+    "market_cap": 37092782.0
   },
   "SWBI": {
     "name": "Smith & Wesson Brands Inc.",
@@ -17869,11 +17414,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "SZZLR": {
-    "name": "Sizzle Acquisition Corp. II Right",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "SZZLU": {
     "name": "Sizzle Acquisition Corp. II Unit",
     "exchange": "NASDAQ",
@@ -17881,11 +17421,6 @@
   },
   "TACH": {
     "name": "Titan Acquisition Corp.",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "TACHU": {
-    "name": "Titan Acquisition Corp. Units",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -17901,11 +17436,6 @@
   },
   "TACOU": {
     "name": "Berto Acquisition Corp. Unit",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "TACOW": {
-    "name": "Berto Acquisition Corp. Warrant",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -17937,7 +17467,7 @@
   "TARA": {
     "name": "Protara Therapeutics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 218634482.0
+    "market_cap": 229881448.0
   },
   "TARS": {
     "name": "Tarsus Pharmaceuticals Inc.",
@@ -17956,11 +17486,6 @@
   },
   "TAVI": {
     "name": "Tavia Acquisition Corp.",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "TAVIR": {
-    "name": "Tavia Acquisition Corp. Right",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -17997,7 +17522,7 @@
   "TBPH": {
     "name": "Theravance Biopharma Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 872276845.0
+    "market_cap": 878465318.0
   },
   "TC": {
     "name": "Token Cat Limited American Depositary Shares",
@@ -18022,7 +17547,7 @@
   "TCBS": {
     "name": "Texas Community Bancshares Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 50090405.0
+    "market_cap": 49870541.0
   },
   "TCGX": {
     "name": "TCGX Acquisition Corp.",
@@ -18064,11 +17589,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "TDACU": {
-    "name": "Translational Development Acquisition Corp. Units",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "TDACW": {
     "name": "Translational Development Acquisition Corp. Warrants",
     "exchange": "NASDAQ",
@@ -18082,7 +17602,7 @@
   "TDTH": {
     "name": "Trident Digital Tech Holdings Ltd",
     "exchange": "NASDAQ",
-    "market_cap": 2480231174.0
+    "market_cap": 10334295.0
   },
   "TDUP": {
     "name": "ThredUp Inc.",
@@ -18117,7 +17637,7 @@
   "TELA": {
     "name": "TELA Bio Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 32240578.0
+    "market_cap": 32333204.0
   },
   "TELO": {
     "name": "Telomir Pharmaceuticals Inc.",
@@ -18217,7 +17737,7 @@
   "TILE": {
     "name": "Interface Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 2236905078.0
+    "market_cap": 2227051724.0
   },
   "TIPT": {
     "name": "Tiptree Inc.",
@@ -18247,7 +17767,7 @@
   "TLF": {
     "name": "Tandy Leather Factory Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 20308432.0
+    "market_cap": 20429397.0
   },
   "TLIH": {
     "name": "Ten-League International Holdings Limited",
@@ -18344,11 +17864,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "TMTSW": {
-    "name": "Spartacus Acquisition Corp. II Warrants",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "TMUS": {
     "name": "T-Mobile US Inc.",
     "exchange": "NASDAQ",
@@ -18377,7 +17892,7 @@
   "TNGX": {
     "name": "Tango Therapeutics Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 3700095380.0
+    "market_cap": 4313053188.0
   },
   "TNMG": {
     "name": "TNL Mediagene",
@@ -18387,12 +17902,12 @@
   "TNON": {
     "name": "Tenon Medical Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 1909490.0
+    "market_cap": 3762145.0
   },
   "TNONW": {
     "name": "Tenon Medical Inc. Warrant",
     "exchange": "NASDAQ",
-    "market_cap": 2675.0
+    "market_cap": 5270.0
   },
   "TNXP": {
     "name": "Tonix Pharmaceuticals Holding Corp.",
@@ -18412,7 +17927,7 @@
   "TONX": {
     "name": "TON Strategy Company",
     "exchange": "NASDAQ",
-    "market_cap": 162242871.0
+    "market_cap": 158056608.0
   },
   "TOP": {
     "name": "TOP Financial Group Limited",
@@ -18602,7 +18117,7 @@
   "TSHA": {
     "name": "Taysha Gene Therapies Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 1840547333.0
+    "market_cap": 2086963856.0
   },
   "TSLA": {
     "name": "Tesla Inc.",
@@ -18684,11 +18199,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "TVAIR": {
-    "name": "Thayer Ventures Acquisition Corporation II Rights",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "TVGN": {
     "name": "Tevogen Inc.",
     "exchange": "NASDAQ",
@@ -18751,11 +18261,6 @@
   },
   "TWLVR": {
     "name": "Twelve Seas Investment Company III Rights",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "TWLVU": {
-    "name": "Twelve Seas Investment Company III Units",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -18927,7 +18432,7 @@
   "UPB": {
     "name": "Upstream Bio Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 376042103.0
+    "market_cap": 378467893.0
   },
   "UPBD": {
     "name": "Upbound Group Inc.",
@@ -19124,11 +18629,6 @@
     "exchange": "NASDAQ",
     "market_cap": 6944736.0
   },
-  "VEEAW": {
-    "name": "Veea Inc. Warrant",
-    "exchange": "NASDAQ",
-    "market_cap": 2199166.0
-  },
   "VEEE": {
     "name": "Twin Vee PowerCats Co.",
     "exchange": "NASDAQ",
@@ -19137,7 +18637,7 @@
   "VELO": {
     "name": "Velo3D Inc. Common stock",
     "exchange": "NASDAQ",
-    "market_cap": 449995130.0
+    "market_cap": 485451682.0
   },
   "VEON": {
     "name": "VEON Ltd. ADS",
@@ -19196,11 +18696,6 @@
   },
   "VHCP": {
     "name": "Vine Hill Capital Investment Corp. II",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "VHCPU": {
-    "name": "Vine Hill Capital Investment Corp. II Units",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -19362,12 +18857,12 @@
   "VOGX": {
     "name": "Vogenx Inc",
     "exchange": "NASDAQ",
-    "market_cap": 0.0
+    "market_cap": 192960859.0
   },
   "VOR": {
     "name": "Vor Biopharma Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 1210512492.0
+    "market_cap": 1321685648.0
   },
   "VOXR": {
     "name": "Vox Royalty Corp.",
@@ -19407,7 +18902,7 @@
   "VRME": {
     "name": "VerifyMe Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 9184657.0
+    "market_cap": 9216954.0
   },
   "VRNS": {
     "name": "Varonis Systems Inc.",
@@ -19559,11 +19054,6 @@
     "exchange": "NASDAQ",
     "market_cap": 164609169.0
   },
-  "WALDW": {
-    "name": "Waldencast plc Warrant",
-    "exchange": "NASDAQ",
-    "market_cap": 4771094.0
-  },
   "WASH": {
     "name": "Washington Trust Bancorp Inc.",
     "exchange": "NASDAQ",
@@ -19634,11 +19124,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "WENNU": {
-    "name": "Wen Acquisition Corp Unit",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "WERN": {
     "name": "Werner Enterprises Inc.",
     "exchange": "NASDAQ",
@@ -19652,7 +19137,7 @@
   "WETH": {
     "name": "Wetouch Technology Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 14198525.0
+    "market_cap": 15924025.0
   },
   "WETO": {
     "name": "Wetour Robotics Limited",
@@ -19827,7 +19312,7 @@
   "WNW": {
     "name": "Meiwu Technology Company Limited",
     "exchange": "NASDAQ",
-    "market_cap": 3539053.0
+    "market_cap": 70039053.0
   },
   "WOK": {
     "name": "WORK Medical Technology Group LTD",
@@ -19847,7 +19332,7 @@
   "WRAP": {
     "name": "Wrap Technologies Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 96427173.0
+    "market_cap": 96886294.0
   },
   "WRD": {
     "name": "WeRide Inc. American Depositary Shares",
@@ -20011,11 +19496,6 @@
   },
   "XCBE": {
     "name": "X3 Acquisition Corp. Ltd.",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "XCBEW": {
-    "name": "X3 Acquisition Corp. Ltd. Warrant",
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
@@ -20259,16 +19739,6 @@
     "exchange": "NASDAQ",
     "market_cap": 0.0
   },
-  "YHNAR": {
-    "name": "YHN Acquisition I Limited Right",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
-  "YHNAU": {
-    "name": "YHN Acquisition I Limited Unit",
-    "exchange": "NASDAQ",
-    "market_cap": 0.0
-  },
   "YI": {
     "name": "111 Inc. American Depositary Shares",
     "exchange": "NASDAQ",
@@ -20377,7 +19847,7 @@
   "ZCMD": {
     "name": "Zhongchao Inc.",
     "exchange": "NASDAQ",
-    "market_cap": 9008256.0
+    "market_cap": 9494619.0
   },
   "ZD": {
     "name": "Ziff Davis Inc.",
@@ -20398,11 +19868,6 @@
     "name": "Zeo Energy Corporation",
     "exchange": "NASDAQ",
     "market_cap": 35579923.0
-  },
-  "ZEOWW": {
-    "name": "Zeo Energy Corporation Warrants",
-    "exchange": "NASDAQ",
-    "market_cap": 1049039.0
   },
   "ZG": {
     "name": "Zillow Group Inc.",
@@ -20474,11 +19939,6 @@
     "exchange": "NASDAQ",
     "market_cap": 42935989.0
   },
-  "ZOOZW": {
-    "name": "ZOOZ Strategy Ltd. Warrant",
-    "exchange": "NASDAQ",
-    "market_cap": 191997.0
-  },
   "ZS": {
     "name": "Zscaler Inc.",
     "exchange": "NASDAQ",
@@ -20512,7 +19972,7 @@
   "ZURA": {
     "name": "Zura Bio Limited",
     "exchange": "NASDAQ",
-    "market_cap": 549086764.0
+    "market_cap": 553892412.0
   },
   "ZVRA": {
     "name": "Zevra Therapeutics Inc.",
@@ -20647,7 +20107,7 @@
   "ACM": {
     "name": "AECOM",
     "exchange": "NYSE",
-    "market_cap": 7845039037.0
+    "market_cap": 7855629782.0
   },
   "ACN": {
     "name": "Accenture plc (Ireland)",
@@ -21032,7 +20492,7 @@
   "AMBQ": {
     "name": "Ambiq Micro Inc.",
     "exchange": "NYSE",
-    "market_cap": 1402035705.0
+    "market_cap": 1586263716.0
   },
   "AMC": {
     "name": "AMC Entertainment Holdings Inc.",
@@ -21112,7 +20572,7 @@
   "AMTM": {
     "name": "Amentum Holdings Inc.",
     "exchange": "NYSE",
-    "market_cap": 5502003504.0
+    "market_cap": 5506284421.0
   },
   "AMWL": {
     "name": "American Well Corporation",
@@ -21197,7 +20657,7 @@
   "AP": {
     "name": "Ampco-Pittsburgh Corporation",
     "exchange": "NYSE",
-    "market_cap": 187206043.0
+    "market_cap": 190265899.0
   },
   "APAM": {
     "name": "Artisan Partners Asset Management Inc.",
@@ -21302,7 +20762,7 @@
   "ARMK": {
     "name": "Aramark",
     "exchange": "NYSE",
-    "market_cap": 15869247587.0
+    "market_cap": 15909771405.0
   },
   "AROC": {
     "name": "Archrock Inc.",
@@ -22424,11 +21884,6 @@
     "exchange": "NYSE",
     "market_cap": 608938092.0
   },
-  "BWNB": {
-    "name": "Babcock & Wilcox Enterprises Inc. 6.50% Senior Notes due 2026",
-    "exchange": "NYSE",
-    "market_cap": 2543614157.0
-  },
   "BWXT": {
     "name": "BWX Technologies Inc.",
     "exchange": "NYSE",
@@ -22507,12 +21962,12 @@
   "CAG": {
     "name": "ConAgra Brands Inc.",
     "exchange": "NYSE",
-    "market_cap": 7159342004.0
+    "market_cap": 7181811610.0
   },
   "CAH": {
     "name": "Cardinal Health Inc.",
     "exchange": "NYSE",
-    "market_cap": 54841643007.0
+    "market_cap": 54459932468.0
   },
   "CAL": {
     "name": "Caleres Inc.",
@@ -23767,7 +23222,7 @@
   "DPC": {
     "name": "DPC Holdings PLC",
     "exchange": "NYSE",
-    "market_cap": 7362874956.0
+    "market_cap": 7802797226.0
   },
   "DPG": {
     "name": "Duff & Phelps Utility and Infrastructure Fund Inc.",
@@ -24737,7 +24192,7 @@
   "FLOC": {
     "name": "Flowco Holdings Inc.",
     "exchange": "NYSE",
-    "market_cap": 2126731093.0
+    "market_cap": 2126914987.0
   },
   "FLR": {
     "name": "Fluor Corporation",
@@ -24802,7 +24257,7 @@
   "FNV": {
     "name": "Franco-Nevada Corporation",
     "exchange": "NYSE",
-    "market_cap": 45512826000.0
+    "market_cap": 45506646731.0
   },
   "FOA": {
     "name": "Finance of America Companies Inc.",
@@ -24815,9 +24270,9 @@
     "market_cap": 672707817.0
   },
   "FOIL": {
-    "name": "Londian Wason New Energy Tech Inc.",
+    "name": "Londian Wason New Energy Tech Inc. American Depositary Shares each representing five",
     "exchange": "NYSE",
-    "market_cap": 0.0
+    "market_cap": 1910506717.0
   },
   "FOR": {
     "name": "Forestar Group Inc",
@@ -25179,11 +24634,6 @@
     "exchange": "NYSE",
     "market_cap": 0.0
   },
-  "GJR": {
-    "name": "Synthetic Fixed-Income Securities Inc. STRATS Trust for Procter&Gamble Securities Series 2006-1",
-    "exchange": "NYSE",
-    "market_cap": 0.0
-  },
   "GJS": {
     "name": "Goldman Sachs Group Securities STRATS Trust for Goldman Sachs Group Securities Series 2006-2",
     "exchange": "NYSE",
@@ -25442,7 +24892,7 @@
   "GWH": {
     "name": "ESS Tech Inc.",
     "exchange": "NYSE",
-    "market_cap": 16790033.0
+    "market_cap": 18835775.0
   },
   "GWRE": {
     "name": "Guidewire Software Inc.",
@@ -25647,7 +25097,7 @@
   "HLIO": {
     "name": "Helios Technologies Inc.",
     "exchange": "NYSE",
-    "market_cap": 2670806654.0
+    "market_cap": 2663065633.0
   },
   "HLLY": {
     "name": "Holley Inc.",
@@ -26212,7 +25662,7 @@
   "JBI": {
     "name": "Janus International Group Inc.",
     "exchange": "NYSE",
-    "market_cap": 664231275.0
+    "market_cap": 664442297.0
   },
   "JBK": {
     "name": "Lehman ABS 3.50 3.50% Adjustable Corp Backed Tr Certs GS Cap I",
@@ -26592,7 +26042,7 @@
   "KRMN": {
     "name": "Karman Holdings Inc.",
     "exchange": "NYSE",
-    "market_cap": 8204703171.0
+    "market_cap": 8205161862.0
   },
   "KRO": {
     "name": "Kronos Worldwide Inc",
@@ -26692,7 +26142,7 @@
   "LAR": {
     "name": "Lithium Argentina AG Common Shares",
     "exchange": "NYSE",
-    "market_cap": 1115478000.0
+    "market_cap": 1117521000.0
   },
   "LAW": {
     "name": "CS Disco Inc.",
@@ -27022,7 +26472,7 @@
   "MANE": {
     "name": "Veradermics Incorporated",
     "exchange": "NYSE",
-    "market_cap": 4555965817.0
+    "market_cap": 4556123831.0
   },
   "MANU": {
     "name": "Manchester United Ltd.",
@@ -28062,7 +27512,7 @@
   "NRGV": {
     "name": "Energy Vault Holdings Inc.",
     "exchange": "NYSE",
-    "market_cap": 710457938.0
+    "market_cap": 712811114.0
   },
   "NRK": {
     "name": "Nuveen New York AMT-Free Quality Municipal Income Fund",
@@ -28167,7 +27617,7 @@
   "NVRI": {
     "name": "Enviri Corporation",
     "exchange": "NYSE",
-    "market_cap": 1714487129.0
+    "market_cap": 584381167.0
   },
   "NVS": {
     "name": "Novartis AG",
@@ -28387,7 +27837,7 @@
   "ONON": {
     "name": "On Holding AG",
     "exchange": "NYSE",
-    "market_cap": 19787947173.0
+    "market_cap": 18712397481.0
   },
   "ONT": {
     "name": "Onterris Inc.",
@@ -29254,11 +28704,6 @@
     "exchange": "NYSE",
     "market_cap": 0.0
   },
-  "RAC.WS": {
-    "name": "Rithm Acquisition Corp.",
-    "exchange": "NYSE",
-    "market_cap": 0.0
-  },
   "RACE": {
     "name": "Ferrari N.V. Common Shares",
     "exchange": "NYSE",
@@ -29652,7 +29097,7 @@
   "RVTY": {
     "name": "Revvity Inc.",
     "exchange": "NYSE",
-    "market_cap": 13150666041.0
+    "market_cap": 13153804950.0
   },
   "RWT": {
     "name": "Redwood Trust Inc.",
@@ -29922,7 +29367,7 @@
   "SES": {
     "name": "SES AI Corporation",
     "exchange": "NYSE",
-    "market_cap": 210897729.0
+    "market_cap": 212042234.0
   },
   "SF": {
     "name": "Stifel Financial Corporation",
@@ -30552,7 +29997,7 @@
   "SVV": {
     "name": "Savers Value Village Inc.",
     "exchange": "NYSE",
-    "market_cap": 1647157163.0
+    "market_cap": 1652083206.0
   },
   "SW": {
     "name": "Smurfit WestRock plc",
@@ -31197,7 +30642,7 @@
   "UAMY": {
     "name": "United States Antimony Corporation",
     "exchange": "NYSE",
-    "market_cap": 736482541.0
+    "market_cap": 743856838.0
   },
   "UAN": {
     "name": "CVR Partners LP Common Units representing Limited Partner Interests",
@@ -31487,7 +30932,7 @@
   "VG": {
     "name": "Venture Global Inc. common stock",
     "exchange": "NYSE",
-    "market_cap": 34085392172.0
+    "market_cap": 34301273916.0
   },
   "VGI": {
     "name": "Virtus Global Multi-Sector Income Fund Common Shares of Beneficial Interest",
@@ -31652,7 +31097,7 @@
   "VSTS": {
     "name": "Vestis Corporation",
     "exchange": "NYSE",
-    "market_cap": 1870607961.0
+    "market_cap": 1871387087.0
   },
   "VSXY": {
     "name": "Victorias Secret & Co.",
@@ -31732,7 +31177,7 @@
   "WAT": {
     "name": "Waters Corporation",
     "exchange": "NYSE",
-    "market_cap": 40860043558.0
+    "market_cap": 40885951393.0
   },
   "WBI": {
     "name": "WaterBridge Infrastructure LLC Shares Representing Limited Liability Company Interests",
@@ -32097,7 +31542,7 @@
   "XXI": {
     "name": "Twenty One Capital Inc.",
     "exchange": "NYSE",
-    "market_cap": 3069274302.0
+    "market_cap": 2648773166.0
   },
   "XYF": {
     "name": "X Financial American Depositary Shares each representing six",
