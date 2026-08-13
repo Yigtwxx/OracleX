@@ -1,0 +1,102 @@
+name: Bug report
+description: Something behaves differently from how it is documented or intended.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not report security vulnerabilities here — see
+        [the security policy](https://github.com/Yigtwxx/OracleX/security/policy).
+
+        Redact any API key before pasting logs.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened
+      description: What you expected, and what happened instead.
+      placeholder: |
+        Expected: /api/price/NVDA returns the last trade.
+        Actual: it returns 200 with `price: null` for every equity.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: From a clean start if you can. A curl command or an exact click path.
+      placeholder: |
+        1. ./start.sh
+        2. curl http://localhost:8000/api/price/NVDA
+        3. Observe the response
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v1.1.0, or the short SHA
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Backend / API
+        - Frontend / terminal
+        - Landing page
+        - LLM provider chain
+        - RAG and retrieval
+        - Live prices and WebSocket
+        - Liquidations and derivatives
+        - Auth, profile or community
+        - Docker and deployment
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: provider
+    attributes:
+      label: LLM provider
+      description: The value of `LLM_PROVIDER`, and the model if it is pinned.
+      placeholder: ollama:qwen3.6:35b-a3b
+    validations:
+      required: false
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python and Node versions, and whether you ran Docker or a local checkout.
+      placeholder: macOS 15.3 (Apple Silicon), Python 3.11.9, Node 20.11, local checkout
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant backend or browser console output. Redact any key.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: data
+    attributes:
+      label: For a data-quality problem
+      description: >
+        A wrong price, a headline filed under the wrong ticker, a broken level.
+        Give the symbol, the timestamp and the endpoint — those are reproducible.
+      placeholder: |
+        Symbol: BTC
+        Time: 2026-08-13T09:15Z
+        Endpoint: /api/technical/BTC
+        Support came back above the spot price.
+    validations:
+      required: false

@@ -38,6 +38,7 @@
     <li><a href="#quality-gates">Quality Gates</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
     <li><a href="#contributing">Contributing</a></li>
+    <li><a href="#security">Security</a></li>
   </ol>
 </details>
 
@@ -1010,26 +1011,36 @@ Planned:
 ## Contributing
 
 Contributions are welcome, on the backend, the frontend or the data layer.
+[CONTRIBUTING.md](CONTRIBUTING.md) covers the development setup, the coding
+standards and what a reviewable pull request looks like. The short version:
 
-1. **Fork** the repository.
-2. **Branch** off `main` — `git checkout -b feat/your-feature`.
-3. **Commit** using conventional commits — `git commit -m 'feat(api): add funding rate history endpoint'`.
-4. **Push** the branch — `git push origin feat/your-feature`.
-5. **Open a pull request** targeting `main`. Include screenshots for UI changes.
-
-Run the gates locally before opening it:
+1. **Fork** the repository and **branch** off `main` — `git checkout -b feat/your-feature`.
+2. **Commit** using conventional commits — `git commit -m 'feat(api): add funding rate history endpoint'`.
+3. **Run the gates** below.
+4. **Open a pull request** targeting `main`, with screenshots for UI changes.
 
 ```bash
 # Backend — the first three are CI; ruff format is enforced by pre-commit.
 cd backend && ruff check . && python -m compileall -q -x "venv|data" . && pytest && ruff format --check .
 
-# Frontend
+# Frontend — stop the dev server first; it shares .next with the build.
 cd frontend && npm run lint && npm run typecheck && npm test && npm run build
 ```
 
 Endpoints without test coverage should still be exercised manually against
 `http://localhost:8000/docs`; note what you verified in the pull request
 description.
+
+Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+---
+
+## Security
+
+Do not open a public issue for a vulnerability. The
+[security policy](SECURITY.md) sets out what is in scope, how to report
+privately, and the two deployment settings — the service-role key and
+`CORS_ORIGINS` — that account for most of the real risk.
 
 ---
 

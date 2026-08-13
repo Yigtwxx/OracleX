@@ -1,0 +1,67 @@
+name: Feature request
+description: Propose a capability the terminal does not have.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before opening this, check [the roadmap](https://github.com/Yigtwxx/OracleX#roadmap)
+        and the existing issues.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: >
+        What you are trying to do and where the terminal gets in the way. Start
+        here rather than with the solution — the problem often has a cheaper
+        answer than the feature that came to mind first.
+      placeholder: >
+        I hold positions across three exchanges and cannot see aggregate
+        exposure without exporting to a spreadsheet.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+      description: The capability, concretely. A sketch or a mock is welcome.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Backend / API
+        - Frontend / terminal
+        - Landing page
+        - LLM provider chain
+        - RAG and retrieval
+        - Live prices and WebSocket
+        - Liquidations and derivatives
+        - Auth, profile or community
+        - Docker and deployment
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: Including doing nothing, and why that is not enough.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: contribution
+    attributes:
+      label: Would you be willing to implement it?
+      options:
+        - "Yes"
+        - "Yes, with guidance on the approach"
+        - "No"
+    validations:
+      required: true
