@@ -28,7 +28,9 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
     || pip install --no-cache-dir torch
 
-COPY backend/requirements.txt /tmp/requirements.txt
+# Both files: requirements.txt is a thin layer over requirements-base.txt and
+# pulls it in with `-r`, so copying only the former resolves to nothing.
+COPY backend/requirements.txt backend/requirements-base.txt /tmp/
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Bake the embedding model into the image. rag_service.py and rag_v2_service.py

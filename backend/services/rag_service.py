@@ -4,7 +4,6 @@ RAG Service - Learn from historical news to improve predictions.
 Uses ChromaDB for vector storage and sentence-transformers for embeddings.
 """
 
-import chromadb
 from typing import List, Dict, Optional
 from datetime import datetime
 import hashlib
@@ -30,6 +29,13 @@ def get_chroma_collection():
     global _chroma_client, _collection
 
     if _collection is None:
+        # Imported here rather than at module scope. ChromaDB pulls onnxruntime
+        # and its own vendored tokenizers — several hundred megabytes that only
+        # matter once someone actually opens the store. Importing it at the top
+        # would put that cost on every module that transitively reaches this
+        # one, which in practice is most of the news pipeline.
+        import chromadb
+
         # Ensure data directory exists
         os.makedirs(DATA_DIR, exist_ok=True)
 

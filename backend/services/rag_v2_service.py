@@ -8,7 +8,6 @@ Features:
 - Automatic learning from past predictions
 """
 
-import chromadb
 from typing import Any, List, Dict, Optional
 from dataclasses import replace
 from datetime import datetime
@@ -398,6 +397,11 @@ def get_chroma_client():
     """Get or initialize ChromaDB client."""
     global _chroma_client
     if _chroma_client is None:
+        # Deferred for the same reason as in rag_service: this module is
+        # reachable from the news pipeline, the chat tools and the scheduler,
+        # and none of them should pay ChromaDB's import cost to be loaded.
+        import chromadb
+
         os.makedirs(DATA_DIR, exist_ok=True)
         _chroma_client = chromadb.PersistentClient(path=DATA_DIR)
         print(f"[RAG 2.0] ChromaDB client initialized at {DATA_DIR}")

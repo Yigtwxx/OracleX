@@ -1,18 +1,19 @@
 # Development & test dependencies.
 #
-# Deliberately does NOT pull in requirements.txt: the runtime deps include
-# torch / chromadb / sentence-transformers (~1 GB), which the current test
-# suite does not need. CI installs only what the tests import, keeping the
-# backend job fast. For local work install both:
+# The test suite boots the real application — tests/test_startup_gate.py runs
+# main.py's lifespan — so it needs everything the app imports. That list is
+# requirements-base.txt, included below rather than restated: an earlier
+# version of this file kept its own hand-maintained copy, which drifted six
+# packages behind and broke CI at collection, before a single assertion ran.
+#
+# What is deliberately left out is requirements.txt's own additions: chromadb,
+# sentence-transformers (torch) and scrapling's browser fetchers, roughly a
+# gigabyte that no test touches, because all three are imported lazily.
+#
+# For local work that exercises the vector store or the scraper, install both:
 #   pip install -r requirements.txt -r requirements-dev.txt
 
-# ── Runtime deps the tests actually import ───────────────────────────────────
-fastapi>=0.109.0
-pydantic>=2.5.3
-pydantic-settings>=2.1.0
-httpx>=0.26.0
-supabase>=2.0.0
-cryptography>=42.0.0
+-r requirements-base.txt
 
 # ── Test framework ───────────────────────────────────────────────────────────
 pytest>=8.0.0

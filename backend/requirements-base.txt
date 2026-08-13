@@ -1,0 +1,69 @@
+# Everything the application needs to import.
+#
+# This file exists so that CI and production install the *same* list rather
+# than two lists that drift apart. `requirements.txt` adds the three heavy
+# packages on top of it; `requirements-dev.txt` adds the test tooling. Neither
+# restates what is here.
+#
+# The split is possible because those three heavy packages — chromadb,
+# sentence-transformers and scrapling — are imported lazily, inside the
+# function that first needs them, rather than at module scope. Importing the
+# application therefore does not require them; only opening a vector store,
+# loading a local embedding model or reaching the scraper's second rung does.
+# Keep it that way: a top-level import of any of them silently makes this file
+# incomplete, and the failure surfaces as a CI collection error rather than as
+# anything that names the cause.
+
+# ── Web framework ────────────────────────────────────────────────────────────
+fastapi>=0.109.0
+uvicorn>=0.27.0
+pydantic>=2.5.3
+pydantic-settings>=2.1.0
+
+# ── Configuration ────────────────────────────────────────────────────────────
+python-dotenv>=1.0.0
+
+# ── HTTP / networking ────────────────────────────────────────────────────────
+httpx>=0.26.0
+# Multipart form parsing. FastAPI needs it to accept UploadFile, which the
+# community image upload (POST /api/community/media) depends on. It is checked
+# at route-registration time, so a missing copy fails at import, not at runtime.
+python-multipart>=0.0.9
+websockets>=10.0
+# Retry/backoff for LLM provider calls (rate limits, transient 5xx).
+tenacity>=8.2.0
+# Replays a browser's TLS/HTTP2 fingerprint for the handful of upstreams that
+# fingerprint the handshake and answer 418 / "Too Many Requests" to ordinary
+# clients regardless of User-Agent — CNN's Fear & Greed feed and Yahoo Finance's
+# chart API. See services/http_client.get_json_impersonated. Not a browser: it
+# costs no more than a normal request.
+curl_cffi>=0.7.0
+
+# HTML parsing for article-body extraction (services/article_service.py) and
+# link previews. Both already arrived transitively via yfinance; pinned
+# explicitly because the news pipeline depends on them directly and a yfinance
+# change must not silently remove them. lxml is named as the parser at both
+# soup call sites, so it is not optional.
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# ── Market & financial data ──────────────────────────────────────────────────
+yfinance>=0.2.35
+ccxt>=4.0.0
+feedparser>=6.0.10
+
+# ── Retrieval ────────────────────────────────────────────────────────────────
+# Lexical half of hybrid retrieval. Market questions are full of tickers, dates
+# and figures where an exact match beats semantic proximity, which is the one
+# thing embeddings are worst at.
+rank-bm25>=0.2.2
+
+# ── Search ───────────────────────────────────────────────────────────────────
+ddgs>=5.0.0
+
+# ── Infrastructure ───────────────────────────────────────────────────────────
+apscheduler>=3.10.4
+supabase>=2.0.0
+cachetools>=5.3.0
+# Encrypts per-user LLM API keys at rest (services/secret_box.py).
+cryptography>=42.0.0
