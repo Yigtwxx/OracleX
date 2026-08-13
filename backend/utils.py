@@ -2,6 +2,7 @@
 Oracle-X Shared Utilities
 Logging, shared state, and helper functions used across routers.
 """
+
 from typing import Optional
 from models.schemas import NewsItem
 
@@ -10,36 +11,43 @@ from models.schemas import NewsItem
 # TERMINAL COLORS & LOGGING
 # ═══════════════════════════════════════════════════════════════════════════════
 class Colors:
-    PURPLE = '\033[95m'
-    CYAN = '\033[96m'
-    BLUE = '\033[94m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RED = '\033[91m'
-    WHITE = '\033[97m'
-    GRAY = '\033[90m'
-    BOLD = '\033[1m'
-    END = '\033[0m'
+    PURPLE = "\033[95m"
+    CYAN = "\033[96m"
+    BLUE = "\033[94m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    RED = "\033[91m"
+    WHITE = "\033[97m"
+    GRAY = "\033[90m"
+    BOLD = "\033[1m"
+    END = "\033[0m"
+
 
 def log_header(message: str):
-    print(f"\n{Colors.PURPLE}{'═'*60}{Colors.END}", flush=True)
+    print(f"\n{Colors.PURPLE}{'═' * 60}{Colors.END}", flush=True)
     print(f"{Colors.PURPLE}{Colors.BOLD}  🔮 {message}{Colors.END}", flush=True)
-    print(f"{Colors.PURPLE}{'═'*60}{Colors.END}", flush=True)
+    print(f"{Colors.PURPLE}{'═' * 60}{Colors.END}", flush=True)
+
 
 def log_step(emoji: str, message: str, color: str = Colors.CYAN):
     print(f"{color}  {emoji}  {message}{Colors.END}", flush=True)
 
+
 def log_success(message: str):
     print(f"{Colors.GREEN}  ✓  {message}{Colors.END}", flush=True)
+
 
 def log_warning(message: str):
     print(f"{Colors.YELLOW}  ⚠  {message}{Colors.END}", flush=True)
 
+
 def log_error(message: str):
     print(f"{Colors.RED}  ✗  {message}{Colors.END}", flush=True)
 
+
 def log_info(message: str):
     print(f"{Colors.GRAY}      {message}{Colors.END}", flush=True)
+
 
 def log_result(label: str, value: str, color: str = Colors.WHITE):
     print(f"{Colors.GRAY}      {label}: {color}{value}{Colors.END}", flush=True)

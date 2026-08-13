@@ -2,6 +2,7 @@
 RAG Multi-Agent Router
 Handles all RAG agent endpoints: v2 (Core), v3 (Insights), v4 (Reasoning), v5 (Proactive).
 """
+
 from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, HTTPException
@@ -14,11 +15,13 @@ router = APIRouter()
 # RAG v2 — Core (Initialization, Stats, Query)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.post("/api/rag/initialize")
 async def initialize_rag():
     """Initialize RAG 2.0 with historical data (run once)."""
     try:
         from services.rag_v2_service import initialize_rag_v2
+
         stats = await initialize_rag_v2(symbols=["BTC", "ETH", "SOL"])
         return {"success": True, "stats": stats}
     except Exception as e:
@@ -31,6 +34,7 @@ async def get_rag_statistics():
     """Get RAG 2.0 statistics."""
     try:
         from services.rag_v2_service import get_rag_stats
+
         return get_rag_stats()
     except Exception as e:
         return {"status": f"error: {str(e)}", "news_count": 0, "events_count": 0, "prices_count": 0}
@@ -41,7 +45,7 @@ async def query_rag_context(
     q: str,
     symbol: Optional[str] = None,
     context_type: str = "all",
-    asset_type: Optional[str] = None
+    asset_type: Optional[str] = None,
 ):
     """
     Query RAG 2.0 for historical context.
@@ -61,14 +65,10 @@ async def query_rag_context(
             include_prices=context_type in ["all", "prices"],
             include_news=context_type in ["all", "news"],
             k=5,
-            asset_type=asset_type
+            asset_type=asset_type,
         )
-        
-        return {
-            "query": q,
-            "symbol": symbol,
-            "results": results
-        }
+
+        return {"query": q, "symbol": symbol, "results": results}
     except Exception as e:
         print(f"Error querying RAG: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -78,6 +78,7 @@ async def query_rag_context(
 # RAG v3 — Insights Agent (Faz 2)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/api/rag/insights/{symbol}")
 async def get_price_insights(symbol: str):
     """
@@ -86,6 +87,7 @@ async def get_price_insights(symbol: str):
     """
     try:
         from services.rag_v3_service import get_price_movement_reason
+
         return await get_price_movement_reason(symbol.upper())
     except Exception as e:
         print(f"Error getting insights: {e}")
@@ -105,6 +107,7 @@ async def find_news_similarity(request: NewsSimilarityRequest):
     """
     try:
         from services.rag_v3_service import find_historical_news_similarity
+
         return await find_historical_news_similarity(request.title, request.summary)
     except Exception as e:
         print(f"Error finding news similarity: {e}")
@@ -121,6 +124,7 @@ async def get_event_at_date(symbol: str = "BTC", date: str = ""):
         date = datetime.now().strftime("%Y-%m-%d")
     try:
         from services.rag_v3_service import get_event_at_date as _get_event
+
         return await _get_event(symbol.upper(), date)
     except Exception as e:
         print(f"Error getting event at date: {e}")
@@ -131,6 +135,7 @@ async def get_event_at_date(symbol: str = "BTC", date: str = ""):
 # RAG v4 — Reasoning Agent (Faz 3)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/api/rag/compare/{symbol_a}/{symbol_b}")
 async def compare_two_assets(symbol_a: str, symbol_b: str):
     """
@@ -139,6 +144,7 @@ async def compare_two_assets(symbol_a: str, symbol_b: str):
     """
     try:
         from services.rag_v4_service import compare_assets
+
         return await compare_assets(symbol_a.upper(), symbol_b.upper())
     except Exception as e:
         print(f"Error comparing assets: {e}")
@@ -158,6 +164,7 @@ async def simulate_scenario_endpoint(request: ScenarioRequest):
     """
     try:
         from services.rag_v4_service import simulate_scenario
+
         return await simulate_scenario(request.scenario, request.symbol.upper())
     except Exception as e:
         print(f"Error simulating scenario: {e}")
@@ -168,6 +175,7 @@ async def simulate_scenario_endpoint(request: ScenarioRequest):
 # RAG v5 — Proactive Agent (Faz 4)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/api/rag/daily-brief")
 async def get_daily_brief():
     """
@@ -176,6 +184,7 @@ async def get_daily_brief():
     """
     try:
         from services.rag_v5_service import generate_daily_brief
+
         return await generate_daily_brief()
     except Exception as e:
         print(f"Error generating daily brief: {e}")
@@ -190,8 +199,8 @@ async def detect_market_anomalies():
     """
     try:
         from services.rag_v5_service import detect_anomalies
+
         return await detect_anomalies()
     except Exception as e:
         print(f"Error detecting anomalies: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
