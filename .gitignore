@@ -76,6 +76,34 @@ backend/data/*.bak-*/
 *.bin
 *.pickle
 
+# Generated runtime caches. asset_registry rewrites these on every backend run
+# (see backend/services/asset_registry.py — "on-disk cache"), so tracking them
+# produced tens of thousands of diff lines per commit. The services fall back to
+# their upstream APIs when a cache file is missing, so a fresh clone still boots.
+# Hand-maintained seed data next to them stays tracked: registry/streamers.json,
+# registry/ownership_entities.json, registry/ownership_manual_positions.json,
+# watchlist.json, eth_address_history.json, analysis_reports.json.
+backend/data/liquidations.json
+backend/data/news_analyses.json
+backend/data/news_attribution.json
+backend/data/registry/coin_metrics.json
+backend/data/registry/coin_sectors.json
+backend/data/registry/crypto_universe.json
+backend/data/registry/cusip_tickers.json
+backend/data/registry/listed_bases.json
+backend/data/registry/okx_swaps.json
+backend/data/registry/ownership_board.json
+backend/data/registry/ownership_snapshots.json
+backend/data/registry/spot_pairs.json
+backend/data/registry/stock_quotes.json
+backend/data/registry/stock_universe.json
+backend/data/registry/us_equities.json
+
+# iCloud Drive sync-conflict copies. The repo lives under an iCloud-synced
+# Desktop, which periodically forks a file as "liquidations 5.json" or
+# "ai 2.jpg". None of them are read by the app.
+* [0-9].*
+
 # Working design notes and implementation plans. Kept locally as a record of
 # how decisions were reached; not part of the published repo.
 docs/superpowers/
