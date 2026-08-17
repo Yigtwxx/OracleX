@@ -111,6 +111,10 @@ STALE_AFTER_S = 30 * 60
 
 # Consecutive failures before a category is reported as down rather than merely
 # degraded. One failure is usually a blip; three in a row is an outage.
+#
+# Only failures that suggest the provider is actually unavailable are counted.
+# A category is a group of providers behind one verdict, so its worst upstream
+# must not be able to speak for the rest of them — see `_Source`.
 DOWN_AFTER_FAILURES = 3
 
 
@@ -129,6 +133,26 @@ def category_for_url(url: str) -> Optional[str]:
     return None
 
 
+def _status_code(error: BaseException) -> Optional[int]:
+    """The HTTP status an exception carries, whichever way it carries it."""
+    status = getattr(getattr(error, "response", None), "status_code", None)
+    if status is None:
+        status = getattr(error, "status_code", None)
+    return status if isinstance(status, int) else None
+
+
+def is_rate_limited(error: Optional[BaseException]) -> bool:
+    """
+    True when a failure is a quota refusal rather than an unavailable provider.
+
+    A 429 says the upstream is healthy and we asked too often — on the free
+    CoinGecko tier that is routine, and it says nothing about the four exchanges
+    sharing that category. Counting it towards an outage is what let one
+    throttled provider report the whole category, and the app, as offline.
+    """
+    return error is not None and _status_code(error) == 429
+
+
 def summarize_error(error: BaseException) -> str:
     """
     Reduce an exception to a short, non-identifying reason.
@@ -139,9 +163,7 @@ def summarize_error(error: BaseException) -> str:
     itself.
     """
     name = type(error).__name__
-    status = getattr(getattr(error, "response", None), "status_code", None)
-    if status is None:
-        status = getattr(error, "status_code", None)
+    status = _status_code(error)
 
     if isinstance(status, int):
         if status == 429:
@@ -162,22 +184,35 @@ def summarize_error(error: BaseException) -> str:
 
 @dataclass
 class _Source:
-    """Rolling verdict for one category."""
+    """
+    Rolling verdict for one category.
+
+    Two failure counters, because a category speaks for several providers at
+    once. `consecutive_failures` is what the panel reports — any recent failure
+    is worth showing. `consecutive_outage_failures` is the stricter one that can
+    turn the badge red, and it ignores quota refusals: a rate-limited CoinGecko
+    means the Crypto Prices board is thinner, not that Binance, OKX, Bybit and
+    Kraken stopped answering.
+    """
 
     last_ok_at: Optional[float] = None
     last_failure_at: Optional[float] = None
     last_latency_ms: Optional[int] = None
     last_error: Optional[str] = None
     consecutive_failures: int = 0
+    consecutive_outage_failures: int = 0
 
     def state(self, now: float) -> str:
-        if self.consecutive_failures >= DOWN_AFTER_FAILURES:
+        if self.consecutive_outage_failures >= DOWN_AFTER_FAILURES:
             return "down"
-        if self.last_ok_at is None:
-            # Failing without ever having worked is an outage, not a warm-up.
-            return "down" if self.consecutive_failures else "idle"
         if self.consecutive_failures:
+            # Including the case where nothing has succeeded yet. A category
+            # that failed on the way up is warming up badly, which is worth a
+            # yellow light — but calling it an outage on the first attempt made
+            # a single 429 during boot report the whole app as offline.
             return "degraded"
+        if self.last_ok_at is None:
+            return "idle"
         return "degraded" if now - self.last_ok_at > STALE_AFTER_S else "ok"
 
 
@@ -210,9 +245,12 @@ class HealthRegistry:
             source.last_latency_ms = latency_ms
             source.last_error = None
             source.consecutive_failures = 0
+            source.consecutive_outage_failures = 0
         else:
             source.last_failure_at = now
             source.consecutive_failures += 1
+            if not is_rate_limited(error):
+                source.consecutive_outage_failures += 1
             source.last_error = summarize_error(error) if error else "request failed"
 
     def record_url(
