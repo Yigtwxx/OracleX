@@ -7,6 +7,7 @@ from services.health_registry import (
     DOWN_AFTER_FAILURES,
     HealthRegistry,
     category_for_url,
+    is_rate_limited,
     summarize_error,
 )
 
@@ -18,6 +19,14 @@ def registry() -> HealthRegistry:
 
 def _row(snapshot: dict, key: str) -> dict:
     return next(c for c in snapshot["categories"] if c["key"] == key)
+
+
+def _http_error(status: int) -> httpx.HTTPStatusError:
+    """An upstream rejection, shaped the way httpx raises one."""
+    request = httpx.Request("GET", "https://api.coingecko.com/api/v3/coins/markets")
+    return httpx.HTTPStatusError(
+        "boom", request=request, response=httpx.Response(status, request=request)
+    )
 
 
 class TestCategoryForUrl:
@@ -73,6 +82,33 @@ class TestStateTransitions:
         registry.record("not_a_category", ok=False, error=httpx.ConnectTimeout("x"))
         assert registry.snapshot()["status"] == "starting"
 
+    def test_a_first_call_failure_degrades_rather_than_downs(self, registry: HealthRegistry):
+        # Nothing has succeeded yet, but one refusal is not yet an outage.
+        registry.record("prices_crypto", ok=False, error=httpx.ConnectTimeout("x"))
+        assert _row(registry.snapshot(), "prices_crypto")["state"] == "degraded"
+
+    def test_a_rate_limited_provider_never_downs_its_category(self, registry: HealthRegistry):
+        registry.record("prices_crypto", ok=True)
+        for _ in range(DOWN_AFTER_FAILURES * 2):
+            registry.record("prices_crypto", ok=False, error=_http_error(429))
+        row = _row(registry.snapshot(), "prices_crypto")
+        assert row["state"] == "degraded"
+        assert row["detail"] == "rate limited (429)"
+
+    def test_a_rate_limit_does_not_hide_a_real_outage(self, registry: HealthRegistry):
+        registry.record("prices_crypto", ok=True)
+        registry.record("prices_crypto", ok=False, error=_http_error(429))
+        for _ in range(DOWN_AFTER_FAILURES):
+            registry.record("prices_crypto", ok=False, error=httpx.ConnectTimeout("x"))
+        assert _row(registry.snapshot(), "prices_crypto")["state"] == "down"
+
+    def test_a_success_clears_the_outage_count_too(self, registry: HealthRegistry):
+        for _ in range(DOWN_AFTER_FAILURES - 1):
+            registry.record("prices_crypto", ok=False, error=httpx.ConnectTimeout("x"))
+        registry.record("prices_crypto", ok=True)
+        registry.record("prices_crypto", ok=False, error=httpx.ConnectTimeout("x"))
+        assert _row(registry.snapshot(), "prices_crypto")["state"] == "degraded"
+
 
 class TestOverallStatus:
     def test_all_idle_reports_starting(self, registry: HealthRegistry):
@@ -93,3 +129,31 @@ class TestOverallStatus:
     def test_idle_categories_do_not_hold_back_a_live_verdict(self, registry: HealthRegistry):
         registry.record("prices_crypto", ok=True)
         assert registry.snapshot()["status"] == "live"
+
+    def test_a_throttled_provider_does_not_speak_for_its_category(self, registry: HealthRegistry):
+        # CoinGecko shares `prices_crypto` with four exchanges. Its quota being
+        # spent leaves the board thinner, not the app offline.
+        registry.record("prices_crypto", ok=True)
+        for _ in range(DOWN_AFTER_FAILURES):
+            registry.record_url(
+                "https://api.coingecko.com/api/v3/coins/markets",
+                ok=False,
+                error=_http_error(429),
+            )
+        assert registry.snapshot()["status"] == "degraded"
+
+    def test_a_rate_limit_during_boot_does_not_report_offline(self, registry: HealthRegistry):
+        # A restart resets every verdict, so the first CoinGecko call of the
+        # process used to be able to paint the badge red on its own.
+        registry.record_url(
+            "https://api.coingecko.com/api/v3/coins/markets", ok=False, error=_http_error(429)
+        )
+        assert registry.snapshot()["status"] == "degraded"
+
+
+class TestIsRateLimited:
+    def test_only_429_counts_as_a_quota_refusal(self):
+        assert is_rate_limited(_http_error(429))
+        assert not is_rate_limited(_http_error(503))
+        assert not is_rate_limited(httpx.ConnectTimeout("x"))
+        assert not is_rate_limited(None)
