@@ -33,6 +33,17 @@ Work through the snapshot systematically and produce structured evidence:
 6. **catalysts** — from the news headlines, the 3 items most likely to be
    materially priced in over the {{timeframe}} horizon, each with a one-line
    reason. If the headlines are all routine commentary, say so and return fewer.
+   Some headlines carry a "prior verdict" — this app's own news pipeline having
+   judged that item earlier. Treat one as a second opinion worth weighing, never
+   as evidence of what the market did: it is a model's reading, not an outcome.
+   The scored headlines are the ones a reader happened to open, so the balance
+   of verdicts says nothing about the feed as a whole, and a headline without a
+   verdict is unjudged rather than unimportant.
+
+Read the commodity board as part of the cross-asset picture, not as a separate
+market: the dollar, gold and crude are where a risk-on or risk-off regime shows
+up before it reaches breadth. Each commodity price is in the unit printed beside
+it — grains and softs quote in US cents.
 
 Rules:
 - Only use figures present in the snapshot above. Never introduce a number that
