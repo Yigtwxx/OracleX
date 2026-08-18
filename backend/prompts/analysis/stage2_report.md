@@ -65,12 +65,27 @@ Index performance, US market session status, and equity risk sentiment. Address
 the cross-asset question directly: is crypto trading with risk assets or
 decoupling? Cite the figures on both sides.
 
+Then the macro leg, from the snapshot's "Commodities & macro" block: the dollar,
+the metals and energy complex, and any ratio the board supplies. Say what the
+combination implies about the liquidity backdrop crypto is trading in — a bid in
+gold with a firm dollar is a different regime from both rising together. Quote
+each price in the unit given; grains and softs are in US cents, and rewriting one
+as dollars is a hundredfold error. If the commodity board is unavailable or
+flagged as a replayed copy, say so here rather than reasoning from it.
+
 ## News Catalysts
 
 The three catalysts from the evidence stage. For each: a bolded one-line summary,
 then two to three sentences on the mechanism by which it would affect prices and
 over what horizon. Skip anything that is recycled commentary — if fewer than
 three items are genuinely material, present fewer and say why.
+
+Where a headline carries a prior verdict in the snapshot, you may cite it — but
+attribute it as one ("the news pipeline read this as bearish at 0.71 confidence")
+and say where your own reading of the mechanism differs. A verdict is an opinion
+on record, not a measured outcome, and it exists only because a reader opened
+that item. Never present the tally of verdicts as the market's sentiment, and
+never treat an unscored headline as neutral.
 
 ## Scenarios
 
