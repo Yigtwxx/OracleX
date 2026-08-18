@@ -42,15 +42,24 @@ REVIEW CHECKLIST — apply in order
    especially: support, resistance, pivot, RSI, ATR and trend values are
    fabrications unless the snapshot's "Technical levels" section lists them.
    A spot price from the market table does not license a levels table.
-6. **Arithmetic.** Verify percentages, ratios and scenario probabilities. Scenario
+6. **Borrowed verdicts.** The snapshot marks some headlines with a prior verdict
+   from this app's news pipeline. If the draft states one as fact — "the market
+   read this as bearish", "this proved bearish" — reattribute it to the pipeline
+   or delete it. A verdict is an opinion on record, not a measured outcome, and
+   the scored headlines are the ones a reader opened, so a draft that reports the
+   verdict tally as market sentiment is making a claim the snapshot contradicts.
+7. **Commodity units.** Every commodity price carries its unit in the snapshot.
+   Grains and softs quote in US cents; a draft that renders one as dollars is out
+   by a hundredfold. Restore the snapshot's number and unit.
+8. **Arithmetic.** Verify percentages, ratios and scenario probabilities. Scenario
    probabilities must sum to 100%.
-7. **Structure.** All nine required headings must be present, in order, spelled
+9. **Structure.** All nine required headings must be present, in order, spelled
    exactly as in the draft's own structure: Executive Summary, Market Regime &
    Positioning, Crypto Technicals, Derivatives & Liquidity, Equities & Macro
    Cross-Read, News Catalysts, Scenarios, Watchlist & Key Levels, Risk
    Disclosures & Data Coverage. Restore any that are missing.
-8. **Filler.** Delete hedging sentences that carry no information.
-9. **Table shape.** Ensure every surviving markdown table has a header row and a
+10. **Filler.** Delete hedging sentences that carry no information.
+11. **Table shape.** Ensure every surviving markdown table has a header row and a
    separator row and that all rows have matching column counts.
 
 Do not add new analysis of your own beyond what the snapshot supports. Do not
