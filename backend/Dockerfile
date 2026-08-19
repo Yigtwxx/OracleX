@@ -39,6 +39,21 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt
 ENV HF_HOME=/opt/hf-cache
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
+# The scrape ladder's browser rung (SCRAPLING_ALLOW_BROWSER, on by default)
+# needs Chromium, which pip does not install. It is left out of the image on
+# purpose: it costs several hundred megabytes plus a dozen apt packages that
+# `slim` does not carry, on every deployment, for one class of source.
+#
+# Without it the app runs and says so — `main.py` logs a warning at startup and
+# the ladder reports "that site needs a browser and one is not available"
+# instead of failing. Sites that render client-side (Reddit, X, StockTwits,
+# TradingView) are simply not readable.
+#
+# To enable it, uncomment both lines and rebuild:
+#
+# RUN apt-get update && apt-get install -y --no-install-recommends #         libnss3 libnspr4 libdbus-1-3 libatk1.0-0 libatk-bridge2.0-0 libcups2 #         libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 #         libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2 #     && rm -rf /var/lib/apt/lists/*
+# RUN scrapling install
+
 # ── Stage 2: runtime ────────────────────────────────────────────────────────
 FROM python:3.11-slim AS runtime
 
