@@ -79,6 +79,19 @@ Apply `supabase/migrations/*.sql` in order via the SQL editor or the Supabase
 CLI. Without them the auth-gated pages render but do not persist. Migrations are
 applied manually; there is no automatic runner.
 
+Because nothing records which files have run, a migration in the repo is not
+evidence that its schema is live — and the failure is quiet: the backend boots,
+the page renders, and only the write fails. Check the project instead of
+assuming:
+
+```bash
+cd backend && python scripts/verify_migrations.py
+```
+
+A new migration takes the next free number. Do not leave gaps in the sequence:
+the verifier flags one, because a gap normally means a migration was applied to
+a project and then never committed.
+
 ## Project layout
 
 The full tree is documented in
