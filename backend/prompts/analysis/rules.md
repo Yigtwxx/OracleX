@@ -25,3 +25,8 @@ RULES FOR THIS STAGE — these override anything above
 7. **A projected target is not a level.** Round numbers ($70,000, $2,200) are
    almost always invented. A price target is admissible only if the technicals
    feed supplied it; otherwise write "n/a" and give an observable trigger instead.
+8. **Levels are bands, and they carry a horizon.** Support and resistance arrive
+   from the snapshot as zones with two bounds, a horizon, and the timeframes that
+   confirmed them. Quote both bounds and the horizon. A single price presented as
+   a level, or a level with no timeframe behind it, claims a precision the method
+   does not have.
