@@ -64,7 +64,8 @@ rate limit is not the terminal's outage.
 
 **Routes.** `/` is the public landing page. The terminal itself lives under
 `/home`, `/overview`, `/dashboard`, `/analysis`, `/chat`, `/heatmap`, `/live`,
-`/macro`, `/ownership`, `/social`, `/community`, `/profile` and `/admin`.
+`/chains`, `/macro`, `/ownership`, `/social`, `/community`, `/profile` and
+`/admin`.
 
 ---
 
@@ -88,6 +89,16 @@ integrations.
 * **Asset detail modal:** 30+ data points per asset in one view — an equity's
   debt-to-equity ratio or a protocol's trailing four-week GitHub commit volume,
   without leaving the chart.
+* **Multi-timeframe technical read:** every asset is analysed on three horizons
+  at once — 4h/1d/1w for crypto, 1h/1d/1w for equities — each keeping its own
+  RSI, ATR, trend and swing structure. Support and resistance are returned as
+  **zones**, not decimals: bands built by clustering swing points within an
+  ATR-scaled tolerance, carrying a touch count and a strength score, so one new
+  candle no longer moves "the level". Weekly history is capped at two years on
+  purpose — a 2017 level describes a market that no longer exists. A timeframe
+  with too little history is dropped and named in `coverage` rather than
+  extrapolated, and if none survives the endpoint reports a gap instead of a
+  number.
 
 ### 2. News Intelligence Pipeline
 
@@ -153,13 +164,53 @@ the assets that set market direction.
 
 ### 4. Oracle Chat Agent
 
-A conversational analyst wired into the memory stack.
+A conversational analyst wired into the memory stack. A turn is not one call to
+a model — it is intent classification, tool selection, evidence gathering, a
+bounded self-check, and only then an answer.
 
-* Routes each question across RAG v2/v3/v4 plus live DuckDuckGo web search, then
-  synthesizes with the configured model. Every leg is time-boxed independently,
-  so a slow source degrades the answer instead of hanging it.
+* **Intent before tools.** `chat_intent.py` labels each turn as one of thirteen
+  behavioural intents (`conceptual`, `causal`, `comparative`, `scenario`,
+  `macro`, `derivatives`, `ownership`, `portfolio`, `briefing`, …), in Turkish
+  and English side by side. A name only earns a row if it changes which tools
+  are offered or which rules the answer is held to. This is what makes *"what is
+  a funding rate"* answerable: it resolves no asset, so under the old
+  keyword tables no tool ran, no evidence block was built, and the turn prompt's
+  rule that every figure must appear in context left the model correctly
+  concluding it had nothing admissible to say. `evals/eval_refusal.py` is the
+  metric for exactly that failure.
+* **Conversational focus.** `chat_focus.py` resolves the subject from the recent
+  *user* turns rather than only the last message, so *"peki RSI'ı?"* after
+  *"BTC nasıl?"* still means BTC. Intents that are not about an asset's present
+  state (`conceptual`, `macro`, `greeting`, `offtopic`, `briefing`) deliberately
+  clear the inherited focus instead of dragging it forward.
+* **Model-chosen tools, from a capped catalogue.** `CHAT_PLANNER_ENABLED` is now
+  on: the model picks from a catalogue filtered by intent and capped at
+  `MAX_CATALOGUE_TOOLS` (8, or 6 in concise mode) out of ~20 — small enough for
+  a local model to choose well. Every failure path still lands on
+  `heuristic_plan`, which is itself intent-routed. `evals/eval_planner.py`
+  measures tool recall and precision before the flag is trusted.
+* **A reflection round.** `CHAT_REFLECTION_ENABLED` adds one bounded second look
+  at whether the gathered evidence actually answers the question, and one chance
+  to fix it. Kept behind its own flag so it can be reverted independently of the
+  planner.
+* **Cross-session memory.** `chat_memory_service.py` persists the handful of
+  facts that are true across conversations — that someone trades futures rather
+  than spot, that they want short answers — into a narrow key/value table
+  (`supabase/migrations/014_chat_memory.sql`). The write is proposed by a model,
+  so the shape is the defence: only `ALLOWED_KEYS` are storable, never free text.
+* **Reading pages, not just searching them.** The scrape ladder gained a data
+  rung: for hosts that publish a grid of labelled numbers rather than prose
+  (TradingView, Finviz, CoinMarketCap), `finance_extractors.py` reads the figures
+  out of the HTML the prose extractor would have discarded. `read_chart`,
+  `read_page` and `social_search` — Reddit, X, StockTwits, TradingView — are now
+  actually reachable, bounded by `CHAT_MAX_SCRAPES_PER_TURN` and
+  `CHAT_MAX_BROWSER_PER_TURN`.
+* Routes each question across RAG v2/v3/v4 plus live web search, then synthesizes
+  with the configured model. Every leg is time-boxed independently, so a slow
+  source degrades the answer instead of hanging it.
 * Full session management — conversations, message history and renames persist
-  in Supabase.
+  in Supabase. Long turns run as pollable jobs (`POST /api/chat/jobs`) that can
+  be cancelled.
 * Available as a dedicated page and as a global sidebar from anywhere in the
   terminal.
 
@@ -196,17 +247,89 @@ pipeline — `collecting → synthesis → drafting → review`.
   dashboard, plus a CCXT-backed multi-exchange price comparison and arbitrage
   scanner.
 
-### 7. Alternative Data
+### 7. Chain Telemetry Board
+
+`/chains` is the state of the rails underneath the market: eight networks read
+live, on one board, priced in the coin their fees are actually paid in.
+
+* **Eight chains, four adapter families.** Bitcoin, Ethereum, Base, Arbitrum,
+  Optimism, BNB Smart Chain, Solana and Tron, through `evm`, `bitcoin`, `solana`
+  and `tron` readers behind a single `registry.py` that holds only protocol
+  constants and endpoints — anything that can differ between two polls is
+  measured, never stored.
+* **Comparable fees.** The same unit of work priced eight ways: a 21,000-gas
+  native transfer on EVM chains, a 141-vbyte P2WPKH spend on Bitcoin, one
+  signature on Solana. OP-stack rollups add the L1 data fee the block header
+  does not carry, because execution cost alone understates what a transaction
+  there really costs.
+* **A gap is rendered as a gap.** Arbitrum publishes a `gasLimit` of 2^50 as a
+  sentinel rather than a capacity, so `gasUsed / gasLimit` reads 0.00001% and a
+  fullness bar would show a permanently idle chain. Chains flagged
+  `gas_ceiling=False` report no fullness at all. A labelled gap is honest; a
+  zero is not.
+* **Partial failure costs one row.** Eight independent providers will not all be
+  up at once, so every adapter is gathered with `return_exceptions=True` and a
+  failure is recorded as `error` on that chain alone. The board never 503s, and
+  an unreachable chain is visibly distinct from a quiet one. If the whole
+  assembly fails it replays the last good board rather than returning nothing.
+* **Anomaly detection in Python, commentary from the model.** `anomaly.py`
+  computes what is unusual — fees at triple their usual level, load away from
+  baseline, a difficulty swing — and ships each flag with a sentence written in
+  Python, so the board keeps explaining itself with no provider reachable. Two
+  independent baselines, because they fail independently: 30 days of Coin
+  Metrics dailies (works on a cold start), and `history.py`'s own rolling
+  samples, which correct for the fact that request-path sampling is as diurnal
+  as gas prices are.
+* **Exchange flows, honestly scoped.** Daily BTC and ETH exchange in/outflow
+  from the Coin Metrics Community API. Coverage is two chains because the free
+  tier answers 403 for the rest — the strip names its own limit rather than
+  showing six zeros.
+
+### 8. Alternative Data
 
 * **Fear & Greed index** synchronized across the UI.
+* **Macro regime read:** `macro_regime.py` scores equity breadth, the dollar and
+  copper-against-gold — each voting -1/0/+1 through a deadband so a flat tape
+  does not flip the read every refresh — into one word: risk-on, risk-off or
+  neither. The label is computed in Python; the model only writes the sentence
+  explaining it, and never sees a number that has not already been rounded to
+  the grain the label was decided on. Crude is deliberately unscored (rising oil
+  is growth or margin squeeze depending on the cause), and the components the
+  board does not carry — rates, credit spreads, equity volatility — are named in
+  the note rather than papered over.
+* **Pentagon Pizza Index:** an OSINT novelty gauge derived from late-evening
+  activity at the pizza restaurants around the Pentagon, computed here from each
+  venue's own baseline curve rather than copied from the source's own verdict.
+  It renders as one badge in the nav chrome, at the size a novelty reading earns,
+  and every surface that shows it carries the caveat.
 * **On-chain flows:** whale transfers and exchange inflow/outflow tracking
   (optional Etherscan key).
 * **Institutional ownership:** 13F-style holdings tracking with per-entity
-  boards and historical snapshots.
+  boards and historical snapshots, plus a flow note summarising what the tracked
+  institutions actually did last quarter — counted from filed 13F moves only, so
+  a corporate treasury topping up its bitcoin never becomes "institutions
+  bought".
 * **Developer velocity and social graph:** GitHub commit/issue velocity and
   community growth surfaced in the asset detail modal.
 
-### 8. Accounts, Community and Bring-Your-Own-Key
+### 9. Grounded Notes
+
+Three boards — macro, chains and ownership — render deterministic figures and
+used to leave the reader to work out what they meant. `services/ai_notes.py`
+closes that gap without moving any arithmetic into the model.
+
+* Each caller computes its own labels, thresholds and deltas in Python and hands
+  the engine a finished set of facts. The model's only job is to say what they
+  mean in a sentence or two.
+* **Facts are the cache key.** A note is fingerprinted by the prompt it was
+  written from and the facts it was written about, so identical facts reuse the
+  note and a prompt edit retires every note derived from it — the same
+  discipline the news-analysis cache uses.
+* **A missing note is never an error state.** It is commentary on figures that
+  are always present, so a page with no note is still complete. `lib/ai-note.ts`
+  holds that branch on the frontend, where it is tested.
+
+### 10. Accounts, Community and Bring-Your-Own-Key
 
 * Supabase Auth (email/password and Google OAuth). **Authorization is enforced
   in the application layer** (`dependencies/auth.py`): the backend holds the
@@ -222,7 +345,7 @@ pipeline — `collecting → synthesis → drafting → review`.
   encrypted with Fernet before they reach Supabase (`services/secret_box.py`)
   and are returned to the UI only as a hint, never in plaintext.
 
-### 9. Boot Gate
+### 11. Boot Gate
 
 A cold start touches a dozen upstreams. Rather than assembling itself panel by
 panel over half a minute, the terminal holds its first paint on
@@ -232,7 +355,7 @@ optional ones only mark the session degraded. The endpoint is pure in-memory
 state — it is polled twice a second — and nothing in the startup path blocks the
 socket from binding.
 
-### 10. Landing Page
+### 12. Landing Page
 
 `/` is a scroll-driven marketing page rendered on a single `position: fixed` 2D
 canvas. `lib/landing/stages.ts` is the one source of truth: each stage's height
@@ -260,7 +383,7 @@ graph TD;
     end
 
     subgraph API [FastAPI Gateway - Python]
-    Router[20 API Routers] --> Manager[Service Layer]
+    Router[21 API Routers] --> Manager[Service Layer]
     Manager --> LLM[LLM provider chain]
     Manager --> RAG[(ChromaDB - RAG v1/v2)]
     Manager --> Cache[(TTL Cache + stale fallback)]
@@ -285,6 +408,8 @@ graph TD;
     RSS[Global RSS + Tree of Alpha]
     FG[alternative.me Fear & Greed]
     DDG[DuckDuckGo Search]
+    RPC[8 chain RPC / REST endpoints]
+    CM[Coin Metrics Community]
     end
 
     UI ===|REST JSON| Router
@@ -323,15 +448,21 @@ backend/
 │   └── schemas.py              # Pydantic request/response models
 ├── prompts/                    # prompt templates as plain Markdown, {{placeholder}} syntax
 │   ├── analysis/               # stage1_evidence, stage2_report, stage3_review, system_analyst
-│   └── news/ chat/ detection/ generic/
-├── routers/                    # 20 modules — full paths inline, no prefixes
+│   ├── chat/                   # system, turn, plan, plan_system, reflect, reflect_system
+│   ├── chains/anomaly.md       # what co-occurring chain flags mean
+│   ├── macro/regime.md         # the sentence behind the risk-on/off label
+│   ├── notes/rules.md          # shared grounding rules for every generated note
+│   ├── ownership/flow.md       # last quarter's institutional moves, in prose
+│   └── news/ detection/ generic/
+├── routers/                    # 21 modules — full paths inline, no prefixes
 │   ├── news.py                 # /api/news, /api/analyze, /api/symbols, /api/technical
 │   ├── llm.py                  # /api/llm/status
 │   ├── system.py               # /api/system/readiness
 │   ├── market.py               # /api/fear-greed, /api/market-overview, /api/heatmap/data
 │   ├── liquidation.py          # /api/liquidations/*, /api/market/candles
 │   ├── home.py                 # /api/home/* (funding, onchain, macro calendar)
-│   ├── macro.py                # /api/macro/* (calendar, dashboard series)
+│   ├── macro.py                # /api/macro/* (board, regime, pizza-index)
+│   ├── chains.py               # /api/chains/board, /api/chains/anomalies
 │   ├── watchlist.py            # /api/home/watchlist CRUD
 │   ├── analysis.py             # /api/analysis/reports, /api/analysis/jobs, notes
 │   ├── rag.py                  # /api/rag/* (initialize, query, insights, scenario, brief)
@@ -345,8 +476,8 @@ backend/
 │   ├── admin.py                # /api/admin/* (moderation, audit log)
 │   ├── exchanges.py            # /api/exchanges, /api/multi-exchange, /api/arbitrage
 │   └── websocket.py            # /ws/prices, /api/websocket/status
-├── services/                   # business logic — 68 modules plus admin/, community/,
-│   │                           # llm/, ownership/ and social/ packages
+├── services/                   # business logic — 75 modules plus admin/, chains/,
+│   │                           # community/, llm/, ownership/ and social/ packages
 │   ├── llm/                    # provider abstraction
 │   │   ├── presets.py          # 14 provider rows (adapter, base_url, default model, key env)
 │   │   ├── providers.py        # openai_compat / anthropic / ollama adapters
@@ -374,6 +505,24 @@ backend/
 │   ├── rag_outcomes.py         # multi-horizon outcome measurement
 │   ├── rag_bellwethers.py      # curated direction-setting asset universe
 │   ├── chat_service.py         # Oracle chat orchestration (RAG + web search + LLM)
+│   ├── chat_intent.py          # 13 behavioural intents; decides tools and answer rules
+│   ├── chat_focus.py           # what the conversation is about, across turns
+│   ├── chat_planner.py         # model-chosen tool plan from an intent-filtered catalogue
+│   ├── chat_tools.py           # the tool catalogue and its executors
+│   ├── chat_memory_service.py  # per-user facts that survive the session (ALLOWED_KEYS)
+│   ├── ai_notes.py             # grounded note engine — facts in, one paragraph out
+│   ├── macro_regime.py         # risk-on / risk-off scored in Python, explained by the model
+│   ├── pentagon_pizza_service.py    # the OSINT novelty gauge, computed not copied
+│   ├── finance_extractors.py   # labelled figures from table-shaped pages (TradingView, ...)
+│   ├── scrape_service.py       # the fetch ladder: direct → impersonated → data → browser
+│   ├── chains/                 # per-chain telemetry
+│   │   ├── registry.py         # the 8 chains: protocol constants and endpoints only
+│   │   ├── evm.py / bitcoin.py / solana.py / tron.py   # the four adapter families
+│   │   ├── service.py          # parallel read, fee pricing, board assembly
+│   │   ├── history.py          # rolling baseline, diurnally corrected
+│   │   ├── anomaly.py          # what is not normal, found in Python
+│   │   └── flows.py            # Coin Metrics daily exchange flow (BTC/ETH)
+│   ├── ownership/flow_note.py  # last quarter's 13F moves, aggregated not recomputed
 │   ├── okx_market.py           # single client for prices, candles, trades
 │   ├── price_service.py        # server-side single-symbol price resolution
 │   ├── liquidation_service.py  # OKX liquidation WS collector (persisted)
@@ -388,8 +537,12 @@ backend/
 │   ├── scheduler_service.py    # APScheduler: news fetch + RAG re-index jobs
 │   ├── http_client.py          # shared async httpx client (+ impersonated transport)
 │   └── cache.py                # ServiceCache (TTLCache) with stale-data fallback
-├── evals/golden_set.jsonl      # retrieval evaluation set
-├── tests/                      # 63 pytest modules — run in CI
+├── evals/
+│   ├── golden_set.jsonl        # retrieval evaluation set
+│   ├── eval_planner.py         # tool-selection recall and precision
+│   └── eval_refusal.py         # how often the chat declines a question it could answer
+├── scripts/verify_migrations.py     # are the migrations in the repo actually live?
+├── tests/                      # 76 pytest modules — run in CI
 └── data/                       # local JSON state + ChromaDB stores (gitignored)
 ```
 
@@ -404,7 +557,8 @@ frontend/
 ├── .eslintrc.json / .prettierrc
 ├── .env.example                # copy to .env.local
 ├── app/
-│   ├── layout.tsx              # fonts, tokens, AuthProvider, HydrationBeacon
+│   ├── layout.tsx              # fonts, tokens, metadataBase, AuthProvider, HydrationBeacon
+│   ├── opengraph-image.tsx     # the link-preview card, rendered from the landing palette
 │   ├── globals.css             # token definitions + terminal and landing styles
 │   ├── (marketing)/            # the public landing page at /
 │   │   ├── layout.tsx          # sets .landing, scopes the marketing CSS
@@ -418,7 +572,8 @@ frontend/
 │       ├── chat/               # Oracle chat agent
 │       ├── heatmap/            # multi-metric heatmap
 │       ├── live/               # live streams and events
-│       ├── macro/              # macro calendar and dashboard
+│       ├── chains/             # eight-chain telemetry board
+│       ├── macro/              # macro calendar, regime read and dashboard
 │       ├── ownership/          # institutional holdings
 │       ├── social/             # sentiment and public profiles
 │       ├── community/          # social feed and post detail
@@ -432,11 +587,15 @@ frontend/
 │   ├── BootGate.tsx / BootSplash.tsx   # holds first paint until the backend is ready
 │   ├── ErrorBoundary.tsx
 │   ├── landing/                # ScrollCanvas, TypedPoints, StageFigure, hero and sections
-│   ├── ui/                     # Panel, Modal, Logo, AssetTag, ShinyText primitives
-│   ├── analysis/               # ReportView, AnalysisProgress, StageChecklist, NotesPanel
+│   ├── ui/                     # Panel, Modal, Logo, AssetTag, ShinyText, AiNote primitives
+│   ├── chains/                 # ChainCard, BlockStream, FeeRacer, EconomicsPanel,
+│   │                           # FlowStrip, AnomalyBanner, DeviationBanner
+│   ├── analysis/               # ReportView, AnalysisProgress, StageChecklist, NotesPanel,
+│   │                           # TechnicalPanel, ZoneLadder, TimeframeGrid, RangeStrip
 │   ├── overview/               # AdvancedHeatmap, AssetDetailModal, AssetTable, ...
 │   ├── home/                   # FundingRates, LiquidationFeed, OnChainStats, Watchlist, ...
 │   ├── macro/ live/ ownership/ social/ admin/ chat/ charts/
+│   ├── PizzaIndexBadge.tsx     # the novelty gauge, in the nav chrome
 │   ├── profile/AIProviderSettings.tsx   # BYO provider/model/API key UI
 │   ├── community/              # PostCard, PostMedia, CreatePostModal
 │   └── NewsFeed.tsx / ChartPanel.tsx / OraclePanel.tsx / ChatSidebar.tsx / ...
@@ -450,7 +609,12 @@ frontend/
 │   ├── api.ts                  # fetch wrapper, ApiError, typed endpoint fetchers
 │   ├── queryClient.ts          # QueryClient + global error → toast wiring
 │   ├── supabase.ts             # lazy browser Supabase client
+│   ├── chain-format.ts         # five orders of magnitude of fees in one column (tested)
+│   ├── technical-format.ts     # a band is rendered as a band, never averaged (tested)
+│   ├── ai-note.ts              # the shared envelope every generated note arrives in (tested)
+│   ├── pizza-index.ts          # one set of thresholds for all three surfaces (tested)
 │   └── landing/                # scroll canvas engine — stages, series, renderer (tested)
+├── assets/og/                  # subset JetBrains Mono faces for the OG image renderer
 ├── public/landing/             # stage imagery + CREDITS.md
 └── store/useStore.ts           # Zustand global client state
 ```
@@ -462,7 +626,7 @@ frontend/
 ├── start.sh / start.bat        # launchers (venv, ports, both servers, RAG seed)
 ├── docker-compose.yml          # production-shaped stack
 ├── docker-compose.override.yml # dev overrides (bind mounts, --reload, next dev)
-├── supabase/migrations/        # 001_initial_schema → 013_social
+├── supabase/migrations/        # 001_initial_schema → 014_chat_memory
 ├── scripts/
 │   ├── calibrate_rag_relevance.py   # measures the RAG relevance floor against your store
 │   ├── fetch_landing_imagery.sh     # rebuilds the landing imagery set from Wikimedia
@@ -794,6 +958,23 @@ STREAM_EXCHANGE=okx
 USE_REAL_API=true
 USE_AI=true                 # master switch for AI, whichever provider is set
 
+# ── Chat pipeline ────────────────────────────────────────────────────────────
+# Whether the model picks a turn's tools from an intent-filtered catalogue.
+# Measure before turning this off again: python evals/eval_planner.py
+CHAT_PLANNER_ENABLED=true
+# A second, bounded look at whether the gathered evidence answers the question,
+# and one chance to fix it. Separate flag on purpose — revertible independently.
+CHAT_REFLECTION_ENABLED=true
+# Lets the scrape ladder launch a browser for the few hosts that render entirely
+# client-side. Safe to leave on with no browser installed: startup records a
+# degraded health entry and the ladder reports the gap instead of failing.
+# One-time install: `scrapling install`.
+SCRAPLING_ALLOW_BROWSER=true
+# Per-turn page-reading quotas. The browser quota stays at 1 deliberately — a
+# launch costs 6-15s, which is a fifth of a turn spent on one class of evidence.
+CHAT_MAX_SCRAPES_PER_TURN=3
+CHAT_MAX_BROWSER_PER_TURN=1
+
 # ── CORS (comma-separated allowed frontend origins) ──────────────────────────
 CORS_ORIGINS=http://localhost:3100,http://127.0.0.1:3100
 
@@ -823,14 +1004,30 @@ NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws/prices
 # Client-side auth — publishable/anon key only, never the service-role key.
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-publishable-anon-key
+
+# Public origin this deployment is reached at. Only the link preview card needs
+# it: metadataBase resolves the generated opengraph-image to an absolute URL,
+# and a scraper cannot fetch a relative one.
+NEXT_PUBLIC_SITE_URL=http://localhost:3100
 ```
 
 ### Supabase schema
 
 Apply the migrations in `supabase/migrations/` in order, from
-`001_initial_schema.sql` through `013_social.sql`, via the Supabase SQL editor
-or CLI. Without them, auth-gated pages (chat history, community, profile,
+`001_initial_schema.sql` through `014_chat_memory.sql`, via the Supabase SQL
+editor or CLI. Without them, auth-gated pages (chat history, community, profile,
 ownership, per-user AI settings) will render but fail to persist.
+
+Nothing records which files have run, so afterwards confirm the schema is
+actually live rather than assuming it:
+
+```bash
+cd backend && python scripts/verify_migrations.py
+```
+
+It reads every migration, works out which tables they should leave behind
+(accounting for the renames and drops later files perform), and asks the
+project. Exit code 1 means a table is missing.
 
 ### Degradation matrix
 
@@ -840,6 +1037,9 @@ ownership, per-user AI settings) will render but fail to persist.
 | Supabase credentials | **Backend refuses to start** — these are validated at boot. |
 | `LLM_KEY_ENCRYPTION_SECRET` | Per-user BYO-key feature is disabled; the server-side provider chain still works. |
 | `ETHERSCAN_API_KEY` | On-chain whale and exchange-flow widgets go empty. |
+| No browser for Scrapling | Client-rendered pages (TradingView) are unreadable; the ladder names the gap and startup records a degraded health entry. Every other host is unaffected. |
+| A chain RPC endpoint down | That one row on `/chains` reports `error`; the other seven report normally and the board does not 503. |
+| Coin Metrics unreachable | The exchange-flow strip empties and anomaly detection falls back to its own rolling baseline. |
 | Upstream market API down | Last good cached payload is served (stale fallback) instead of an error. |
 
 ---
@@ -862,7 +1062,7 @@ use the FastAPI endpoints directly without opening the UI. All payloads return
 | `/api/market/candles/{symbol}` | `GET` | OHLCV series from OKX. |
 | `/api/heatmap/data` | `GET` | Nested JSON structured for treemap consumption — price change, volume, social hype, dev activity. |
 | `/api/fear-greed` | `GET` | Integer index (`0-100`) plus sentiment categorization. |
-| `/api/technical/{symbol}` | `GET` | ATR-based support/resistance and price targets from OKX OHLCV. |
+| `/api/technical/{symbol}` | `GET` | Multi-timeframe read (4h/1d/1w, or 1h/1d/1w for equities): per-horizon RSI, ATR and trend, clustered support/resistance **zones** with touch counts and strength, swing structure and alignment. Timeframes with too little history are named in `coverage` rather than faked. |
 
 ### News and AI
 
@@ -895,7 +1095,8 @@ use the FastAPI endpoints directly without opening the UI. All payloads return
 | `/api/rag/scenario` | `POST` | v4 what-if scenario simulation. |
 | `/api/rag/daily-brief` | `GET` | v5 proactive agent — morning brief. |
 | `/api/rag/anomalies` | `GET` | v5 price-vs-news divergence detection. |
-| `/api/chat` | `POST` | Oracle chat agent (RAG + web search + configured LLM). |
+| `/api/chat` | `POST` | Oracle chat agent — intent classification, tool plan, evidence, reflection, answer. |
+| `/api/chat/jobs` | `POST` | Runs the same turn out of the request path; `GET /api/chat/jobs/{id}` polls it and `DELETE` cancels it. |
 | `/api/chat/status` | `GET` | Whether the chat agent is available, and which provider is serving it. |
 
 ### Derivatives, exchanges and real-time
@@ -908,7 +1109,11 @@ use the FastAPI endpoints directly without opening the UI. All payloads return
 | `/api/liquidations/history/{symbol}` | `GET` | Rolling 24h realised-liquidation history. |
 | `/api/home/funding-rates` | `GET` | Perpetual funding rates across major pairs. |
 | `/api/home/onchain` | `GET` | Whale transfers and exchange in/outflows. |
-| `/api/macro/*` | `GET` | Macro calendar entries and dashboard series. |
+| `/api/macro/board` | `GET` | Indices, commodities, currencies and the macro calendar in one payload. |
+| `/api/macro/regime` | `GET` | The risk-on / risk-off / neutral label, its three component votes, and the model's sentence explaining them. |
+| `/api/macro/pizza-index` | `GET` | Pentagon Pizza Index reading, its per-venue baselines, and the source's own figures for cross-checking. |
+| `/api/chains/board` | `GET` | All eight chains: height, cadence, load, priced fees, economics and recent blocks, plus the daily exchange-flow strip. A chain that could not be read carries `error` on its own row. |
+| `/api/chains/anomalies` | `GET` | What on the board is not normal, each flag with a Python-written sentence, plus an hourly model note explaining why they co-occur. |
 | `/api/exchanges` | `GET` | CCXT-supported exchange registry. |
 | `/api/arbitrage/{base}/{quote}` | `GET` | Cross-exchange spread for a pair; `/api/arbitrage/scan` sweeps the board. |
 | `/ws/prices` | `WS` | Live price stream — `snapshot` on connect, then `price_update` frames. |
@@ -924,7 +1129,8 @@ use the FastAPI endpoints directly without opening the UI. All payloads return
 | `/api/profile/llm` | `GET/PUT/DELETE` | Per-user provider, model and encrypted API key. `POST /api/profile/llm/test` validates a key before saving. |
 | `/api/community/posts` | `GET/POST` | Community feed; nested comment and like routes below it. |
 | `/api/social/*` | `GET/POST` | Sentiment, follows and public profiles. |
-| `/api/ownership/*` | `GET` | Institutional holdings boards and historical snapshots. |
+| `/api/ownership/*` | `GET` | Institutional holdings boards, per-entity detail, consensus, watchlist overlap and historical snapshots. |
+| `/api/ownership/flow-note` | `GET` | Last quarter's tracked-institution moves in prose, counted from filed 13F activity only. |
 | `/api/admin/*` | `GET/POST` | Moderation actions and the audit log. Admin-scoped. |
 
 ### Example request
@@ -953,21 +1159,52 @@ in two jobs:
 | **Backend** (Python 3.11) | `ruff check .` → `python -m compileall` → `pytest` |
 | **Frontend** (Node 20) | `npm ci` → `npm run lint` → `npm run typecheck` → `npm test` → `npm run build` |
 
-The backend suite is **63 pytest modules** covering the LLM chain and
-rate-limit behaviour, per-user settings and key encryption, auth enforcement,
-prompt rendering, RAG scoring and outcomes, symbol detection, news attribution
-and the analysis pipelines. `requirements-dev.txt` deliberately excludes torch
-and chromadb so CI installs only what the tests import.
+The backend suite is **76 pytest modules, 1,634 tests** covering the LLM chain
+and rate-limit behaviour, per-user settings and key encryption, auth
+enforcement, prompt rendering, RAG scoring and outcomes, symbol detection, news
+attribution, the analysis pipelines, chat intent/focus/memory/budget, the chain
+adapters and their anomaly detection, and the technical zone builder.
+`requirements-dev.txt` deliberately excludes torch and chromadb so CI installs
+only what the tests import.
 
-The frontend suite is **15 vitest modules, 222 tests**, concentrated on the
+The frontend suite is **18 vitest modules, 260 tests**, concentrated on the
 pure logic where a failure would be silent rather than loud — the scroll canvas
-stage schedule, the seeded candle series and the note anchors.
+stage schedule, the seeded candle series, the note anchors, and the formatting
+rules shared between panels (`chain-format`, `technical-format`, `ai-note`,
+`pizza-index`). Components are deliberately not tested; anything with a branch
+in it is expected to live in `lib/`.
 
 `.pre-commit-config.yaml` wires the same tools locally:
 
 ```bash
 pip install pre-commit && pre-commit install
 pre-commit run --all-files
+```
+
+### Evals
+
+Two behaviours are measured rather than asserted, because both fail by degrees
+and neither has a right answer a unit test could pin down. They hit a live
+provider, so they are run by hand and not in CI:
+
+```bash
+cd backend
+python evals/eval_planner.py    # tool-selection recall and precision
+python evals/eval_refusal.py    # how often chat declines a question it could answer
+```
+
+`CHAT_PLANNER_ENABLED` and the `conceptual` answer mode are both on because of
+numbers these produced. Re-measure before reverting either.
+
+### Schema drift
+
+Migrations are applied by hand and nothing records which files have run, so the
+presence of a file in `supabase/migrations/` is not evidence its schema is live
+— and the failure is quiet: the backend boots, the page renders, only the write
+fails.
+
+```bash
+cd backend && python scripts/verify_migrations.py
 ```
 
 ---
@@ -995,6 +1232,27 @@ Shipped in **v1.1.0**:
 
 - [x] Public landing page on a scroll-driven canvas; the terminal moves into an
       `(app)` route group.
+
+Unreleased (on `main`, ahead of the last tag):
+
+- [x] **Chain telemetry board** — eight networks on `/chains` through four
+      adapter families, comparable fees, per-row failure isolation, a
+      diurnally-corrected rolling baseline and Python-computed anomaly
+      detection, with Coin Metrics exchange flows for BTC and ETH.
+- [x] **Chat pipeline rebuild** — intent classification, cross-turn focus,
+      model-chosen tools from an intent-filtered catalogue, a bounded reflection
+      round, cross-session memory (migration `014_chat_memory`), and a scrape
+      ladder that can finally read charts, social posts and table-shaped pages.
+      Both new behaviours ship behind their own flags, with evals attached.
+- [x] **Multi-timeframe technical analysis** — three horizons per asset, support
+      and resistance as clustered zones with touch counts and strength scores
+      instead of drifting decimals.
+- [x] **Grounded notes** — one engine writing the commentary on the macro, chain
+      and ownership boards, fingerprint-cached on the facts it was given, never
+      doing arithmetic.
+- [x] **Macro regime read** and the **Pentagon Pizza Index** badge.
+- [x] Rendered OpenGraph link-preview card, and `scripts/verify_migrations.py`
+      for checking that the repo's migrations are actually live.
 
 Planned:
 
