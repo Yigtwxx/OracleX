@@ -33,6 +33,7 @@ import {
 } from '@/lib/api';
 import { useChatJob } from '@/hooks/queries';
 import StepTimeline from './chat/StepTimeline';
+import ModelOutputNotice from '@/components/ui/ModelOutputNotice';
 import { toStepRow, toStoredSteps, type ChatStep } from '@/lib/chat-job';
 
 type ResponseStyle = 'concise' | 'detailed';
@@ -732,6 +733,7 @@ export default function OracleChatPage() {
                 whether there is a reasoning pass — rather than the old line,
                 which described detailed mode whichever one was selected. */}
             <p className="text-center text-xs text-fg-subtle mt-2">{mode.blurb}</p>
+            <ModelOutputNotice className="text-center mt-1.5" />
           </form>
         </div>
       </div>

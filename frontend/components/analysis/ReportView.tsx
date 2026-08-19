@@ -3,6 +3,7 @@
 import { AlertTriangle, ArrowLeft, Calendar, Loader2, RotateCw } from 'lucide-react';
 import type { AnalysisJob, AnalysisReport, TimeFrame } from '@/lib/api';
 import ReportMarkdown from './ReportMarkdown';
+import ModelOutputNotice from '@/components/ui/ModelOutputNotice';
 
 interface ReportViewProps {
   timeframe: TimeFrame;
@@ -89,6 +90,7 @@ export default function ReportView({
               </div>
             )}
             <ReportMarkdown content={report.content} />
+            <ModelOutputNotice className="mt-6 border-t border-line pt-3" />
           </>
         ) : (
           <p className="text-base text-fg-subtle">
