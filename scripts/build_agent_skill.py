@@ -1,0 +1,363 @@
+#!/usr/bin/env python3
+"""Generate the agent skill's endpoint reference from the live FastAPI schema.
+
+`agent-skill/oracle-x-api/SKILL.md` is written by hand — it carries the
+judgement about which endpoint answers which question, and no generator can
+produce that. What a generator *can* produce, and should, is the mechanical
+half: paths, parameters, request bodies and auth requirements. Those live in
+`references/endpoints.md`, and keeping them hand-written would guarantee the
+skill drifts from the API within a release or two.
+
+The schema is read by importing `create_app()` and calling `app.openapi()`, so
+no server has to be running. Only the endpoints in `ENDPOINT_GROUPS` are
+emitted: the terminal exposes ~120 operations, but most are the UI talking to
+itself (profile, community, social, admin) and documenting them would cost the
+agent context without buying it a capability.
+
+Usage:
+    python scripts/build_agent_skill.py            # regenerate the reference
+    python scripts/build_agent_skill.py --check    # fail if it is out of date
+    python scripts/build_agent_skill.py --zip      # also rebuild the .zip
+"""
+
+from __future__ import annotations
+
+import argparse
+import difflib
+import sys
+import zipfile
+from pathlib import Path
+from typing import Any
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+BACKEND = REPO_ROOT / "backend"
+SKILL_DIR = REPO_ROOT / "agent-skill" / "oracle-x-api"
+REFERENCE = SKILL_DIR / "references" / "endpoints.md"
+ZIP_PATH = REPO_ROOT / "agent-skill" / "Oracle-X-Skill.zip"
+
+# The allowlist, grouped the way the skill's decision table groups them. Order
+# here is the order in the generated document, so a reader who scrolls sees the
+# same taxonomy the SKILL.md taught them.
+ENDPOINT_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
+    (
+        "Prices and market state",
+        "Spot prices, index levels, candles and derived technical levels.",
+        [
+            ("GET", "/api/price/{symbol}"),
+            ("GET", "/api/market-overview"),
+            ("GET", "/api/market/indices"),
+            ("GET", "/api/market/candles/{symbol}"),
+            ("GET", "/api/technical/{symbol}"),
+            ("GET", "/api/asset-detail/{symbol}"),
+            ("GET", "/api/symbols"),
+            ("GET", "/api/heatmap/data"),
+            ("GET", "/api/fear-greed"),
+        ],
+    ),
+    (
+        "News and its analysis",
+        "The feed, one article, and the LLM read of an article.",
+        [
+            ("GET", "/api/news"),
+            ("GET", "/api/news/{news_id}"),
+            ("GET", "/api/news/{news_id}/analysis"),
+            ("POST", "/api/news/{news_id}/analysis/jobs"),
+            ("GET", "/api/news/analysis/jobs/{job_id}"),
+            ("POST", "/api/analyze"),
+        ],
+    ),
+    (
+        "Scheduled analysis reports",
+        "The long-form daily/weekly reports the terminal generates on a timer.",
+        [
+            ("GET", "/api/analysis/reports"),
+            ("GET", "/api/analysis/report/{timeframe}"),
+            ("POST", "/api/analysis/jobs/{timeframe}"),
+            ("GET", "/api/analysis/jobs/{job_id}"),
+        ],
+    ),
+    (
+        "Memory and retrieval (RAG)",
+        "Historical context: what happened before, what resembles now.",
+        [
+            ("GET", "/api/rag/query"),
+            ("GET", "/api/rag/insights/{symbol}"),
+            ("GET", "/api/rag/compare/{symbol_a}/{symbol_b}"),
+            ("GET", "/api/rag/daily-brief"),
+            ("GET", "/api/rag/anomalies"),
+            ("GET", "/api/rag/event-at-date"),
+            ("POST", "/api/rag/news-similarity"),
+            ("POST", "/api/rag/scenario"),
+            ("GET", "/api/rag/stats"),
+        ],
+    ),
+    (
+        "Macro",
+        "Cross-asset state: indices, metals, the regime label and its evidence.",
+        [
+            ("GET", "/api/macro/board"),
+            ("GET", "/api/macro/regime"),
+            ("GET", "/api/macro/pizza-index"),
+        ],
+    ),
+    (
+        "Chains",
+        "Per-chain metrics and anomalies measured against each chain's baseline.",
+        [
+            ("GET", "/api/chains/board"),
+            ("GET", "/api/chains/anomalies"),
+        ],
+    ),
+    (
+        "Derivatives and on-chain flow",
+        "Liquidations, funding, and large-transaction flow.",
+        [
+            ("GET", "/api/home/liquidations"),
+            ("GET", "/api/home/funding-rates"),
+            ("GET", "/api/liquidations/levels/{symbol}"),
+            ("GET", "/api/liquidations/map/{symbol}"),
+            ("GET", "/api/onchain/whales"),
+        ],
+    ),
+    (
+        "Ownership",
+        "Who holds what, and how those positions moved.",
+        [
+            ("GET", "/api/ownership/board"),
+            ("GET", "/api/ownership/consensus"),
+            ("GET", "/api/ownership/assets/{symbol}"),
+            ("GET", "/api/ownership/moves"),
+            ("GET", "/api/ownership/flow-note"),
+        ],
+    ),
+    (
+        "Live feeds",
+        "Events and the trade tape.",
+        [
+            ("GET", "/api/live/events"),
+            ("GET", "/api/live/tape"),
+        ],
+    ),
+    (
+        "Chat (authenticated)",
+        "The Oracle itself — the terminal's own reasoning layer over all of the above.",
+        [
+            ("GET", "/api/chat/status"),
+            ("POST", "/api/chat"),
+            ("POST", "/api/chat/jobs"),
+            ("GET", "/api/chat/jobs/{job_id}"),
+        ],
+    ),
+    (
+        "Watchlist (authenticated)",
+        "The caller's own tracked symbols.",
+        [
+            ("GET", "/api/home/watchlist"),
+            ("POST", "/api/home/watchlist"),
+        ],
+    ),
+    (
+        "Health",
+        "Whether the instance and its upstreams are actually up.",
+        [
+            ("GET", "/api/system/health"),
+            ("GET", "/api/system/readiness"),
+        ],
+    ),
+]
+
+HEADER = """<!-- GENERATED FILE — do not edit by hand.
+     Regenerate with: python scripts/build_agent_skill.py
+     Source of truth: the FastAPI route definitions in backend/routers/. -->
+
+# Oracle-X endpoint reference
+
+Every path below is relative to the instance base URL (`$ORACLE_X_URL`,
+default `http://localhost:8000`). Endpoints marked **auth** require
+`Authorization: Bearer <supabase-jwt>`; see `auth.md`. Everything else is open
+on a default instance.
+
+Request and response bodies are described by their field names and types. When
+a response shape is not declared on the route, the entry says so — call it once
+and read the actual JSON rather than guessing.
+
+"""
+
+
+def load_spec() -> dict[str, Any]:
+    """Build the app in-process and return its OpenAPI document."""
+    sys.path.insert(0, str(BACKEND))
+    from main import create_app
+
+    return create_app().openapi()
+
+
+def resolve_ref(spec: dict[str, Any], ref: str) -> dict[str, Any]:
+    """Follow a local `#/components/schemas/X` pointer."""
+    node: Any = spec
+    for part in ref.lstrip("#/").split("/"):
+        node = node[part]
+    return node
+
+
+def type_of(schema: dict[str, Any], spec: dict[str, Any]) -> str:
+    """Render a schema as a short type name an agent can act on."""
+    if "$ref" in schema:
+        return schema["$ref"].rsplit("/", 1)[-1]
+    if "anyOf" in schema:
+        parts = [type_of(s, spec) for s in schema["anyOf"] if s.get("type") != "null"]
+        rendered = " | ".join(dict.fromkeys(parts))
+        return f"{rendered}?" if len(parts) < len(schema["anyOf"]) else rendered
+    if schema.get("type") == "array":
+        return f"{type_of(schema.get('items', {}), spec)}[]"
+    if "enum" in schema:
+        return " | ".join(repr(v) for v in schema["enum"])
+    return str(schema.get("type", "any"))
+
+
+def render_params(operation: dict[str, Any], spec: dict[str, Any]) -> list[str]:
+    lines: list[str] = []
+    for param in operation.get("parameters", []):
+        schema = param.get("schema", {})
+        flag = "required" if param.get("required") else "optional"
+        default = schema.get("default")
+        suffix = f", default `{default!r}`" if default is not None else ""
+        note = param.get("description") or schema.get("description") or ""
+        note = f" — {note.strip().splitlines()[0]}" if note else ""
+        lines.append(
+            f"- `{param['name']}` ({param['in']}, {type_of(schema, spec)}, {flag}{suffix}){note}"
+        )
+    return lines
+
+
+def render_body(operation: dict[str, Any], spec: dict[str, Any]) -> list[str]:
+    body = operation.get("requestBody")
+    if not body:
+        return []
+    content = body.get("content", {}).get("application/json")
+    if not content:
+        return []
+    schema = content.get("schema", {})
+    if "$ref" in schema:
+        schema = resolve_ref(spec, schema["$ref"])
+    props = schema.get("properties")
+    if not props:
+        return ["- body: free-form JSON"]
+    required = set(schema.get("required", []))
+    lines = ["", "Body (JSON):"]
+    for name, prop in props.items():
+        flag = "required" if name in required else "optional"
+        note = prop.get("description") or ""
+        note = f" — {note.strip().splitlines()[0]}" if note else ""
+        lines.append(f"- `{name}` ({type_of(prop, spec)}, {flag}){note}")
+    return lines
+
+
+def render_response(operation: dict[str, Any], spec: dict[str, Any]) -> list[str]:
+    ok = operation.get("responses", {}).get("200", {})
+    content = ok.get("content", {}).get("application/json", {})
+    schema = content.get("schema", {})
+    if "$ref" in schema:
+        resolved = resolve_ref(spec, schema["$ref"])
+        props = resolved.get("properties", {})
+        if props:
+            fields = ", ".join(f"`{n}`" for n in list(props)[:12])
+            more = ", …" if len(props) > 12 else ""
+            return [
+                "",
+                f"Returns `{schema['$ref'].rsplit('/', 1)[-1]}`: {fields}{more}",
+            ]
+    if schema and schema != {}:
+        return ["", f"Returns `{type_of(schema, spec)}`."]
+    return ["", "Response shape is not declared on the route — inspect one call."]
+
+
+def render(spec: dict[str, Any]) -> str:
+    out: list[str] = [HEADER.rstrip(), ""]
+    missing: list[str] = []
+
+    for title, blurb, endpoints in ENDPOINT_GROUPS:
+        out += [f"## {title}", "", blurb, ""]
+        for method, path in endpoints:
+            operation = spec.get("paths", {}).get(path, {}).get(method.lower())
+            if operation is None:
+                missing.append(f"{method} {path}")
+                continue
+            auth = " · **auth**" if operation.get("security") else ""
+            summary = operation.get("summary", "").strip()
+            out.append(f"### `{method} {path}`{auth}")
+            out.append("")
+            if summary:
+                out.append(summary)
+                out.append("")
+            doc = (operation.get("description") or "").strip()
+            if doc:
+                out += [doc, ""]
+            params = render_params(operation, spec)
+            if params:
+                out += ["Parameters:", *params]
+            out += render_body(operation, spec)
+            out += render_response(operation, spec)
+            out.append("")
+
+    if missing:
+        raise SystemExit(
+            "These allowlisted endpoints no longer exist in the API:\n  "
+            + "\n  ".join(missing)
+            + "\nUpdate ENDPOINT_GROUPS in scripts/build_agent_skill.py."
+        )
+
+    return "\n".join(out).rstrip() + "\n"
+
+
+def build_zip() -> None:
+    """Package the skill directory for distribution."""
+    ZIP_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(ZIP_PATH, "w", zipfile.ZIP_DEFLATED) as archive:
+        for path in sorted(SKILL_DIR.rglob("*")):
+            if path.is_file() and "__pycache__" not in path.parts:
+                archive.write(path, path.relative_to(SKILL_DIR.parent))
+    print(f"wrote {ZIP_PATH.relative_to(REPO_ROOT)}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="exit non-zero if the committed reference is stale",
+    )
+    parser.add_argument("--zip", action="store_true", help="also rebuild the .zip")
+    args = parser.parse_args()
+
+    rendered = render(load_spec())
+
+    if args.check:
+        current = REFERENCE.read_text() if REFERENCE.exists() else ""
+        if current != rendered:
+            diff = difflib.unified_diff(
+                current.splitlines(keepends=True),
+                rendered.splitlines(keepends=True),
+                fromfile="committed",
+                tofile="generated",
+            )
+            sys.stdout.writelines(diff)
+            print(
+                "\nagent-skill endpoint reference is stale. "
+                "Run: python scripts/build_agent_skill.py",
+                file=sys.stderr,
+            )
+            return 1
+        print("agent-skill endpoint reference is up to date")
+        return 0
+
+    REFERENCE.parent.mkdir(parents=True, exist_ok=True)
+    REFERENCE.write_text(rendered)
+    print(f"wrote {REFERENCE.relative_to(REPO_ROOT)}")
+    if args.zip:
+        build_zip()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -382,11 +382,17 @@ def create_app() -> FastAPI:
 
     @app.get("/")
     async def root():
-        """Health check endpoint."""
+        """Health check endpoint.
+
+        The version is read off the app rather than repeated here — the literal
+        that used to sit in this dict was left at 1.0.0 through two releases,
+        which made the one endpoint a caller hits first the least trustworthy
+        thing to ask about the version.
+        """
         return {
             "status": "online",
-            "service": "Oracle-X API",
-            "version": "1.0.0",
+            "service": app.title,
+            "version": app.version,
             "timestamp": datetime.now().isoformat(),
         }
 

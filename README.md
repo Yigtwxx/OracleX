@@ -627,7 +627,11 @@ frontend/
 ├── docker-compose.yml          # production-shaped stack
 ├── docker-compose.override.yml # dev overrides (bind mounts, --reload, next dev)
 ├── supabase/migrations/        # 001_initial_schema → 014_chat_memory
+├── agent-skill/                # AgentSkill: teaches an agent to read this API
+│   ├── oracle-x-api/           # SKILL.md + references/ + runnable examples
+│   └── Oracle-X-Skill.zip      # generated, for direct download
 ├── scripts/
+│   ├── build_agent_skill.py         # regenerates the skill's endpoint reference
 │   ├── calibrate_rag_relevance.py   # measures the RAG relevance floor against your store
 │   ├── fetch_landing_imagery.sh     # rebuilds the landing imagery set from Wikimedia
 │   └── generate_brand_assets.py
@@ -1173,6 +1177,29 @@ print(f"Target High: {data['target_high_price']}")
 print(f"Analyst Rec: {data['recommendation']}")
 ```
 
+### Agent skill
+
+The same API is also packaged as an
+[AgentSkill](https://agentskills.io/specification) under
+[`agent-skill/`](agent-skill/), so a coding agent — Claude Code, OpenClaw, or
+anything else that reads the specification — can query a running instance
+without a bespoke integration:
+
+```bash
+cp -r agent-skill/oracle-x-api ~/.claude/skills/
+export ORACLE_X_URL=http://localhost:8000
+```
+
+`SKILL.md` is hand-written and carries the part no generator can produce: which
+endpoint answers which question, and the rules that keep an agent from
+inventing a number the terminal declined to give it. The endpoint reference
+beside it is generated from this app's own OpenAPI schema, and CI fails if the
+committed copy has drifted from the routes:
+
+```bash
+python scripts/build_agent_skill.py --check
+```
+
 ---
 
 ## Quality Gates
@@ -1196,6 +1223,12 @@ only what the tests import.
 A second workflow (`.github/workflows/publish-packages.yml`) is delivery, not a
 gate: after a push to `main` — or a `v*` tag — it builds both Dockerfiles and
 pushes them to `ghcr.io`. It never blocks a pull request.
+
+A third job regenerates the agent skill's endpoint reference from the app's
+OpenAPI schema and fails if it differs from the committed copy. A route rename
+that ships an unchanged skill produces a document describing paths the API no
+longer serves, and an agent reading it cannot tell that apart from missing
+data.
 
 The frontend suite is **18 vitest modules, 260 tests**, concentrated on the
 pure logic where a failure would be silent rather than loud — the scroll canvas

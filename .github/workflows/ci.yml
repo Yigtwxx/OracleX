@@ -67,3 +67,23 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  agent-skill:
+    name: Agent skill (endpoint reference is current)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements-dev.txt
+
+      # The skill's endpoint reference is generated from the app's own OpenAPI
+      # schema. Without this gate a route rename ships a skill that documents a
+      # path the API no longer serves — and the agent reading it has no way to
+      # tell the difference between a stale document and missing data.
+      - name: Check generated reference
+        run: python scripts/build_agent_skill.py --check
