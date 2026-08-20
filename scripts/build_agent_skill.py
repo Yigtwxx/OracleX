@@ -315,8 +315,17 @@ def build_zip() -> None:
     ZIP_PATH.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(ZIP_PATH, "w", zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(SKILL_DIR.rglob("*")):
-            if path.is_file() and "__pycache__" not in path.parts:
-                archive.write(path, path.relative_to(SKILL_DIR.parent))
+            if not path.is_file():
+                continue
+            # Tooling leaves caches inside the skill directory — .ruff_cache,
+            # __pycache__, .DS_Store. They are gitignored, so nothing catches
+            # them on the way into a zip that *is* committed, and they ship to
+            # every person who installs the skill.
+            if any(
+                part.startswith(".") or part == "__pycache__" for part in path.parts
+            ):
+                continue
+            archive.write(path, path.relative_to(SKILL_DIR.parent))
     print(f"wrote {ZIP_PATH.relative_to(REPO_ROOT)}")
 
 
