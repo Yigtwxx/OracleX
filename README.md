@@ -1193,6 +1193,14 @@ npx skills add Yigtwxx/OracleX --skill oracle-x-dev    # work on this codebase
 export ORACLE_X_URL=http://localhost:8000
 ```
 
+One thing to know before installing: a skill has to be *consulted*, and
+measurement showed `oracle-x-api` triggering on almost nothing — a model asked
+"what is BTC doing" answers from its own knowledge instead of going to look.
+Ask for it by name, or install it for writing code against the API, where an
+agent reaches for documentation anyway. To have the numbers reach a model
+unprompted, use the MCP server below.
+[`agent-skill/README.md`](agent-skill/README.md) carries the measurement.
+
 `SKILL.md` is hand-written and carries the part no generator can produce: which
 endpoint answers which question, and the rules that keep an agent from
 inventing a number the terminal declined to give it. The endpoint reference
@@ -1227,12 +1235,14 @@ largest clusters per side anchored to spot in 1.1 KB.
 ## Quality Gates
 
 CI (`.github/workflows/ci.yml`) runs on every push and pull request to `main`,
-in two jobs:
+in four jobs:
 
 | Job | Steps |
 |-----|-------|
 | **Backend** (Python 3.11) | `ruff check .` → `python -m compileall` → `pytest` |
 | **Frontend** (Node 20) | `npm ci` → `npm run lint` → `npm run typecheck` → `npm test` → `npm run build` |
+| **Agent skill** | `python scripts/build_agent_skill.py --check` |
+| **MCP server** | `ruff check .` → `ruff format --check .` → `pytest` |
 
 The backend suite is **76 pytest modules, 1,634 tests** covering the LLM chain
 and rate-limit behaviour, per-user settings and key encryption, auth
@@ -1246,11 +1256,10 @@ A second workflow (`.github/workflows/publish-packages.yml`) is delivery, not a
 gate: after a push to `main` — or a `v*` tag — it builds both Dockerfiles and
 pushes them to `ghcr.io`. It never blocks a pull request.
 
-A third job regenerates the agent skill's endpoint reference from the app's
-OpenAPI schema and fails if it differs from the committed copy. A route rename
-that ships an unchanged skill produces a document describing paths the API no
-longer serves, and an agent reading it cannot tell that apart from missing
-data.
+The agent-skill job regenerates the endpoint reference from the app's OpenAPI
+schema and fails if it differs from the committed copy. A route rename that
+ships an unchanged skill produces a document describing paths the API no longer
+serves, and an agent reading it cannot tell that apart from missing data.
 
 The frontend suite is **18 vitest modules, 260 tests**, concentrated on the
 pure logic where a failure would be silent rather than loud — the scroll canvas

@@ -23,6 +23,36 @@ calls the agent knows how to make, against data the operator already trusts.
 It needs a reachable instance. This is the read side of a server, not a data
 source of its own.
 
+## Before you install: it will not trigger on its own
+
+This was measured, not assumed. Twenty realistic queries — "what is BTC doing",
+"where are ETH's levels", "why did SOL move today" — run against three
+rewrites of the skill's description. The agent chose to consult the skill on
+almost none of them. Whenever it did, it used it correctly; it simply did not
+go looking. Rewording moved nothing, and the original description scored best
+of the three.
+
+The cause is structural rather than editorial. A skill has to be *looked up*,
+and a model asked what BTC is doing already believes it can answer. No wording
+gets in front of that, because the decision to go looking comes first.
+
+That leaves two ways to install it honestly:
+
+* **Ask for it by name.** "Use the Oracle-X skill and tell me where BTC's
+  levels are" works exactly as designed — the endpoints, the auth rules and the
+  refusal to invent a number are all there once the skill is open.
+* **Writing code against the API.** Here the agent is already reading
+  documentation, so it opens the skill on its own, and
+  `references/endpoints.md` is generated from the running app rather than
+  remembered.
+
+If what you want is the terminal's numbers reaching the model *without being
+asked*, install [`mcp-server/`](../mcp-server/) instead — the same data as 26
+tools. A tool list is already in the model's context, so the only decision left
+is which one to call. Installing both is the normal case, not a contradiction:
+the skill is for writing code against Oracle-X, the tools are for asking it
+questions.
+
 ## Install
 
 ```bash
@@ -65,6 +95,7 @@ access token and is needed only for endpoints scoped to a person — see
 ```
 oracle-x-api/
 ├── SKILL.md                    # the decision table: which question → which endpoint
+├── README.md                   # the ClawHub-facing page; not read by an agent
 ├── references/
 │   ├── endpoints.md            # generated — every allowlisted endpoint, in full
 │   ├── auth.md                 # tokens: obtaining, using, verifying
@@ -73,6 +104,7 @@ oracle-x-api/
 
 oracle-x-dev/
 ├── SKILL.md                    # the four gates, and the rules that bite
+├── README.md                   # the ClawHub-facing page; not read by an agent
 └── references/
     ├── endpoint.md             # router → service → cache → error, and registration
     ├── upstream.md             # http_client, and mapping a host onto the health badge
@@ -115,9 +147,16 @@ a judgement, and generating it would produce a list rather than guidance.
 
 ## Publishing to ClawHub
 
-Both skills are published at v1.0.0 and moderated CLEAN. ClawHub relicenses
-what it hosts as MIT-0, so the copy there carries no attribution requirement
-even though this repository is MIT.
+Both skills are published under `@yigtwxx` and moderated CLEAN. The version
+there is not the repository's — a republish auto-increments the patch, so the
+number moves on its own; `clawhub inspect oracle-x-api` is the honest source.
+ClawHub relicenses what it hosts as MIT-0, so the copy there carries no
+attribution requirement even though this repository is MIT.
+
+The `README.md` inside each skill exists for this channel. Someone installing
+from ClawHub never sees the file you are reading, and for `oracle-x-api` the
+trigger caveat above is the first thing they need. Neither file is loaded by an
+agent — only `SKILL.md` is — so they cost context nothing.
 
 ClawHub does not index GitHub on its own — a skill gets there by being pushed,
 from the account that owns the repository. To publish an update:
