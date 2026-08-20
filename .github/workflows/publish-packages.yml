@@ -1,0 +1,105 @@
+name: Publish packages
+
+# Builds the backend and frontend images and pushes them to the GitHub
+# Container Registry, which is what populates the repository's "Packages"
+# section. Images land at:
+#   ghcr.io/<owner>/oraclex-backend
+#   ghcr.io/<owner>/oraclex-frontend
+#
+# Nothing here needs a secret: GITHUB_TOKEN is enough to push to GHCR for the
+# repository that owns the workflow.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: publish-packages-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    name: ${{ matrix.name }} image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The backend Dockerfile resolves `backend/...` paths, so its build
+          # context is the repository root (same as docker-compose.yml).
+          - name: backend
+            image: oraclex-backend
+            context: .
+            dockerfile: backend/Dockerfile
+          - name: frontend
+            image: oraclex-frontend
+            context: ./frontend
+            dockerfile: ./frontend/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Package names must be lowercase; the owner login may not be.
+      - name: Resolve image name
+        id: image
+        run: echo "name=${REGISTRY}/${OWNER,,}/${IMAGE}" >> "$GITHUB_OUTPUT"
+        env:
+          OWNER: ${{ github.repository_owner }}
+          IMAGE: ${{ matrix.image }}
+
+      - name: Derive tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=long
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+          labels: |
+            org.opencontainers.image.title=Oracle-X ${{ matrix.name }}
+            org.opencontainers.image.description=Oracle-X ${{ matrix.name }} service image
+            org.opencontainers.image.licenses=MIT
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          # amd64 only: the backend pulls the CPU torch wheel, and building it
+          # under arm64 emulation takes tens of minutes for no current consumer.
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+          # NEXT_PUBLIC_* values are inlined into the client bundle at build
+          # time, so the published frontend image is pinned to whatever these
+          # resolve to. Set them as repository variables to point the image at a
+          # real deployment; otherwise it falls back to the localhost defaults
+          # baked into the Dockerfile, which suit `docker compose up` only.
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || 'http://localhost:8000' }}
+            NEXT_PUBLIC_WS_URL=${{ vars.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws/prices' }}
+            NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
