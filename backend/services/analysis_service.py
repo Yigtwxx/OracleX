@@ -164,7 +164,7 @@ def missing_headings(report: str) -> List[str]:
 
 # Bumped by hand when the pipeline's shape changes in a way the prompt files do
 # not capture — a new stage, a different stage order.
-PIPELINE_REVISION = "2"
+PIPELINE_REVISION = "4"
 
 # The prompts that decide what a report looks like. Editing any of them retires
 # every stored report, the same way the news pipeline retires cached analyses.

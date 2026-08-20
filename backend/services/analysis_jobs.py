@@ -34,11 +34,17 @@ ACTIVE_STATUSES = ("queued", "running")
 KIND_REPORT = "report"
 KIND_NEWS = "news"
 KIND_CHAT = "chat"
+KIND_NOTE = "note"
 
 # A report is worth re-reading half an hour later; a chat answer is collected by
 # the poll that is already running and is dead weight after that. Holding
 # thousands of finished turns would also mean holding every question asked.
-RETENTION_BY_KIND = {KIND_CHAT: 5 * 60}
+#
+# A grounded note is borrowed machinery: `ai_notes` starts one only to take the
+# single-flight lock, and reads the finished text back out of its own store
+# rather than off the job. So the job is dead weight the moment it settles, and
+# it is held just long enough for a poll already in flight to see it finish.
+RETENTION_BY_KIND = {KIND_CHAT: 5 * 60, KIND_NOTE: 60}
 
 
 @dataclass
@@ -275,6 +281,19 @@ async def cancel_job(job_id: str) -> Optional[Job]:
         pass
     except Exception:  # noqa: BLE001 — `_run` already recorded it on the job
         pass
+
+    # A cancellation that lands before the task's first line leaves `_run`
+    # never having run at all — so its `finally`, which is what stamps
+    # `finished_at`, never runs either. The job then stays `queued` forever:
+    # `is_active` keeps reporting it to `active_jobs`, and `_prune` skips it
+    # because pruning is keyed on `finished_at`. It is a small leak and a
+    # confusing one, and it is exactly the case a user pressing stop the moment
+    # they see the spinner produces.
+    if job.finished_at is None:
+        job.status = "error"
+        job.error = f"{job.kind.capitalize()} generation was cancelled."
+        job.finished_at = time.monotonic()
+
     return job
 
 

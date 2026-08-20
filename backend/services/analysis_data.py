@@ -41,6 +41,7 @@ FEED_NAMES = {
     "crypto_fear_greed": "Crypto Fear & Greed index",
     "stock_market": "US equity market data",
     "global_indices": "Global equity indices",
+    "macro_board": "Commodity & macro board",
     "technicals": "Technical levels",
     "liquidations": "Liquidation feed",
     "whales": "Large-transaction flow",
@@ -234,6 +235,77 @@ def _sector_breadth(sectors_payload: Optional[Dict]) -> Optional[List[Dict[str, 
     return rows or None
 
 
+# The verdict vocabulary the news pipeline writes, and the materiality levels
+# worth pulling out of the pile. Anything outside these is treated as no verdict
+# rather than passed through — an unrecognised label in a report is worse than a
+# headline that simply carries no mark.
+_VERDICT_SENTIMENTS = ("bullish", "bearish", "neutral")
+_MATERIAL_LEVELS = ("extraordinary", "significant")
+
+
+def _news_verdicts(items: Sequence[Any]) -> Optional[Dict[str, Any]]:
+    """
+    Stored news-pipeline verdicts for the headlines in this snapshot.
+
+    Reads the analysis store and nothing else: no analysis is triggered here, so
+    this costs a file read and no model time. That store is filled when a reader
+    opens a headline, which makes coverage partial by construction — hence the
+    scored/total counts travelling alongside the verdicts. A report that read
+    three bullish verdicts out of thirty headlines as "the news is bullish" would
+    be describing what people clicked on, not what was published.
+
+    Keyword-fallback verdicts are skipped. They come from a word count over the
+    title taken when no provider was reachable, and setting one beside a real
+    analysis as the same kind of object is exactly the conflation the store's
+    `source` field exists to prevent.
+    """
+    if not items:
+        return None
+
+    by_id: Dict[str, Dict[str, Any]] = {}
+    try:
+        from services import news_analysis_store
+
+        for item in items:
+            news_id = getattr(item, "id", None)
+            if not news_id:
+                continue
+            entry = news_analysis_store.get(str(news_id))
+            analysis = (entry or {}).get("analysis") or {}
+            sentiment, confidence = analysis.get("sentiment"), analysis.get("confidence")
+            if sentiment not in _VERDICT_SENTIMENTS:
+                continue
+            if not isinstance(confidence, (int, float)):
+                continue
+            if analysis.get("source") == "keyword-fallback":
+                continue
+            by_id[str(news_id)] = {
+                "sentiment": sentiment,
+                "confidence": round(float(confidence), 2),
+                "materiality": analysis.get("materiality"),
+                "time_horizon": analysis.get("time_horizon"),
+                "price_impact": analysis.get("price_impact"),
+                "title": (entry.get("news") or {}).get("title") or getattr(item, "title", ""),
+            }
+    except Exception as e:  # noqa: BLE001 — an unreadable store is a gap, not a failed report
+        logger.warning("Could not read stored news verdicts: %s", e)
+
+    if not by_id:
+        return None
+
+    verdicts = list(by_id.values())
+    return {
+        "by_id": by_id,
+        "scored": len(verdicts),
+        "total": len(items),
+        "counts": {
+            name: sum(1 for v in verdicts if v["sentiment"] == name) for name in _VERDICT_SENTIMENTS
+        },
+        "mean_confidence": round(sum(v["confidence"] for v in verdicts) / len(verdicts), 2),
+        "material": [v for v in verdicts if v.get("materiality") in _MATERIAL_LEVELS][:5],
+    }
+
+
 def _movers(coins: List[Dict], count: int = 3) -> Dict[str, List[Dict]]:
     """Top gainers and losers by 24h change."""
     ranked = sorted(
@@ -266,6 +338,7 @@ async def build_market_snapshot(
     from services.fear_greed_service import fetch_fear_greed_index
     from services.heatmap_service import fetch_heatmap_data
     from services.liquidation_service import liquidation_service
+    from services.macro_board_service import fetch_macro_board
     from services.market_overview_service import fetch_market_overview
     from services.onchain_service import fetch_whale_trades
     from services.stock_market_service import fetch_global_indices, fetch_nasdaq_overview
@@ -278,6 +351,7 @@ async def build_market_snapshot(
         _safe("crypto_fear_greed", fetch_fear_greed_index(), feed_timeout),
         _safe("stock_market", fetch_nasdaq_overview(), feed_timeout),
         _safe("global_indices", fetch_global_indices(), feed_timeout),
+        _safe("macro_board", fetch_macro_board(), feed_timeout),
         _safe("liquidations", liquidation_service.get_heatmap_data(window), feed_timeout),
         _safe("whales", fetch_whale_trades(), feed_timeout),
         _safe("sectors", fetch_heatmap_data(), feed_timeout),
@@ -301,6 +375,10 @@ async def build_market_snapshot(
     ]
 
     news_items = feeds.get("news") or []
+    news_sections = {
+        "crypto": [n for n in news_items if getattr(n, "asset_type", None) == "crypto"][:15],
+        "stock": [n for n in news_items if getattr(n, "asset_type", None) == "stock"][:15],
+    }
     snapshot: Dict[str, Any] = {
         "timeframe": timeframe,
         "generated_at": datetime.now().isoformat(),
@@ -308,20 +386,19 @@ async def build_market_snapshot(
         "crypto_fear_greed": feeds.get("crypto_fear_greed"),
         "stock_market": feeds.get("stock_market"),
         "global_indices": feeds.get("global_indices"),
+        "macro_board": feeds.get("macro_board"),
         "technicals": technicals,
         "liquidations": feeds.get("liquidations"),
         "whales": feeds.get("whales"),
         "sectors": feeds.get("sectors"),
-        "news": {
-            "crypto": [n for n in news_items if getattr(n, "asset_type", None) == "crypto"][:15],
-            "stock": [n for n in news_items if getattr(n, "asset_type", None) == "stock"][:15],
-        },
+        "news": news_sections,
         "derived": {
             "breadth": _breadth(coins),
             "fear_greed_trend": _fear_greed_trend(feeds.get("crypto_fear_greed")),
             "liquidations": _liquidation_stats(feeds.get("liquidations")),
             "sector_breadth": _sector_breadth(feeds.get("sectors")),
             "movers": movers,
+            "news_verdicts": _news_verdicts(news_sections["crypto"] + news_sections["stock"]),
             "liquidation_window_hours": round(window / 3600),
         },
         "unavailable": unavailable,
@@ -420,31 +497,154 @@ def _render_sentiment(snapshot: Dict[str, Any]) -> Optional[str]:
     return "\n".join(lines) if lines else None
 
 
+def _fmt_band(zone: Dict[str, Any]) -> str:
+    """A zone as the band it is. A single price would overstate the method."""
+    low, high = zone.get("low"), zone.get("high")
+    if not isinstance(low, (int, float)) or not isinstance(high, (int, float)):
+        return "n/a"
+    if low == high:
+        return _fmt_usd(low)
+    return f"{_fmt_usd(low)} – {_fmt_usd(high)}"
+
+
+def _render_zone_rows(ta: Dict[str, Any]) -> List[str]:
+    """The support and resistance bands for one asset, nearest side first."""
+    zones = ta.get("zones") or {}
+    rows: List[str] = []
+    for side in ("resistance", "inside", "support"):
+        for zone in zones.get(side) or []:
+            confirmed = "+".join(zone.get("timeframes") or [zone.get("timeframe", "?")])
+            distance = zone.get("distance_percent")
+            rows.append(
+                f"| {side} | {zone.get('horizon', 'n/a')} | {_fmt_band(zone)} | "
+                f"{distance:+.2f}% | {confirmed} | {zone.get('touches', 0)} | "
+                f"{zone.get('strength', 0)} | {'yes' if zone.get('flip') else 'no'} |"
+            )
+    return rows
+
+
+def _render_structure(ta: Dict[str, Any]) -> List[str]:
+    """The zoomed-out read: where this price sits in its own two-year history."""
+    structure = ta.get("structure") or {}
+    lines: List[str] = []
+
+    position = structure.get("position_percent")
+    if position is not None and structure.get("range_low") is not None:
+        lines.append(
+            f"- Range ({structure.get('range_bars')} {structure.get('range_timeframe')} bars): "
+            f"{_fmt_usd(structure['range_low'])} – {_fmt_usd(structure['range_high'])}; "
+            f"price is at {position:.1f}% of it, "
+            f"{_fmt_pct(structure.get('distance_to_high_percent'))} from the high and "
+            f"{_fmt_pct(structure.get('distance_to_low_percent'))} from the low"
+        )
+    if structure.get("sma200") is not None:
+        lines.append(
+            f"- 200-bar SMA {_fmt_usd(structure['sma200'])} "
+            f"({_fmt_pct(structure.get('price_vs_sma200_percent'))} vs price), "
+            f"50-bar SMA {_fmt_usd(structure.get('sma50'))}"
+        )
+    if structure.get("swing_structure"):
+        lines.append(f"- Swing structure: {structure['swing_structure']}")
+    if structure.get("timeframe_alignment"):
+        lines.append(f"- Timeframes: {structure['timeframe_alignment']}")
+
+    divergences = [
+        f"{label} {read['rsi']['divergence']}"
+        for label, read in (ta.get("timeframes") or {}).items()
+        if (read.get("rsi") or {}).get("divergence")
+    ]
+    if divergences:
+        lines.append(f"- RSI divergence: {'; '.join(divergences)}")
+    return lines
+
+
+def _render_asset_technicals(symbol: str, ta: Dict[str, Any]) -> List[str]:
+    """One asset's multi-timeframe read: indicators, structure, then zones."""
+    lines = [f"**{symbol} — {_fmt_usd(ta.get('current_price'))}**"]
+
+    reads = ta.get("timeframes") or {}
+    if reads:
+        lines += [
+            "",
+            "| TF | Bars | Covers | Trend | RSI(14) | RSI 5-bar | ATR | ATR % |",
+            "|----|------|--------|-------|---------|-----------|-----|-------|",
+        ]
+        for label, read in reads.items():
+            rsi = read.get("rsi") or {}
+            value = rsi.get("value")
+            rsi_cell = (
+                f"{value:.1f} ({rsi.get('signal', 'n/a')})"
+                if isinstance(value, (int, float))
+                else "n/a"
+            )
+            change = rsi.get("change_5_bars")
+            change_cell = (
+                f"{change:+.1f} {rsi.get('slope', '')}".strip()
+                if isinstance(change, (int, float))
+                else "n/a"
+            )
+            covers = read.get("covers_days")
+            atr_percent = read.get("atr_percent")
+            lines.append(
+                f"| {label} | {read.get('bars', 0)} | "
+                f"{f'{covers}d' if covers else 'n/a'} | {read.get('trend') or 'n/a'} | "
+                f"{rsi_cell} | {change_cell} | {_fmt_usd(read.get('atr'))} | "
+                f"{f'{atr_percent:.2f}%' if isinstance(atr_percent, (int, float)) else 'n/a'} |"
+            )
+        lines.append("")
+
+    lines += _render_structure(ta)
+
+    zone_rows = _render_zone_rows(ta)
+    if zone_rows:
+        lines += [
+            "",
+            "| Side | Horizon | Zone | Distance | Confirmed on | Touches | Strength | Flipped |",
+            "|------|---------|------|----------|--------------|---------|----------|---------|",
+        ]
+        lines += zone_rows
+
+    missing = [
+        label for label, entry in (ta.get("coverage") or {}).items() if not entry.get("available")
+    ]
+    if missing:
+        lines.append("")
+        lines.append(
+            f"- No {', '.join(missing)} history for this asset — that horizon was not read."
+        )
+
+    return lines
+
+
 def _render_technicals(snapshot: Dict[str, Any]) -> Optional[str]:
     technicals = snapshot.get("technicals")
     if not technicals:
         return None
 
-    lines = [
-        "| Asset | Price | Trend | RSI | Support | Resistance | Pivot | ATR | Target |",
-        "|-------|-------|-------|-----|---------|------------|-------|-----|--------|",
-    ]
+    lines: List[str] = []
     for symbol, ta in technicals.items():
-        supports = " / ".join(str(s) for s in ta.get("support_levels", [])) or "n/a"
-        resistances = " / ".join(str(r) for r in ta.get("resistance_levels", [])) or "n/a"
-        rsi = ta.get("rsi_value")
-        rsi_cell = (
-            f"{rsi:.1f} ({ta.get('rsi_signal', 'n/a')})" if isinstance(rsi, (int, float)) else "n/a"
-        )
-        lines.append(
-            f"| {symbol} | {_fmt_usd(ta.get('current_price'))} | {ta.get('trend', 'n/a')} | "
-            f"{rsi_cell} | {supports} | {resistances} | {ta.get('pivot_point', 'n/a')} | "
-            f"{_fmt_usd(ta.get('atr'))} | {ta.get('target_price', 'n/a')} |"
-        )
-    lines.append("")
-    lines.append(
-        "Levels are derived from 4h candles (pivots, swing highs/lows, 14-period ATR/RSI)."
-    )
+        if not isinstance(ta, dict):
+            continue
+        if lines:
+            lines.append("")
+        lines += _render_asset_technicals(symbol, ta)
+
+    if not lines:
+        return None
+
+    # Written out because every one of these is a constraint on what may be said
+    # about the numbers above, and none of them is inferable from the table.
+    lines += [
+        "",
+        "Zones are bands price reversed in, not single prices: quote the band. `Touches` "
+        "counts those reversals, `strength` (0-100) weighs how often, how recently, on how "
+        "much volume and whether the band has flipped between support and resistance, and "
+        "`confirmed on` lists every timeframe that found it — a band three timeframes agree "
+        "on is the one that matters. Horizon comes from the longest timeframe that confirmed "
+        "the band, not from its distance to spot. Indicators are 14-period RSI and ATR per "
+        "timeframe; the weekly read is capped at two years, so nothing here describes a "
+        "level older than that.",
+    ]
     return "\n".join(lines)
 
 
@@ -537,6 +737,57 @@ def _render_equities(snapshot: Dict[str, Any]) -> Optional[str]:
     return "\n".join(lines) if lines else None
 
 
+def _render_macro(snapshot: Dict[str, Any]) -> Optional[str]:
+    """
+    The commodity board and its ratios.
+
+    The board's index rows are deliberately not rendered: those symbols already
+    reach the prompt through `global_indices` in the equities block, and printing
+    one index twice from two independently timed fetches hands the model two
+    different levels for the same symbol — and licenses the review stage to
+    strike whichever it meets second.
+    """
+    board = snapshot.get("macro_board") or {}
+    commodities = [row for row in (board.get("commodities") or []) if row.get("price") is not None]
+    ratios = [r for r in (board.get("ratios") or []) if r.get("value") is not None]
+    if not commodities and not ratios:
+        return None
+
+    lines: List[str] = []
+    if commodities:
+        lines += [
+            "| Commodity | Group | Price | Unit | 24h | 7d |",
+            "|-----------|-------|-------|------|-----|-----|",
+        ]
+        for row in commodities:
+            lines.append(
+                f"| {row.get('name', row.get('symbol', '?'))} | {row.get('group', 'n/a')} | "
+                f"{row['price']:,.2f} | {row.get('unit', 'n/a')} | "
+                f"{_fmt_pct(row.get('change_24h'))} | {_fmt_pct(row.get('change_7d'))} |"
+            )
+        # The unit column is not decoration: grains and softs quote in US cents,
+        # so a coffee price of 325.90 is cents per pound and reading it as
+        # dollars is a hundredfold error the model has no other way to avoid.
+        lines += [
+            "",
+            "Each price is in the unit beside it. The 7d column is measured across the "
+            "board's own sparkline, so it covers the drawn window rather than a "
+            "calendar week.",
+        ]
+    if ratios:
+        lines.append("")
+        lines.append(
+            "- Ratios: "
+            + ", ".join(f"{r['label']} {r['value']:,.{r.get('decimals', 2)}f}" for r in ratios)
+        )
+    if board.get("stale"):
+        lines.append(
+            f"- NOTE: this board is a replayed copy taken at {board.get('as_of')}, "
+            "not a live reading. Treat it as the last known state, not the current one."
+        )
+    return "\n".join(lines)
+
+
 def _render_sectors(snapshot: Dict[str, Any]) -> Optional[str]:
     rows = snapshot["derived"].get("sector_breadth")
     if not rows:
@@ -562,6 +813,20 @@ def _render_news(snapshot: Dict[str, Any]) -> Optional[str]:
     if not crypto and not stock:
         return None
 
+    verdicts = snapshot["derived"].get("news_verdicts") or {}
+    by_id = verdicts.get("by_id") or {}
+
+    def mark(item: Any) -> str:
+        """The stored verdict for one headline, as a trailing clause."""
+        verdict = by_id.get(str(getattr(item, "id", "") or ""))
+        if not verdict:
+            return ""
+        fields = [f"{verdict['sentiment']} @ {verdict['confidence']:.2f} confidence"]
+        for key in ("materiality", "time_horizon"):
+            if verdict.get(key):
+                fields.append(str(verdict[key]))
+        return " — prior verdict: " + ", ".join(fields)
+
     def block(label: str, items: List[Any]) -> List[str]:
         if not items:
             return [f"**{label}:** none in the current window", ""]
@@ -569,11 +834,44 @@ def _render_news(snapshot: Dict[str, Any]) -> Optional[str]:
         for n in items:
             published = getattr(n, "published_at", None)
             stamp = published.strftime("%Y-%m-%d %H:%M") if published else "unknown time"
-            out.append(f"- [{stamp}] ({getattr(n, 'source', '?')}) {getattr(n, 'title', '')}")
+            out.append(
+                f"- [{stamp}] ({getattr(n, 'source', '?')}) {getattr(n, 'title', '')}{mark(n)}"
+            )
         out.append("")
         return out
 
-    return "\n".join(block("Crypto headlines", crypto) + block("Equity & macro headlines", stock))
+    lines = block("Crypto headlines", crypto) + block("Equity & macro headlines", stock)
+
+    if verdicts:
+        counts = verdicts.get("counts") or {}
+        lines += [
+            f"**Prior verdicts:** {verdicts['scored']} of {verdicts['total']} headlines carry one "
+            f"— {counts.get('bullish', 0)} bullish, {counts.get('bearish', 0)} bearish, "
+            f"{counts.get('neutral', 0)} neutral, mean confidence "
+            f"{verdicts['mean_confidence']:.2f}.",
+        ]
+        material = verdicts.get("material") or []
+        if material:
+            lines.append("")
+            lines.append("Judged material:")
+            lines += [
+                f"- {v['title']} — {v['materiality']}, {v['sentiment']}"
+                + (f", expected impact: {v['price_impact']}" if v.get("price_impact") else "")
+                for v in material
+            ]
+        # Both halves of this caveat matter. A verdict is a model's reading of a
+        # headline, never a measured outcome; and the pipeline runs when a reader
+        # opens an item, so the scored subset is what an audience clicked on, not
+        # a sample of the news.
+        lines += [
+            "",
+            "A verdict is this app's own news pipeline judging that headline against price, "
+            "technicals and precedent — an opinion on record, not a measured outcome. Verdicts "
+            "exist only for headlines a reader has opened, so an unmarked headline is unscored "
+            "rather than neutral, and the balance above is not a sentiment reading of the feed.",
+        ]
+
+    return "\n".join(lines)
 
 
 _RENDERERS: List[Tuple[str, Callable[[Dict[str, Any]], Optional[str]]]] = [
@@ -582,6 +880,7 @@ _RENDERERS: List[Tuple[str, Callable[[Dict[str, Any]], Optional[str]]]] = [
     ("Technical levels", _render_technicals),
     ("Derivatives & liquidity", _render_derivatives),
     ("Equities & indices", _render_equities),
+    ("Commodities & macro", _render_macro),
     ("Sector breadth", _render_sectors),
     ("News headlines", _render_news),
 ]

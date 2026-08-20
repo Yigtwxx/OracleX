@@ -87,6 +87,37 @@ def patch_feeds(monkeypatch):
     async def sectors():
         return {"sectors": {"L1": [{"price_change_24h": 3.0}, {"price_change_24h": 1.0}]}}
 
+    async def macro_board():
+        return {
+            "commodities": [
+                {
+                    "symbol": "GC=F",
+                    "name": "Gold",
+                    "group": "metals",
+                    "unit": "USD/oz",
+                    "price": 2400.0,
+                    "change_24h": 0.8,
+                    "change_7d": 2.1,
+                },
+                {
+                    "symbol": "KC=F",
+                    "name": "Coffee",
+                    "group": "agriculture",
+                    "unit": "USc/lb",
+                    "price": 325.9,
+                    "change_24h": -1.2,
+                    "change_7d": None,
+                },
+            ],
+            "indices": [],
+            "ratios": [
+                {"key": "gold_silver", "label": "Gold / Silver", "value": 80.5, "decimals": 2},
+                {"key": "copper_gold", "label": "Copper / Gold", "value": None, "decimals": 5},
+            ],
+            "as_of": "2026-01-01T12:00:00+00:00",
+            "stale": False,
+        }
+
     async def technicals(movers):
         return {
             "BTCUSDT": {
@@ -109,6 +140,7 @@ def patch_feeds(monkeypatch):
 
     import services.fear_greed_service as fg_module
     import services.heatmap_service as heatmap_module
+    import services.macro_board_service as macro_module
     import services.liquidation_service as liq_module
     import services.market_overview_service as market_module
     import services.onchain_service as onchain_module
@@ -118,13 +150,14 @@ def patch_feeds(monkeypatch):
     monkeypatch.setattr(fg_module, "fetch_fear_greed_index", fear_greed)
     monkeypatch.setattr(stock_module, "fetch_nasdaq_overview", nasdaq)
     monkeypatch.setattr(stock_module, "fetch_global_indices", indices)
+    monkeypatch.setattr(macro_module, "fetch_macro_board", macro_board)
     monkeypatch.setattr(liq_module.liquidation_service, "get_heatmap_data", liquidations)
     monkeypatch.setattr(onchain_module, "fetch_whale_trades", whales)
     monkeypatch.setattr(heatmap_module, "fetch_heatmap_data", sectors)
     monkeypatch.setattr(analysis_data, "_fetch_technicals", technicals)
     monkeypatch.setattr(analysis_data, "_fetch_news", news)
 
-    return {"market": market_module, "onchain": onchain_module}
+    return {"market": market_module, "onchain": onchain_module, "macro": macro_module}
 
 
 async def test_build_market_snapshot_all_feeds_healthy_reports_no_gaps(patch_feeds):
@@ -176,6 +209,7 @@ async def test_build_market_snapshot_every_feed_failing_still_returns(patch_feed
         ("services.fear_greed_service", "fetch_fear_greed_index"),
         ("services.stock_market_service", "fetch_nasdaq_overview"),
         ("services.stock_market_service", "fetch_global_indices"),
+        ("services.macro_board_service", "fetch_macro_board"),
         ("services.onchain_service", "fetch_whale_trades"),
         ("services.heatmap_service", "fetch_heatmap_data"),
     ):
@@ -255,3 +289,236 @@ def test_fear_greed_trend_falling_when_index_dropped():
     )
     assert trend["delta_7d"] == -30, f"Expected -30, got {trend['delta_7d']}"
     assert trend["direction"] == "falling", f"Expected falling, got {trend['direction']}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COMMODITY BOARD
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+async def test_macro_board_reaches_the_prompt_with_its_units(patch_feeds):
+    snapshot = await analysis_data.build_market_snapshot("daily")
+    rendered = analysis_data.render_snapshot_markdown(snapshot)
+
+    assert "Gold" in rendered and "2,400.00" in rendered, (
+        "The commodity board must reach the prompt"
+    )
+    assert "USc/lb" in rendered, (
+        "The unit must travel with the price — a cents quote read as dollars is a hundredfold error"
+    )
+    assert "Gold / Silver 80.50" in rendered, "Board ratios are part of the macro cross-read"
+
+
+async def test_macro_board_failure_is_a_gap_not_a_dead_report(patch_feeds, monkeypatch):
+    async def broken():
+        raise RuntimeError("yahoo said no")
+
+    monkeypatch.setattr(patch_feeds["macro"], "fetch_macro_board", broken)
+
+    snapshot = await analysis_data.build_market_snapshot("daily")
+
+    assert snapshot["macro_board"] is None, "A failed board must leave its slot empty"
+    assert analysis_data.FEED_NAMES["macro_board"] in snapshot["unavailable"], (
+        f"The board must be named as a gap: {snapshot['unavailable']}"
+    )
+    assert snapshot["crypto_market"] is not None, "Its failure must not touch the other feeds"
+
+
+def test_render_macro_omits_a_ratio_whose_leg_is_missing():
+    snapshot = {
+        "macro_board": {
+            "commodities": [],
+            "ratios": [
+                {"label": "Gold / Silver", "value": 80.5, "decimals": 2},
+                {"label": "Copper / Gold", "value": None, "decimals": 5},
+            ],
+        },
+        "derived": {},
+    }
+
+    rendered = analysis_data._render_macro(snapshot)
+
+    assert "Gold / Silver" in rendered, "A computable ratio belongs in the prompt"
+    assert "Copper / Gold" not in rendered, (
+        "A ratio with a missing leg must not be printed — the model would read the "
+        "row as a reading that could be taken"
+    )
+
+
+def test_render_macro_flags_a_replayed_board():
+    snapshot = {
+        "macro_board": {
+            "commodities": [{"name": "Gold", "group": "metals", "unit": "USD/oz", "price": 2400.0}],
+            "ratios": [],
+            "stale": True,
+            "as_of": "2026-01-01T12:00:00+00:00",
+        },
+        "derived": {},
+    }
+
+    rendered = analysis_data._render_macro(snapshot)
+
+    assert "replayed copy" in rendered, (
+        "A stale board must say so, or the model states half-hour-old prices as current"
+    )
+
+
+def test_render_macro_skips_a_price_that_could_not_be_read():
+    snapshot = {
+        "macro_board": {
+            "commodities": [
+                {"name": "Gold", "group": "metals", "unit": "USD/oz", "price": None},
+                {"name": "Silver", "group": "metals", "unit": "USD/oz", "price": 30.0},
+            ],
+            "ratios": [],
+        },
+        "derived": {},
+    }
+
+    rendered = analysis_data._render_macro(snapshot)
+
+    assert "Silver" in rendered, "A readable price still belongs in the table"
+    assert "Gold" not in rendered, "A null price must be dropped, never printed as a row"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STORED NEWS VERDICTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class _Scored:
+    def __init__(self, news_id, title="Headline", asset_type="crypto"):
+        self.id = news_id
+        self.title = title
+        self.asset_type = asset_type
+        self.source = "Test"
+        from datetime import datetime
+
+        self.published_at = datetime(2026, 1, 1, 12, 0)
+
+
+def _store_double(monkeypatch, entries):
+    """Stand in for the on-disk analysis store."""
+    import services.news_analysis_store as store
+
+    monkeypatch.setattr(store, "get", lambda news_id: entries.get(news_id))
+    return store
+
+
+def test_news_verdicts_counts_only_what_the_store_holds(monkeypatch):
+    _store_double(
+        monkeypatch,
+        {
+            "1": {"analysis": {"sentiment": "bullish", "confidence": 0.8}, "news": {}},
+            "2": {
+                "analysis": {
+                    "sentiment": "bearish",
+                    "confidence": 0.6,
+                    "materiality": "significant",
+                },
+                "news": {"title": "Stored title"},
+            },
+        },
+    )
+
+    verdicts = analysis_data._news_verdicts(
+        [_Scored("1"), _Scored("2"), _Scored("3"), _Scored("4")]
+    )
+
+    assert verdicts["scored"] == 2, "Only the stored items are scored"
+    assert verdicts["total"] == 4, (
+        "The unscored headlines must be counted too — otherwise two verdicts read as "
+        "the sentiment of the whole feed"
+    )
+    assert verdicts["counts"] == {"bullish": 1, "bearish": 1, "neutral": 0}
+    assert verdicts["mean_confidence"] == 0.7
+    assert [v["title"] for v in verdicts["material"]] == ["Stored title"], (
+        "Only the items the pipeline judged material belong in the shortlist"
+    )
+
+
+def test_news_verdicts_skips_the_keyword_fallback(monkeypatch):
+    _store_double(
+        monkeypatch,
+        {
+            "1": {
+                "analysis": {
+                    "sentiment": "bullish",
+                    "confidence": 0.9,
+                    "source": "keyword-fallback",
+                },
+                "news": {},
+            }
+        },
+    )
+
+    assert analysis_data._news_verdicts([_Scored("1")]) is None, (
+        "A word count over the title is not an analysis and must not be presented as one"
+    )
+
+
+def test_news_verdicts_survive_an_unreadable_store(monkeypatch):
+    import services.news_analysis_store as store
+
+    def boom(news_id):
+        raise OSError("store is gone")
+
+    monkeypatch.setattr(store, "get", boom)
+
+    assert analysis_data._news_verdicts([_Scored("1")]) is None, (
+        "An unreadable store is a missing annotation, not a failed snapshot"
+    )
+
+
+def test_render_news_marks_scored_headlines_and_states_the_coverage(monkeypatch):
+    snapshot = {
+        "news": {"crypto": [_Scored("1", "Judged headline")], "stock": []},
+        "derived": {
+            "news_verdicts": {
+                "by_id": {
+                    "1": {
+                        "sentiment": "bearish",
+                        "confidence": 0.71,
+                        "materiality": "significant",
+                        "time_horizon": "short-term",
+                        "price_impact": None,
+                        "title": "Judged headline",
+                    }
+                },
+                "scored": 1,
+                "total": 4,
+                "counts": {"bullish": 0, "bearish": 1, "neutral": 0},
+                "mean_confidence": 0.71,
+                "material": [],
+            }
+        },
+    }
+
+    rendered = analysis_data._render_news(snapshot)
+
+    assert "prior verdict: bearish @ 0.71 confidence" in rendered, (
+        "A judged headline must carry its verdict into the prompt"
+    )
+    assert "1 of 4 headlines carry one" in rendered, (
+        "The prompt must state how partial the coverage is"
+    )
+    assert "unscored" in rendered, (
+        "The model must be told that an unmarked headline is unscored, not neutral"
+    )
+
+
+def test_render_news_without_verdicts_is_unchanged(patch_feeds, monkeypatch):
+    monkeypatch.setattr(analysis_data, "_news_verdicts", lambda items: None)
+
+    snapshot = {
+        "news": {"crypto": [_Scored("1", "Plain headline")], "stock": []},
+        "derived": {"news_verdicts": None},
+    }
+
+    rendered = analysis_data._render_news(snapshot)
+
+    assert "Plain headline" in rendered, "Headlines render with or without verdicts"
+    assert "prior verdict" not in rendered, (
+        "An empty store must add nothing — a verdict block with no verdicts invites "
+        "the model to read silence as agreement"
+    )
