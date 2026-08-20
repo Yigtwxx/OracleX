@@ -249,3 +249,62 @@ async def test_the_snapshot_is_always_the_first_step(fake_tools):
 
     assert plan[0].tool == chat_tools.PINNED_TOOL
     assert chat_tools.PINNED_TOOL not in [s.tool for s in plan[1:]]
+
+
+# ── stopping a turn ──────────────────────────────────────────────────────────
+
+
+async def test_a_running_turn_can_be_cancelled():
+    """
+    A turn can spend minutes gathering evidence. A question asked by mistake
+    needs a way out that is not waiting for it to finish.
+    """
+    started = asyncio.Event()
+
+    async def runner(_controls):
+        started.set()
+        await asyncio.sleep(30)
+        return {"response": "never"}
+
+    job = await analysis_jobs.start("k", analysis_jobs.KIND_CHAT, [], runner, owner_id="user-1")
+    await started.wait()
+    assert job.is_active
+
+    cancelled = await analysis_jobs.cancel_job(job.id)
+
+    assert cancelled is not None
+    assert not cancelled.is_active
+    assert cancelled.status == "error"
+
+
+async def test_cancelling_settles_before_it_returns():
+    """
+    Awaited rather than fired and forgotten: a client that polls right after
+    cancelling must not still see the run it just stopped.
+    """
+
+    async def runner(_controls):
+        await asyncio.sleep(30)
+
+    job = await analysis_jobs.start("k", analysis_jobs.KIND_CHAT, [], runner)
+    cancelled = await analysis_jobs.cancel_job(job.id)
+
+    assert cancelled.finished_at is not None
+    assert job.id not in {j.id for j in await analysis_jobs.active_jobs()}
+
+
+async def test_cancelling_a_finished_turn_is_not_an_error():
+    """The poll and the stop button race; losing that race must be harmless."""
+
+    async def runner(_controls):
+        return {"response": "done already"}
+
+    job = await _settle(await analysis_jobs.start("k", analysis_jobs.KIND_CHAT, [], runner))
+    cancelled = await analysis_jobs.cancel_job(job.id)
+
+    assert cancelled is not None
+    assert cancelled.status == "done"
+
+
+async def test_cancelling_an_unknown_turn_returns_none():
+    assert await analysis_jobs.cancel_job("does-not-exist") is None

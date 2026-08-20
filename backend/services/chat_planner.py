@@ -30,11 +30,12 @@ degraded path is therefore the old behaviour, not a broken one.
 import json
 import logging
 import re
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from config import settings
-from services import chat_tools, llm
+from services import chat_intent, chat_tools, llm
 from services.chat_tools import PlannedStep, Tool
 from services.prompts import render_prompt
 
@@ -81,40 +82,167 @@ _ALIASES = {
     "read": "read_page",
     "open_page": "read_page",
     "scrape": "read_page",
+    # The tools added when the registry went from ten to nineteen. Same rule as
+    # above: an explicit table, because a wrong tool costs a real thirty seconds.
+    "fundamentals": "stock_fundamentals",
+    "valuation": "stock_fundamentals",
+    "financials": "stock_fundamentals",
+    "earnings": "stock_fundamentals",
+    "profile": "crypto_profile",
+    "supply": "crypto_profile",
+    "tokenomics": "crypto_profile",
+    "funding": "derivatives",
+    "funding_rate": "derivatives",
+    "open_interest": "derivatives",
+    "liquidations": "derivatives",
+    "positioning": "derivatives",
+    "headlines": "asset_news",
+    "asset_headlines": "asset_news",
+    "symbol_news": "asset_news",
+    "macro": "macro_board",
+    "commodities": "macro_board",
+    "rates": "macro_board",
+    "regime": "macro_board",
+    "brief": "market_brief",
+    "briefing": "market_brief",
+    "daily_brief": "market_brief",
+    "voices": "market_voices",
+    "statements": "market_voices",
+    "officials": "market_voices",
+    "fed": "market_voices",
+    "holders": "ownership",
+    "institutional": "ownership",
+    "13f": "ownership",
+    "insiders": "ownership",
+    "open_url": "read_url",
+    "read_link": "read_url",
+    "user_link": "read_url",
 }
 
 
-async def plan_turn(message: str, focus, user_id: Optional[str] = None) -> List[PlannedStep]:
+@dataclass(frozen=True)
+class TurnPlan:
+    """
+    What this turn will look up, and what kind of question it decided it was.
+
+    The intent travels with the plan because the planner refines it: a
+    deterministic classifier reads the words, and the model reads the question.
+    Where they disagree on a label the taxonomy knows, the model wins — it is
+    the one that can tell "how is BTC doing" from "how does BTC work".
+    """
+
+    steps: List[PlannedStep]
+    intent: str
+    source: str  # "planner" | "heuristic"
+    timeframe: Optional[str] = None
+
+
+async def plan_turn(
+    message: str,
+    focus,
+    user_id: Optional[str] = None,
+    *,
+    intent: str = "current_state",
+    history: Optional[List[Dict[str, str]]] = None,
+    limit: int = chat_tools.MAX_CATALOGUE_TOOLS,
+) -> TurnPlan:
     """
     Choose the tools for this turn.
 
     Never raises and never returns nothing usable: every failure path ends at
     `heuristic_plan`, so the worst case is the pipeline this replaced.
+
+    The catalogue is filtered by the *deterministic* intent, not the model's,
+    because it has to be built before the model is asked. If the model's reading
+    turns out to want a tool the catalogue withheld, the reflection round is
+    where that is recovered — re-filtering and re-planning here would be a loop,
+    and the module docstring explains at length why this is not one.
     """
-    catalogue = chat_tools.available_tools(message, focus)
+    catalogue = chat_tools.available_tools(message, focus, intent, limit=limit, user_id=user_id)
+
+    def fallback(reason: Optional[str] = None) -> TurnPlan:
+        if reason:
+            logger.info("%s; falling back to the fixed plan", reason)
+        return TurnPlan(
+            chat_tools.heuristic_plan(message, focus, intent, user_id=user_id), intent, "heuristic"
+        )
 
     if not settings.CHAT_PLANNER_ENABLED:
-        return chat_tools.heuristic_plan(message, focus)
+        return fallback()
 
     if len(message.strip()) < MIN_PLANNABLE_CHARS:
-        return chat_tools.heuristic_plan(message, focus)
+        return fallback()
 
-    raw = await _ask(message, focus, catalogue, user_id)
+    raw = await _ask(message, focus, catalogue, user_id, intent=intent, history=history)
     if not raw:
-        logger.info("Planner returned nothing; falling back to the fixed plan")
-        return chat_tools.heuristic_plan(message, focus)
+        return fallback("Planner returned nothing")
 
-    steps = parse_plan(raw, catalogue, focus, message)
+    payload = _load_json(raw)
+    steps = parse_plan(raw, catalogue, focus, message, max_steps_for(intent))
     if not steps:
         # Logged with the raw reply so the prompt can be tuned against what the
         # local model actually emits rather than against a guess about it.
-        logger.info("Planner produced no usable steps from %r", raw[:200])
-        return chat_tools.heuristic_plan(message, focus)
+        return fallback(f"Planner produced no usable steps from {raw[:200]!r}")
 
-    return steps
+    refined = intent
+    timeframe = None
+    if isinstance(payload, dict):
+        refined = chat_intent.coerce(payload.get("intent")) or intent
+        timeframe = _timeframe_from(payload)
+
+    return TurnPlan(steps, refined, "planner", timeframe)
 
 
-async def _ask(message: str, focus, catalogue: Sequence[Tool], user_id: Optional[str]) -> str:
+def _timeframe_from(payload: Dict[str, Any]) -> Optional[str]:
+    """The interval the planner named for the turn, validated against the enum."""
+    raw = payload.get("timeframe")
+    if not isinstance(raw, str):
+        return None
+    candidate = raw.strip().lower()
+    return candidate if candidate in chat_intent.TIMEFRAME_WORDS else None
+
+
+# `current_state` and `causal` questions are the ones an experienced desk
+# answers by covering several axes at once — levels, positioning, flow,
+# narrative, macro, precedent — so those get room for more steps. Everything
+# else keeps the old ceiling, because breadth there is just latency.
+MAX_PLAN_STEPS_BROAD = 6
+BROAD_INTENTS = frozenset({"current_state", "causal"})
+
+
+def max_steps_for(intent: str) -> int:
+    return MAX_PLAN_STEPS_BROAD if intent in BROAD_INTENTS else MAX_PLAN_STEPS
+
+
+def _recent_exchange(history: Optional[List[Dict[str, str]]], limit: int = 4) -> str:
+    """
+    The tail of the conversation, for the planner.
+
+    It plans for a question that is often a fragment — "peki 4 saatlikte?" says
+    nothing on its own about what to look up. The focus resolver already carries
+    the subject forward; this carries the *shape* of what was asked, which is
+    what decides whether the follow-up wants a chart or a headline.
+    """
+    if not history:
+        return "(no earlier turns)"
+    lines = []
+    for message in history[-limit:]:
+        speaker = "User" if message.get("role") == "user" else "Oracle"
+        content = (message.get("content") or "").strip().replace("\n", " ")[:200]
+        if content:
+            lines.append(f"{speaker}: {content}")
+    return "\n".join(lines) or "(no earlier turns)"
+
+
+async def _ask(
+    message: str,
+    focus,
+    catalogue: Sequence[Tool],
+    user_id: Optional[str],
+    *,
+    intent: str = "current_state",
+    history: Optional[List[Dict[str, str]]] = None,
+) -> str:
     """The planner call itself. Returns the raw reply, or an empty string."""
     prompt = render_prompt(
         "chat/plan",
@@ -122,7 +250,9 @@ async def _ask(message: str, focus, catalogue: Sequence[Tool], user_id: Optional
         tools=chat_tools.render_catalogue(catalogue),
         symbols=", ".join(focus.symbols) or "none",
         asset_type=focus.asset_type,
-        max_steps=str(MAX_PLAN_STEPS),
+        intent=intent,
+        history=_recent_exchange(history),
+        max_steps=str(max_steps_for(intent)),
         question=message,
     )
 
@@ -154,7 +284,13 @@ async def _ask(message: str, focus, catalogue: Sequence[Tool], user_id: Optional
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def parse_plan(raw: str, catalogue: Sequence[Tool], focus, message: str) -> List[PlannedStep]:
+def parse_plan(
+    raw: str,
+    catalogue: Sequence[Tool],
+    focus,
+    message: str,
+    max_steps: int = MAX_PLAN_STEPS,
+) -> List[PlannedStep]:
     """
     Turn whatever the model said into steps we are willing to run.
 
@@ -199,7 +335,7 @@ def parse_plan(raw: str, catalogue: Sequence[Tool], focus, message: str) -> List
         seen.add(fingerprint)
 
         steps.append(PlannedStep(name, args))
-        if len(steps) >= MAX_PLAN_STEPS:
+        if len(steps) >= max_steps:
             break
 
     return steps
@@ -389,3 +525,167 @@ def _default_for(spec, focus, message: str) -> Optional[Any]:
     if spec.default is not None:
         return spec.default
     return None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# REFLECTION
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# One bounded look back at what the research actually produced, and one chance
+# to fix it. This is what turns "the tool came back empty" from a dead end into
+# either a second attempt or an honest, reasoned answer.
+#
+# It does NOT make this a ReAct loop, and the difference is a security property
+# rather than a preference. The module docstring above states that the planner
+# never reads a web page — by the time any page is fetched, the plan is fixed.
+# The reflection round runs *after* pages are fetched, so preserving that has to
+# be structural: it is handed a digest built from scalars the executors
+# computed, never the blocks themselves. `chat_service.build_reflection_digest`
+# owns that, and `tests/test_chat_reflection.py` pins it.
+#
+# It is also bounded to exactly one round of at most two steps. A loop's cost is
+# whatever the model decides; this is one call plus a fixed remainder.
+
+REFLECT_TIMEOUT = 12.0
+REFLECT_MAX_TOKENS = 240
+MAX_REFLECT_STEPS = 2
+MAX_FOLLOWUPS = 3
+
+# These become clickable buttons that turn into the next user message, so they
+# are bounded and stripped rather than passed through.
+FOLLOWUP_MAX_CHARS = 80
+# Decoration a model reaches for when asked for a list of questions.
+FOLLOWUP_STRIP_CHARS = "-*•\"'` \t"
+
+
+@dataclass(frozen=True)
+class Reflection:
+    """
+    Whether the evidence is enough, and what to do if it is not.
+
+    `sufficient=False` with empty `steps` is a real and important outcome: it
+    means nothing further would help, which is what switches the answer into its
+    degraded mode instead of letting the turn quietly answer as if the gap were
+    not there.
+    """
+
+    sufficient: bool = True
+    missing: str = ""
+    steps: List[PlannedStep] = None
+    followups: Tuple[str, ...] = ()
+    # Facts about the *person* the turn learned, for `chat_memory_service`. The
+    # keys are validated there against a fixed allowlist and the values are
+    # cleaned — nothing proposed here reaches storage unchecked, and it must
+    # not, because a memory outlives the turn that wrote it.
+    remember: Dict[str, str] = None
+
+    def __post_init__(self):
+        if self.steps is None:
+            object.__setattr__(self, "steps", [])
+        if self.remember is None:
+            object.__setattr__(self, "remember", {})
+
+
+async def reflect_turn(
+    message: str,
+    focus,
+    intent: str,
+    digest: str,
+    catalogue: Sequence[Tool],
+    user_id: Optional[str] = None,
+) -> Reflection:
+    """
+    Ask whether the research answered the question, and what would fix it.
+
+    Never raises. A reflection that fails is simply one that found nothing to
+    add, which leaves the turn exactly where it was.
+    """
+    if not settings.CHAT_REFLECTION_ENABLED:
+        return Reflection()
+
+    try:
+        reply = await llm.generate(
+            render_prompt(
+                "chat/reflect",
+                question=message,
+                intent=intent,
+                symbols=", ".join(focus.symbols) or "none",
+                digest=digest,
+                tools=chat_tools.render_catalogue(catalogue),
+                max_steps=str(MAX_REFLECT_STEPS),
+            ),
+            system=render_prompt("chat/reflect_system"),
+            temperature=0.0,
+            max_tokens=REFLECT_MAX_TOKENS,
+            timeout=REFLECT_TIMEOUT,
+            json_mode=True,
+            reasoning=False,
+            prefer=await llm.provider_for(user_id, "chat"),
+        )
+    except Exception as e:  # noqa: BLE001 — a failed reflection is not a failed turn
+        logger.warning("Reflection call failed: %s", e)
+        return Reflection()
+
+    return parse_reflection(reply or "", catalogue, focus, message)
+
+
+def parse_reflection(raw: str, catalogue: Sequence[Tool], focus, message: str) -> Reflection:
+    """
+    Read a reflection out of whatever the model emitted.
+
+    Same defensive posture as `parse_plan`, and the extra steps go through
+    exactly the same pipeline — `_resolve_name`, `_coerce_args`, `_coerce_value`
+    — so a reflection step still cannot name a URL and still cannot name a
+    symbol the question never resolved.
+    """
+    payload = _load_json(raw)
+    if not isinstance(payload, dict):
+        return Reflection()
+
+    sufficient = payload.get("sufficient")
+    sufficient = bool(sufficient) if isinstance(sufficient, bool) else True
+
+    missing = payload.get("missing")
+    missing = missing.strip()[:200] if isinstance(missing, str) else ""
+
+    steps = parse_plan(raw, catalogue, focus, message, MAX_REFLECT_STEPS)
+
+    remember = payload.get("remember")
+    remember = (
+        {k: v for k, v in remember.items() if isinstance(k, str) and isinstance(v, str)}
+        if isinstance(remember, dict)
+        else {}
+    )
+
+    return Reflection(
+        sufficient=sufficient,
+        missing=missing,
+        steps=steps,
+        followups=_clean_followups(payload.get("followups")),
+        remember=remember,
+    )
+
+
+def _clean_followups(raw: Any) -> Tuple[str, ...]:
+    """
+    Suggestions, sanitised.
+
+    They are rendered as buttons whose text becomes the next user message. The
+    model that wrote them only ever saw our own digest, so the injection surface
+    is small — but "small" is not "none", and a suggestion carrying a URL or a
+    newline is a suggestion doing something other than asking a question.
+    """
+    if not isinstance(raw, list):
+        return ()
+
+    cleaned: List[str] = []
+    for item in raw:
+        if not isinstance(item, str):
+            continue
+        text = re.sub(r"\s+", " ", item).strip().strip(FOLLOWUP_STRIP_CHARS)
+        if not text or "http" in text.lower():
+            continue
+        cleaned.append(text[:FOLLOWUP_MAX_CHARS])
+        if len(cleaned) >= MAX_FOLLOWUPS:
+            break
+    return tuple(cleaned)

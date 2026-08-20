@@ -18,10 +18,24 @@ from services.chat_service import QueryFocus
 CRYPTO = QueryFocus(symbols=("BTC",), asset_type="crypto")
 PAIR = QueryFocus(symbols=("BTC", "ETH"), asset_type="crypto")
 MESSAGE = "what is happening with BTC today"
+# Some tools are only offered when the question signals them — `social_search`
+# needs the question to be about what people are saying. Tests about *parsing*
+# use this message so the gate is satisfied and the subject under test is the
+# JSON, not the catalogue.
+CHATTER = "what are people saying about BTC on reddit today"
 
 
-def _catalogue(focus=CRYPTO, message=MESSAGE):
-    return chat_tools.available_tools(message, focus)
+def _catalogue(focus=CRYPTO, message=MESSAGE, intent="current_state"):
+    """
+    Every tool the question's own facts allow, uncapped.
+
+    The catalogue cap is a separate concern with its own tests in
+    `test_chat_tools.py`. Letting it apply here would couple every parsing test
+    to the tool ranking — a new high-ranked tool would start failing tests about
+    JSON shapes, which is exactly the kind of coupling that makes a suite
+    expensive to keep.
+    """
+    return chat_tools.available_tools(message, focus, intent, limit=len(chat_tools.REGISTRY))
 
 
 def _parse(raw, focus=CRYPTO, message=MESSAGE):
@@ -102,7 +116,7 @@ def test_args_that_are_not_an_object_are_discarded_not_fatal():
 )
 def test_names_resolve_exactly_then_loosely_then_by_alias(name, expected):
     raw = f'{{"steps": [{{"tool": "{name}", "args": {{"query": "x", "symbol": "BTC"}}}}]}}'
-    steps = _parse(raw)
+    steps = _parse(raw, message=CHATTER)
 
     assert [s.tool for s in steps] == [expected]
 
@@ -200,7 +214,7 @@ def test_a_list_valued_argument_does_not_break_deduplication():
         '{"query": "BTC", "platforms": ["reddit.com", "x.com"]}}]}'
     )
 
-    steps = _parse(raw)
+    steps = _parse(raw, message=CHATTER)
 
     assert steps[0].args["platforms"] == ["reddit.com", "x.com"]
 
@@ -252,9 +266,10 @@ async def test_every_unusable_reply_falls_back_to_the_fixed_plan(monkeypatch, ra
     monkeypatch.setattr(chat_planner.llm, "generate", _reply)
     monkeypatch.setattr(chat_planner.llm, "provider_for", _none)
 
-    steps = await chat_planner.plan_turn(MESSAGE, CRYPTO)
-    tools = [s.tool for s in steps]
+    plan = await chat_planner.plan_turn(MESSAGE, CRYPTO)
+    tools = [s.tool for s in plan.steps]
 
+    assert plan.source == "heuristic"
     assert tools == [s.tool for s in chat_tools.heuristic_plan(MESSAGE, CRYPTO)]
     assert "historical_precedent" in tools and "web_search" in tools
 
@@ -268,9 +283,12 @@ async def test_a_planner_that_raises_falls_back(monkeypatch):
     monkeypatch.setattr(chat_planner.llm, "generate", _boom)
     monkeypatch.setattr(chat_planner.llm, "provider_for", _none)
 
-    steps = await chat_planner.plan_turn(MESSAGE, CRYPTO)
+    plan = await chat_planner.plan_turn(MESSAGE, CRYPTO)
 
-    assert [s.tool for s in steps] == [s.tool for s in chat_tools.heuristic_plan(MESSAGE, CRYPTO)]
+    assert plan.source == "heuristic"
+    assert [s.tool for s in plan.steps] == [
+        s.tool for s in chat_tools.heuristic_plan(MESSAGE, CRYPTO)
+    ]
 
 
 async def test_the_planner_is_not_called_when_the_flag_is_off(monkeypatch):
@@ -307,6 +325,7 @@ async def test_a_greeting_is_not_worth_a_planner_call(monkeypatch):
 async def test_a_usable_plan_is_used(monkeypatch):
     """The whole point: a plan the fixed pipeline could never have produced."""
     monkeypatch.setattr(chat_planner.settings, "CHAT_PLANNER_ENABLED", True)
+    chatter = "what are people saying about BTC"
 
     async def _reply(*_args, **_kwargs):
         return '{"steps": [{"tool": "social_search", "args": {"query": "BTC"}}]}'
@@ -314,10 +333,72 @@ async def test_a_usable_plan_is_used(monkeypatch):
     monkeypatch.setattr(chat_planner.llm, "generate", _reply)
     monkeypatch.setattr(chat_planner.llm, "provider_for", _none)
 
-    steps = await chat_planner.plan_turn(MESSAGE, CRYPTO)
+    plan = await chat_planner.plan_turn(chatter, CRYPTO)
 
-    assert [s.tool for s in steps] == ["social_search"]
+    assert [s.tool for s in plan.steps] == ["social_search"]
+    assert plan.source == "planner"
 
 
 async def _none(*_args, **_kwargs):
     return None
+
+
+# ── the intent the planner refines ───────────────────────────────────────────
+
+
+async def test_the_planners_intent_overrides_the_deterministic_one(monkeypatch):
+    """
+    The classifier reads the words; the model reads the question. On a label the
+    taxonomy knows, the model wins — it is the one that can tell "how is BTC
+    doing" from "how does BTC work".
+    """
+    monkeypatch.setattr(chat_planner.settings, "CHAT_PLANNER_ENABLED", True)
+
+    async def _reply(*_args, **_kwargs):
+        return '{"intent": "causal", "steps": [{"tool": "web_search", "args": {"query": "x"}}]}'
+
+    monkeypatch.setattr(chat_planner.llm, "generate", _reply)
+    monkeypatch.setattr(chat_planner.llm, "provider_for", _none)
+
+    plan = await chat_planner.plan_turn(MESSAGE, CRYPTO, intent="current_state")
+
+    assert plan.intent == "causal"
+
+
+async def test_an_invented_intent_is_ignored(monkeypatch):
+    monkeypatch.setattr(chat_planner.settings, "CHAT_PLANNER_ENABLED", True)
+
+    async def _reply(*_args, **_kwargs):
+        return '{"intent": "vibes", "steps": [{"tool": "web_search", "args": {"query": "x"}}]}'
+
+    monkeypatch.setattr(chat_planner.llm, "generate", _reply)
+    monkeypatch.setattr(chat_planner.llm, "provider_for", _none)
+
+    plan = await chat_planner.plan_turn(MESSAGE, CRYPTO, intent="current_state")
+
+    assert plan.intent == "current_state"
+
+
+async def test_an_invented_timeframe_is_ignored(monkeypatch):
+    """A chart read on a timeframe nobody asked for answers a different question."""
+    monkeypatch.setattr(chat_planner.settings, "CHAT_PLANNER_ENABLED", True)
+
+    async def _reply(*_args, **_kwargs):
+        return '{"timeframe": "3h", "steps": [{"tool": "web_search", "args": {"query": "x"}}]}'
+
+    monkeypatch.setattr(chat_planner.llm, "generate", _reply)
+    monkeypatch.setattr(chat_planner.llm, "provider_for", _none)
+
+    plan = await chat_planner.plan_turn(MESSAGE, CRYPTO)
+
+    assert plan.timeframe is None
+
+
+async def test_a_broad_intent_earns_more_steps():
+    """
+    An experienced desk answers "how is BTC" by covering several axes at once.
+    A definitional question does not, and spending six tools on one is latency
+    with nothing to show for it.
+    """
+    assert chat_planner.max_steps_for("current_state") > chat_planner.max_steps_for("conceptual")
+    assert chat_planner.max_steps_for("causal") == chat_planner.MAX_PLAN_STEPS_BROAD

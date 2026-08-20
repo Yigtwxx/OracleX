@@ -14,6 +14,7 @@ asset the question is about, choosing and running a plan, fitting the results
 into the context window, and asking the model for an answer.
 """
 
+import asyncio
 import logging
 import re
 import time
@@ -22,25 +23,54 @@ from datetime import datetime
 from typing import Callable, Dict, List, Optional, Tuple
 
 from config import settings
-from services import chat_planner, chat_tools, llm, prompt_budget
+from services import chat_focus, chat_memory_service, chat_planner, chat_tools, llm, prompt_budget
 from services.prompts import render_prompt
 
 logger = logging.getLogger(__name__)
 
-# How long the *answer* may take. This used to be 300s and to mean two things at
-# once — the bound on the LLM call and the de facto ceiling on a whole turn. With
-# tools running in front of the answer those cannot be the same number, so the
-# turn is now bounded in pieces that add up:
+# The turn is bounded in pieces that add up. The arithmetic used to be stated as
 #
 #   TOOL_PHASE_BUDGET (150) + CHAT_TIMEOUT (180) < TURN_TIMEOUT (360)
-CHAT_TIMEOUT = 180.0
+#
+# which left out the planner call: `chat_planner.plan_turn` runs *before*
+# `run_plan` and is bounded only by its own PLANNER_TIMEOUT (25). The real worst
+# case was therefore 25 + 150 + 180 = 355 against a 360 ceiling — five seconds
+# for prompt assembly, snapshot rendering and scheduler jitter, which is not a
+# margin, it is a coincidence. Every phase is now in the sum, and
+# `tests/test_chat_budget.py` asserts it stays that way.
+#
+#   PLANNER_TIMEOUT      25   (services/chat_planner.py)
+#   TOOL_PHASE_BUDGET   120
+#   REFLECT_TIMEOUT      12
+#   REFLECT_PHASE_BUDGET 45
+#   CHAT_TIMEOUT        165
+#   ────────────────────────
+#                       367   against TURN_TIMEOUT 400
 
-# Wall clock across every tool step, checked before each one. Not per step: four
-# searches at 35s each would otherwise leave nothing for the answer.
-TOOL_PHASE_BUDGET = 150.0
+# How long the *answer* generation may take.
+CHAT_TIMEOUT = 165.0
+
+# Wall clock across every tool step of the first round, checked before each one.
+# Not per step: four searches at 35s each would otherwise leave nothing for the
+# answer.
+TOOL_PHASE_BUDGET = 120.0
+
+# The reflection round: one short JSON call, then at most a couple of remedial
+# steps. Sized so a single browser page (30s in scrape_service) fits.
+REFLECT_TIMEOUT = 12.0
+REFLECT_PHASE_BUDGET = 45.0
+
+# Below this much left on the turn, reflection is not worth starting: the call
+# itself would land with no room to act on what it said.
+MIN_REFLECT_VALUE = 20.0
+
+# The tool phases may never eat into this. `run_plan` stops handing out time
+# once the remaining turn is down to it, so the answer always gets a chance to
+# be generated even when research overran.
+ANSWER_FLOOR = 60.0
 
 # The outer bound on a whole turn, for the job runner.
-TURN_TIMEOUT = 360.0
+TURN_TIMEOUT = 400.0
 
 # Below this much left in the phase budget a step is not worth starting: it
 # would be cut off before any upstream could answer, and a step that reports
@@ -49,8 +79,20 @@ TURN_TIMEOUT = 360.0
 MIN_STEP_BUDGET = 1.0
 
 # Conversation history bounds. The frontend sends the whole transcript.
-HISTORY_TURNS = 8
-HISTORY_CHARS = 1500
+#
+# Eight turns at 1 500 characters is up to 12 000 characters — around 3 400
+# tokens of a 12 000-token budget, which made this quietly the largest block in
+# the prompt and the first large thing the budget had to cut. The subject of the
+# conversation now travels in its own pinned focus block (see `chat_focus`), so
+# the transcript no longer has to carry it and can be trimmed harder.
+#
+# The caps are asymmetric because the two roles are worth different amounts. A
+# past user message is a question that may still be live. A past assistant
+# message is worth its subject and its conclusion; its prose is the part the
+# model would write again anyway.
+HISTORY_TURNS = 6
+HISTORY_CHARS = 700
+HISTORY_CHARS_ASSISTANT = 400
 
 # What a block says in place of the part the token budget removed. A trimmed
 # block that does not admit it is trimmed is worse than a missing one: the model
@@ -63,7 +105,24 @@ HISTORY_TRIM_NOTE = (
 )
 EVIDENCE_TRIM_NOTE = "[The tail of this block was dropped to fit the context window.]"
 
-MAX_TOKENS = {"concise": 2000, "detailed": 6000}
+# Ollama counts a reasoning pass against `num_predict` along with the answer, so
+# this ceiling has to cover both — and how long the model thinks is set by how
+# hard the question is, not by how long the answer may be. Measured: a concise
+# turn on "is BTC strong here" spent ~2 500 tokens thinking and then emitted 43
+# words before the ceiling cut it off mid-number.
+#
+# So concise and detailed now share one ceiling. The old 2 000/6 000 split was
+# making the token budget enforce brevity, which is `STYLE_RULES`' job and which
+# the budget cannot do: it cannot shorten an answer, only truncate one. A
+# concise turn still produces a short answer because the style rule says so; it
+# just no longer runs out of room to finish the sentence.
+ANSWER_TOKENS = 6000
+MAX_TOKENS = {"concise": ANSWER_TOKENS, "detailed": ANSWER_TOKENS}
+
+# An answer cut off by the token ceiling ends mid-sentence. There is no flag for
+# it in the response, so this is how the log says so — the alternative is a
+# second full generation on a suspicion, which costs more than the problem.
+_COMPLETE_ENDINGS = ".!?…:»\"'`*)]|-—"
 
 # Auto-titling of a session from its first message. The title lands in a fixed
 # sidebar column, so anything past TITLE_MAX_CHARS would be clipped by CSS and
@@ -79,16 +138,110 @@ TITLE_TIMEOUT = 20.0
 # a trailing period — stripped from both ends of the reply.
 TITLE_STRIP_CHARS = "\"'`“”‘’«»*#—-. \t"
 
+# Length, and only length. What kind of claim is admissible is the answer mode's
+# job (see ANSWER_MODES); these two strings must never mention evidence policy,
+# and no answer mode may mention length. They fight otherwise, and the model
+# resolves the fight by ignoring one of them.
+#
+# The rewrite that matters is concise: "under 120 words" was being read as
+# permission to say less, when the constraint is on words and not on substance.
 STYLE_RULES = {
     "concise": (
-        "Keep it under 120 words: the answer, the two figures that carry it, and "
-        "the one risk to it. No preamble, no summary of the question."
+        "Under 120 words, and every sentence carries a figure. The verdict goes "
+        "in the opening clause, then the two or three figures that decide it, "
+        "then the level that would invalidate the read. No preamble, no "
+        "restatement of the question, no background. Short is a constraint on "
+        "words, not on substance: the worked example in your standing rules is "
+        "still the shape to hit, compressed."
     ),
     "detailed": (
-        "Go deep: 300-450 words. Cover what the data says, what would invalidate "
-        "that read, and where the signals disagree. Still no filler."
+        "300-450 words. Cover what the data says, the precedent analogy if there "
+        "is one, what would invalidate the read, and where the signals disagree. "
+        "Every paragraph must add a figure or a mechanism — length is earned, "
+        "not filled. If you run out of substance at 250 words, stop at 250."
     ),
 }
+
+# What kind of claim this turn may make, chosen by intent. Python constants
+# rather than one markdown file per intent, for a reason that is not style:
+# `tests/test_prompts.py` finds templates by scanning for *literal* string
+# arguments to `render_prompt`/`load_prompt`, so `load_prompt(f"chat/modes/
+# {intent}")` would leave every mode file looking unreferenced and fail the
+# suite. `STYLE_RULES` above is already this pattern.
+#
+# Five modes, deliberately. A distinction that does not change which claims are
+# admissible does not earn its own block — it just dilutes the one the model
+# actually needs to read.
+ANSWER_MODES = {
+    "conceptual": (
+        "**This turn asks how something works, not what it is doing right now.** "
+        "Answer it from your own knowledge: define the mechanism, give the "
+        "formula or the rule of thumb, say what it is used for and where it "
+        "misleads. Do not open with a caveat about data, do not report which "
+        "feeds were unavailable, and do not reach for a current price unless the "
+        "context happens to hold one and it genuinely illustrates the point. The "
+        "standing rule about current figures still binds — but a question with "
+        "no current figure in it does not need one, and refusing it is the wrong "
+        "answer, not the safe one."
+    ),
+    "current_state": (
+        "**This turn asks where something stands now.** Weigh every axis the "
+        "evidence covers before you commit to a read — price and levels, "
+        "momentum across timeframes, positioning, flows, the narrative, the "
+        "macro backdrop, and what precedent says about setups like this one. You "
+        "are not required to walk through them in order; you are required to "
+        "have considered them, and to name the ones that came back empty rather "
+        "than answering as though they agreed with you. If retrieved precedent "
+        "is in the context, one analogy sentence with its measured outcome is "
+        "worth more than a paragraph of description."
+    ),
+    "analytic": (
+        "**This turn asks why, or what would follow.** Lead with the mechanism — "
+        "the thing that would have to be true for this to happen — then the "
+        "closest precedent with what actually followed at its horizon, then the "
+        "current figures that say whether the mechanism is operating now. A "
+        "causal claim with no figure behind it is a guess; say so when that is "
+        "all you have."
+    ),
+    "degraded": (
+        "**The evidence for this turn is thin.** Say what you can support, state "
+        "the assumption you are reasoning from, name the missing piece and what "
+        "it would have settled — and then give the read anyway, at reduced "
+        "confidence. Do not answer with a refusal, do not list which tools "
+        "failed as though that were the answer, and do not invent the figure "
+        "that would have closed the gap."
+    ),
+    "social": (
+        "**This turn is conversational.** One line back, then a two-line read of "
+        "the current market from the context. Nothing more."
+    ),
+}
+
+# Which mode each intent renders. Several intents share one because they are the
+# same question about admissibility wearing different clothes.
+MODE_BY_INTENT = {
+    "conceptual": "conceptual",
+    "greeting": "social",
+    "offtopic": "social",
+    "causal": "analytic",
+    "comparative": "analytic",
+    "scenario": "analytic",
+}
+DEFAULT_MODE = "current_state"
+
+
+def answer_mode_for(intent: str, *, degraded: bool = False) -> str:
+    """
+    The rule block for this turn.
+
+    `degraded` outranks the intent: a conceptual question needs no evidence, so
+    thin evidence never degrades it, but every other intent answers differently
+    when the research came back empty than when it came back full.
+    """
+    if degraded and intent not in ("conceptual", "greeting", "offtopic"):
+        return ANSWER_MODES["degraded"]
+    return ANSWER_MODES[MODE_BY_INTENT.get(intent, DEFAULT_MODE)]
+
 
 # The per-block "this came back empty" strings that used to live here are gone.
 # The evidence manifest states the outcome of every step by name, which covers
@@ -260,24 +413,72 @@ class QueryFocus:
         return self.symbols[0] if self.symbols else None
 
 
-def _stock_leaning(message: str) -> bool:
+STOCK_LEANING_KEYWORDS = (
+    "nasdaq",
+    "stock",
+    "equit",
+    "hisse",
+    "borsa",
+    "s&p",
+    "sp500",
+    "dow jones",
+    "share price",
+    "wall street",
+)
+
+# The mirror of the above, and it exists for one caller: `chat_focus` has to
+# notice when a follow-up has crossed from one asset class to the other, which
+# is a two-sided question. "Leaning" is the right word for both — these are
+# hints from vocabulary, not resolutions, and a message that names an actual
+# ticker never reaches them.
+CRYPTO_LEANING_KEYWORDS = (
+    "crypto",
+    "kripto",
+    "altcoin",
+    "defi",
+    "on-chain",
+    "onchain",
+    "stablecoin",
+    "memecoin",
+    "coin",
+)
+
+
+def stock_leaning(message: str) -> bool:
     """True if a symbol-free question is clearly about equities."""
     lowered = message.lower()
-    return any(
-        kw in lowered
-        for kw in (
-            "nasdaq",
-            "stock",
-            "equit",
-            "hisse",
-            "borsa",
-            "s&p",
-            "sp500",
-            "dow jones",
-            "share price",
-            "wall street",
+    return any(kw in lowered for kw in STOCK_LEANING_KEYWORDS)
+
+
+def crypto_leaning(message: str) -> bool:
+    """True if a symbol-free question is clearly about crypto."""
+    lowered = message.lower()
+    return any(kw in lowered for kw in CRYPTO_LEANING_KEYWORDS)
+
+
+# Kept as a private alias: this module already calls it in three places and the
+# rename is not what this change is about.
+_stock_leaning = stock_leaning
+
+
+async def load_asset_metadata() -> Tuple[Dict, Dict]:
+    """
+    The crypto and equity registries, or empty ones if they are cold.
+
+    Split out because resolving a *conversation's* focus runs the resolver over
+    several past messages, and fetching the registry once per message would turn
+    one pair of awaits into ten. See `services.chat_focus`.
+    """
+    from services import asset_registry
+
+    try:
+        return (
+            await asset_registry.get_crypto_metadata(),
+            await asset_registry.get_stock_metadata(),
         )
-    )
+    except Exception as e:  # noqa: BLE001 — a cold registry must not kill the turn
+        logger.warning("Asset registry unavailable for symbol resolution: %s", e)
+        return {}, {}
 
 
 async def resolve_query_assets(message: str) -> QueryFocus:
@@ -289,19 +490,23 @@ async def resolve_query_assets(message: str) -> QueryFocus:
     general market question — inventing a default symbol is what used to send
     the whole pipeline off analysing the wrong thing.
     """
-    from services import asset_registry
+    crypto_meta, stock_meta = await load_asset_metadata()
+    return resolve_against(message, crypto_meta, stock_meta)
+
+
+def resolve_against(message: str, crypto_meta: Dict, stock_meta: Dict) -> QueryFocus:
+    """
+    `resolve_query_assets` without the I/O, so it can be run over many messages.
+
+    Every symbol this returns has been checked against one of the two registries
+    passed in — which is the property `chat_planner._coerce_value` relies on when
+    it refuses any symbol the model names that is not in the focus.
+    """
     from services.symbol_detection_service import (
         CRYPTO_ALIASES,
         EQUITY_ALIASES,
         find_pattern_matches,
     )
-
-    try:
-        crypto_meta = await asset_registry.get_crypto_metadata()
-        stock_meta = await asset_registry.get_stock_metadata()
-    except Exception as e:  # noqa: BLE001 — a cold registry must not kill the turn
-        logger.warning("Asset registry unavailable for symbol resolution: %s", e)
-        crypto_meta, stock_meta = {}, {}
 
     ordered: List[str] = []
     kinds: Dict[str, str] = {}
@@ -466,6 +671,7 @@ async def run_plan(
     on_step: Optional[Callable[[Dict[str, object]], None]] = None,
     *,
     budget: float = TOOL_PHASE_BUDGET,
+    offset: int = 0,
 ) -> List[StepOutcome]:
     """
     Execute a plan in order, reporting each step as it starts and finishes.
@@ -480,14 +686,24 @@ async def run_plan(
     A step that would not fit is marked skipped and reported as such — the turn
     then answers from what it has, instead of the answer itself being the thing
     that ran out of time.
+
+    Two deadlines bound the loop and the earlier one wins: this phase's own
+    budget, and the whole turn's deadline less `ANSWER_FLOOR`. Summing phase
+    budgets independently is what let the planner call fall outside the
+    arithmetic; taking the minimum against a single turn deadline is what stops
+    an overrun anywhere upstream from being paid for by the answer.
     """
     outcomes: List[StepOutcome] = []
     deadline = time.monotonic() + budget
+    if ctx.deadline is not None:
+        deadline = min(deadline, ctx.deadline - ANSWER_FLOOR)
 
     for index, step in enumerate(plan):
         tool = chat_tools.REGISTRY.get(step.tool)
         label = _step_label(ctx, tool, step)
-        step_id = str(index)
+        # Offset so a second round appends to the timeline rather than
+        # overwriting the first — the transport upserts by id.
+        step_id = str(index + offset)
 
         # Skip on an exhausted budget, not on one too small for the tool's full
         # timeout. Those are very different tests: the declared timeouts add up
@@ -546,7 +762,11 @@ def _report(
     )
 
 
-def _render_evidence(outcomes: List[StepOutcome], budget: "prompt_budget.BudgetResult") -> str:
+def _render_evidence(
+    outcomes: List[StepOutcome],
+    budget: "prompt_budget.BudgetResult",
+    gap: str = "",
+) -> str:
     """
     The evidence section: a manifest of what ran, then the surviving blocks.
 
@@ -568,6 +788,17 @@ def _render_evidence(outcomes: List[StepOutcome], budget: "prompt_budget.BudgetR
         "Anything not listed above was not consulted. A step marked `empty` or "
         "`failed` is a gap to state plainly, never one to fill in."
     )
+    if gap:
+        # Named by the reflection round, which looked at what came back and
+        # concluded nothing further would close it. Without this line the model
+        # sees a manifest of steps that ran and no reason to suspect the answer
+        # is short of something — the difference between an answer that hedges
+        # for the right reason and one that does not hedge at all.
+        manifest.append(
+            f"RESEARCH GAP — wanted this turn and could not be obtained: {gap}. "
+            "Do not fill it in. Reason from what is here, say what that missing "
+            "piece would have decided, and lower your confidence accordingly."
+        )
 
     sections = []
     for index, outcome in enumerate(outcomes):
@@ -578,6 +809,170 @@ def _render_evidence(outcomes: List[StepOutcome], budget: "prompt_budget.BudgetR
     return "\n".join(manifest) + "\n\n" + "\n\n".join(sections)
 
 
+# Templates for the suggestions shown under an answer, when the reflection round
+# did not supply any. Keyed by the tool that would answer them, so a suggestion
+# is only ever offered when that tool is actually available for this focus — a
+# button that leads to "I could not look that up" is worse than no button.
+FOLLOWUP_TEMPLATES = {
+    "read_chart": ("{symbol} 4 saatlik grafikte ne diyor?", "What does the {symbol} 4h chart say?"),
+    "derivatives": (
+        "{symbol} funding ve likidasyonlar nerede?",
+        "Where are {symbol} funding and liquidations?",
+    ),
+    "asset_news": ("{symbol} için son haberler ne?", "What is the latest news on {symbol}?"),
+    "historical_precedent": (
+        "Bunun benzeri geçmişte ne zaman oldu?",
+        "When did something like this happen before?",
+    ),
+    "stock_fundamentals": ("{symbol} değerlemesi ne durumda?", "How is {symbol} valued?"),
+    "macro_board": ("Makro tarafta ne var?", "What is the macro backdrop doing?"),
+    "market_voices": ("Bu konuda kim ne dedi?", "Who has said what about this?"),
+}
+
+# Turkish-specific characters are the cheapest reliable signal for which of the
+# two templates to render. The alternative — asking the model — is a whole extra
+# call for a button label.
+_TURKISH_CHARS = set("çğıöşüÇĞİÖŞÜ")
+
+# Turkish written without its own characters is common — "nedir", "nasil",
+# "neden" all type cleanly on an English keyboard — so the character test alone
+# answered "funding rate nedir?" in English. These are the interrogatives that
+# carry a question, matched as whole words so "ne" does not fire inside "news".
+_TURKISH_WORDS = (
+    "ne",
+    "nedir",
+    "nasil",
+    "nasıl",
+    "neden",
+    "niye",
+    "niçin",
+    "kac",
+    "kaç",
+    "hangi",
+    "kim",
+    "icin",
+    "için",
+    "mi",
+    "mı",
+    "mu",
+    "mü",
+    "var",
+    "yok",
+    "gibi",
+)
+
+_TURKISH_WORD_RE = re.compile(
+    r"\b(?:" + "|".join(_TURKISH_WORDS) + r")\b", re.IGNORECASE | re.UNICODE
+)
+
+
+def _is_turkish(message: str) -> bool:
+    """
+    Which language a follow-up button should be written in.
+
+    A heuristic on purpose. The alternative is asking the model, which is a
+    whole extra call for a button label — and getting it wrong costs a button
+    in the wrong language, not a wrong answer.
+    """
+    if set(message or "") & _TURKISH_CHARS:
+        return True
+    return bool(_TURKISH_WORD_RE.search(message or ""))
+
+
+def suggest_followups(
+    state, intent: str, outcomes: List[StepOutcome], message: str = ""
+) -> Tuple[str, ...]:
+    """
+    Two or three next questions, when the reflection round did not supply them.
+
+    Templated rather than generated, because the alternative is a fourth serial
+    LLM call in a budget that has about thirty seconds of slack. The reflection
+    round produces better ones and produces them for free — this is the floor
+    for the turns where it did not run.
+
+    Filtered to tools that are genuinely offerable for this focus, so a
+    suggestion never leads to a question the next turn cannot research.
+    """
+    if intent in ("greeting", "offtopic"):
+        return ()
+
+    symbol = state.primary or ""
+    already = {outcome.step.tool for outcome in outcomes if outcome.status == "done"}
+    turkish = _is_turkish(message)
+
+    offerable = {tool.name for tool in chat_tools.available_tools(message, state.focus, intent)}
+
+    suggestions: List[str] = []
+    for tool, (tr, en) in FOLLOWUP_TEMPLATES.items():
+        if tool in already or tool not in offerable:
+            continue
+        template = tr if turkish else en
+        if "{symbol}" in template and not symbol:
+            continue
+        suggestions.append(template.format(symbol=symbol))
+        if len(suggestions) >= chat_planner.MAX_FOLLOWUPS:
+            break
+
+    return tuple(suggestions)
+
+
+# Beyond this many links a citation list stops being read and starts being
+# scrolled past.
+MAX_CITATIONS = 8
+
+
+def _citations_from(outcomes: List[StepOutcome]) -> List[Dict[str, str]]:
+    """Every source a completed step actually used, deduped by URL."""
+    from urllib.parse import urlparse
+
+    seen: set = set()
+    citations: List[Dict[str, str]] = []
+    for outcome in outcomes:
+        if outcome.status != "done":
+            continue
+        for url in outcome.result.sources:
+            if not url or url in seen:
+                continue
+            seen.add(url)
+            citations.append(
+                {
+                    "url": url,
+                    "label": (urlparse(url).hostname or url).removeprefix("www."),
+                    "tool": outcome.step.tool,
+                }
+            )
+            if len(citations) >= MAX_CITATIONS:
+                return citations
+    return citations
+
+
+def build_reflection_digest(outcomes: List[StepOutcome]) -> str:
+    """
+    What the research produced, in a form that is safe to plan against.
+
+    This is the load-bearing function of the reflection round. `chat_planner`'s
+    docstring documents a real invariant — the planner never reads a web page,
+    because by the time any page is fetched the plan is already fixed — and the
+    reflection round runs *after* pages are fetched. Preserving the invariant
+    therefore has to be structural rather than a line in a prompt.
+
+    So this is built from the step's *status* and from `chat_tools.digest_line`,
+    which each tool implements over the scalars its executor computed: a count,
+    a hostname, whether a field was present. `ToolResult.block` never appears
+    here, and neither does `ToolResult.detail` — the latter is written for the
+    timeline and several tools interpolate upstream text into it.
+
+    `tests/test_chat_reflection.py` puts an instruction inside a block and
+    asserts it does not survive into the rendered prompt. That test is the thing
+    to argue with before making this richer.
+    """
+    lines = []
+    for outcome in outcomes:
+        note = chat_tools.digest_line(outcome.tool, outcome.result)
+        lines.append(f"- {outcome.step.tool} [{outcome.status}] — {note}")
+    return "\n".join(lines) or "- nothing ran"
+
+
 def _history_block(history: Optional[List[Dict[str, str]]]) -> str:
     """The recent turns, bounded — the client sends the entire transcript."""
     if not history:
@@ -585,8 +980,10 @@ def _history_block(history: Optional[List[Dict[str, str]]]) -> str:
 
     lines = []
     for msg in history[-HISTORY_TURNS:]:
-        speaker = "User" if msg.get("role") == "user" else "Oracle"
-        content = (msg.get("content") or "").strip()[:HISTORY_CHARS]
+        is_user = msg.get("role") == "user"
+        speaker = "User" if is_user else "Oracle"
+        limit = HISTORY_CHARS if is_user else HISTORY_CHARS_ASSISTANT
+        content = (msg.get("content") or "").strip()[:limit]
         if content:
             lines.append(f"{speaker}: {content}")
 
@@ -604,6 +1001,7 @@ async def chat_with_oracle(
     style: str = "detailed",
     user_id: Optional[str] = None,
     on_step: Optional[Callable[[Dict[str, object]], None]] = None,
+    focus_override: Optional[str] = None,
 ) -> Dict:
     """
     Answer one chat turn against live market data.
@@ -618,15 +1016,96 @@ async def chat_with_oracle(
     start_time = datetime.now()
     style = style if style in MAX_TOKENS else "detailed"
 
-    focus = await resolve_query_assets(message)
+    # One deadline for the whole turn, set before anything can spend time. Every
+    # phase below takes `min(its own budget, what is left)` against this, so an
+    # overrun in the planner or in a slow tool is paid for by the phases after
+    # it rather than by the answer. The job runner's own `TURN_TIMEOUT` is the
+    # hard stop; this is the cooperative one that lets the turn degrade
+    # gracefully instead of being killed with nothing to show.
+    turn_deadline = time.monotonic() + TURN_TIMEOUT
+
+    # The focus spans the conversation, not just this message. `resolve_state`
+    # replays the same registry-backed resolver over the recent user turns and
+    # decides whether this one inherits what it found — which is what makes
+    # "peki RSI'ı?" a question about BTC rather than a question about nothing.
+    state = await chat_focus.resolve_state(message, history, override=focus_override)
+    focus, intent = state.focus, state.intent
+
+    # What this user has told the assistant in earlier sessions. Never fails a
+    # turn: an unreachable memory is an empty one.
+    memory = await chat_memory_service.recall(user_id)
 
     # The snapshot is pinned rather than planned: it is the one source that
     # outranks everything else, so no plan gets to leave it out. It also runs
     # first, which is what lets later steps read `ctx.snapshot`.
-    chosen = await chat_planner.plan_turn(message, focus, user_id=user_id)
-    plan = [chat_tools.PlannedStep(chat_tools.PINNED_TOOL, {})] + chosen
-    ctx = chat_tools.ToolContext(message=message, focus=focus)
+    turn_plan = await chat_planner.plan_turn(
+        message,
+        focus,
+        user_id=user_id,
+        intent=intent,
+        history=history,
+        # A concise turn sees a shorter catalogue. Not to make it thinner — the
+        # plan is the same either way — but a shorter list is a faster and more
+        # reliable pick, and a concise answer has less room to recover from a
+        # wrong one.
+        limit=(
+            chat_tools.MAX_CATALOGUE_TOOLS_CONCISE
+            if style == "concise"
+            else chat_tools.MAX_CATALOGUE_TOOLS
+        ),
+    )
+    # The planner reads the question rather than its keywords, so where it names
+    # an intent the taxonomy knows, it is the better answer.
+    intent = turn_plan.intent
+    plan = [chat_tools.PlannedStep(chat_tools.PINNED_TOOL, {})] + turn_plan.steps
+    ctx = chat_tools.ToolContext(
+        message=message,
+        focus=focus,
+        deadline=turn_deadline,
+        user_id=user_id,
+        # Known before the first step runs, so the snapshot can drop the
+        # market-wide sections a dedicated tool is about to cover per-asset.
+        planned=tuple(step.tool for step in plan),
+    )
     outcomes = await run_plan(ctx, plan, on_step)
+
+    # ── the second look ──────────────────────────────────────────────────────
+    #
+    # One bounded round: was that enough, and if not, what would fix it. This is
+    # what turns "the tool came back empty" from a dead end into either another
+    # attempt or an honest, reasoned answer that names the gap.
+    reflection = chat_planner.Reflection()
+    remaining = turn_deadline - time.monotonic()
+    worth_reflecting = (
+        settings.CHAT_REFLECTION_ENABLED
+        and intent not in ("conceptual", "greeting", "offtopic")
+        # A concise turn pays for a second round only when there is plenty left.
+        # Not to make it thinner — the first round's plan is the same either way
+        # — but a short answer has less to gain from a marginal extra source.
+        and (style == "detailed" or remaining > 90)
+        and remaining > ANSWER_FLOOR + REFLECT_TIMEOUT + MIN_REFLECT_VALUE
+    )
+
+    if worth_reflecting:
+        reflection = await chat_planner.reflect_turn(
+            message,
+            focus,
+            intent,
+            build_reflection_digest(outcomes),
+            chat_tools.available_tools(message, focus, intent, user_id=user_id),
+            user_id=user_id,
+        )
+        # What the turn learned about the person, as opposed to about the
+        # market. Fire-and-forget: a memory write must never be something the
+        # answer waits on.
+        if reflection.remember:
+            asyncio.create_task(chat_memory_service.remember(user_id, reflection.remember))
+
+        if reflection.steps:
+            ctx.planned = ctx.planned + tuple(step.tool for step in reflection.steps)
+            outcomes += await run_plan(
+                ctx, reflection.steps, on_step, budget=REFLECT_PHASE_BUDGET, offset=len(outcomes)
+            )
 
     system_prompt = render_prompt("chat/system")
 
@@ -643,6 +1122,15 @@ async def chat_with_oracle(
     blocks = [
         prompt_budget.Block("system", system_prompt, priority=100, pinned=True),
         prompt_budget.Block("question", message, priority=100, pinned=True),
+        # Ranked just under the snapshot and above every derived block. It is
+        # ~30 tokens and it is the only thing in the prompt that says which
+        # asset the evidence is about when the question did not name one — a
+        # turn that loses it answers confidently about an unnamed subject.
+        prompt_budget.Block("focus", chat_focus.describe(state), priority=90),
+        # Low: it shapes the answer rather than grounding it, so when the prompt
+        # is tight this is worth less than any measured figure. It is also small
+        # enough that it rarely comes to that.
+        prompt_budget.Block("memory", chat_memory_service.describe(memory), priority=12),
         prompt_budget.Block(
             "history",
             _history_block(history),
@@ -667,11 +1155,29 @@ async def chat_with_oracle(
 
     budget = prompt_budget.fit(blocks, settings.PROMPT_TOKEN_BUDGET)
 
+    # "Every research step came back with nothing" is a different question from
+    # "no research was planned". A conceptual turn plans little and needs less,
+    # so an empty result set there is success, not a gap — which is why the mode
+    # selector, not this line, decides whether `degraded` can apply at all.
+    researched = [o for o in outcomes if o.step.tool != chat_tools.PINNED_TOOL]
+    everything_empty = bool(researched) and all(
+        o.status in ("empty", "failed", "skipped") for o in researched
+    )
+    # Two independent ways to end up short: every step came back with nothing,
+    # or the reflection round looked at what did come back and said it was not
+    # enough with no remedy available. Either one changes what an honest answer
+    # looks like.
+    unresolved_gap = not reflection.sufficient and not reflection.steps
+    degraded = everything_empty or unresolved_gap
+
+    followups = reflection.followups or suggest_followups(state, intent, outcomes, message)
+
     user_prompt = render_prompt(
         "chat/turn",
-        evidence=_render_evidence(outcomes, budget),
+        evidence=_render_evidence(outcomes, budget, reflection.missing if unresolved_gap else ""),
         history=budget.text("history") or "(this is the first message of the conversation)",
         question=message,
+        answer_mode=answer_mode_for(intent, degraded=degraded),
         style_rule=STYLE_RULES[style],
     )
 
@@ -680,27 +1186,60 @@ async def chat_with_oracle(
         o.step.tool.replace("_", " ").capitalize() for o in outcomes if o.status == "done"
     ]
 
-    try:
-        response = await llm.generate(
+    # The real URLs, which used to be collected and then thrown away: this
+    # function overwrote `sources` with the tool names above, so
+    # `ToolResult.sources` never left the server and the client had no citation
+    # list independent of what the model chose to inline. Both are returned now
+    # — the names for the sidebar, the links for the reader.
+    #
+    # The visible label is the host, not any title the page supplied. A
+    # search-result title is attacker-influenced text; React escapes it, but the
+    # host is both safer and tidier, and it is what a reader actually scans for.
+    citations = _citations_from(outcomes)
+
+    provider = await llm.provider_for(user_id, "chat")
+
+    async def _answer(*, reasoning: bool) -> Optional[str]:
+        return await llm.generate(
             user_prompt,
             system=system_prompt,
             temperature=0.3,
             top_p=0.9,
             max_tokens=MAX_TOKENS[style],
             timeout=CHAT_TIMEOUT,
-            # A detailed answer has to weigh conflicting signals against each
-            # other and name what would invalidate its own read — the work a
-            # small model gets wrong when it answers in one pass. A concise
-            # answer is two figures and a risk, and pays the latency for nothing.
-            # Either way the <think> block is stripped in the LLM layer, so this
-            # only decides how the model reasons, never what the user sees.
-            reasoning=(style == "detailed"),
+            reasoning=reasoning,
             # Ollama-only knobs; other providers ignore them. The real ceiling is
             # PROMPT_TOKEN_BUDGET, enforced above — this is what the server is
             # asked to allocate, and it does not by itself prevent truncation.
             extra={"repeat_penalty": 1.1, "num_ctx": settings.LLM_NUM_CTX},
-            prefer=await llm.provider_for(user_id, "chat"),
+            prefer=provider,
         )
+
+    try:
+        # Reasoning is on for both styles now. It used to be detailed-only, on
+        # the argument that a concise answer is "two figures and a risk" and
+        # pays the latency for nothing — but that is what made concise answers
+        # feel superficial: a small local model was answering a market question
+        # in a single pass. The <think> block is stripped centrally in the LLM
+        # layer, so this decides how the model reasons, never what the user sees.
+        response = await _answer(reasoning=True)
+
+        # A reasoning pass shares `num_predict` with the answer on Ollama, so a
+        # long think can consume the whole allowance and leave nothing after the
+        # stripped block. That is a specific, recognisable failure — an empty
+        # reply where a reasoning model was asked — and it is cheap to make
+        # non-fatal by asking once more without it.
+        if not (response or "").strip():
+            logger.info("Empty reply with reasoning on; retrying without it")
+            response = await _answer(reasoning=False)
+        elif response.rstrip()[-1:] not in _COMPLETE_ENDINGS:
+            # Not retried, only reported. A retry would spend another full
+            # generation, and the fix for a real ceiling problem is the ceiling.
+            logger.warning(
+                "Answer may have hit the %s-token ceiling — it ends %r",
+                MAX_TOKENS[style],
+                response.rstrip()[-40:],
+            )
     except Exception as e:  # noqa: BLE001 — surface as a chat message, not a 500
         logger.exception("Chat generation failed")
         return {
@@ -708,6 +1247,9 @@ async def chat_with_oracle(
             "thinking_time": round((datetime.now() - start_time).total_seconds(), 1),
             "sources": [],
             "detected_symbol": focus.primary,
+            "focus_inherited": bool(state.inherited),
+            "intent": intent,
+            "followups": list(followups),
         }
 
     elapsed = round((datetime.now() - start_time).total_seconds(), 1)
@@ -721,6 +1263,9 @@ async def chat_with_oracle(
             "thinking_time": elapsed,
             "sources": [],
             "detected_symbol": focus.primary,
+            "focus_inherited": bool(state.inherited),
+            "intent": intent,
+            "followups": list(followups),
         }
 
     answer = response.strip()
@@ -732,6 +1277,13 @@ async def chat_with_oracle(
         "thinking_time": elapsed,
         "sources": sources_used,
         "detected_symbol": focus.primary,
+        # Whether the subject was asked for or carried. The badge in the UI
+        # needs it, and so does anyone reading a log wondering why a turn
+        # answered about an asset the question never mentioned.
+        "focus_inherited": bool(state.inherited),
+        "intent": intent,
+        "followups": list(followups),
+        "citations": citations,
     }
 
 

@@ -80,7 +80,13 @@ describe('toChatJob', () => {
         response: 'BTC is at 60k',
         thinking_time: 41.8,
         sources: ['Market snapshot', 'Web search'],
+        citations: [
+          { url: 'https://www.coindesk.com/a', label: 'coindesk.com', tool: 'web_search' },
+        ],
+        followups: ['What do the 4h levels say?'],
         detected_symbol: 'BTC',
+        focus_inherited: true,
+        intent: 'current_state',
         session_title: 'BTC check',
       },
     });
@@ -89,9 +95,43 @@ describe('toChatJob', () => {
       response: 'BTC is at 60k',
       thinkingTime: 41.8,
       sources: ['Market snapshot', 'Web search'],
+      citations: [{ url: 'https://www.coindesk.com/a', label: 'coindesk.com', tool: 'web_search' }],
+      followups: ['What do the 4h levels say?'],
       detectedSymbol: 'BTC',
+      focusInherited: true,
+      intent: 'current_state',
       sessionTitle: 'BTC check',
     });
+  });
+
+  it('drops a citation with no url rather than rendering a dead link', () => {
+    const job = toChatJob({
+      job_id: 'abc',
+      status: 'done',
+      result: {
+        response: 'x',
+        citations: [
+          { label: 'nowhere', tool: 'web_search' },
+          { url: '', label: 'empty', tool: 'web_search' },
+          { url: 'https://ok.example/a', tool: 'web_search' },
+        ],
+      },
+    });
+
+    expect(job.result?.citations).toEqual([
+      // The label falls back to the URL rather than to an empty anchor.
+      { url: 'https://ok.example/a', label: 'https://ok.example/a', tool: 'web_search' },
+    ]);
+  });
+
+  it('ignores followups that are not strings', () => {
+    const job = toChatJob({
+      job_id: 'abc',
+      status: 'done',
+      result: { response: 'x', followups: ['real question?', null, 42, { a: 1 }] },
+    });
+
+    expect(job.result?.followups).toEqual(['real question?']);
   });
 
   it('survives a result missing its optional fields', () => {
@@ -102,6 +142,12 @@ describe('toChatJob', () => {
     });
 
     expect(job.result?.sources).toEqual([]);
+    expect(job.result?.citations).toEqual([]);
+    expect(job.result?.followups).toEqual([]);
+    // Absent means "not carried over", not "unknown" — the badge would
+    // otherwise claim an inheritance on every message written before the
+    // backend started sending the field.
+    expect(job.result?.focusInherited).toBe(false);
     expect(job.result?.sessionTitle).toBeUndefined();
   });
 

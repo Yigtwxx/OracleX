@@ -36,11 +36,32 @@ export interface ChatJob {
   error?: string;
 }
 
+/**
+ * One page an answer was actually built from.
+ *
+ * `label` is the host, never a title the page supplied — a search-result title
+ * is text a third party wrote, and while React escapes it, the host is both
+ * safer and what a reader actually scans for.
+ */
+export interface Citation {
+  url: string;
+  label: string;
+  tool: string;
+}
+
 export interface ChatJobResult {
   response: string;
   thinkingTime: number;
+  /** Tool names, for the step summary. Not links — see `citations`. */
   sources: string[];
+  citations: Citation[];
+  /** Suggested next questions, rendered as buttons under the answer. */
+  followups: string[];
   detectedSymbol?: string;
+  /** Whether the subject was carried over rather than named by this message. */
+  focusInherited?: boolean;
+  /** What kind of question the turn decided this was. */
+  intent?: string;
   sessionTitle?: string;
 }
 
@@ -100,12 +121,37 @@ export function toChatJob(raw: RawChatJob): ChatJob {
   };
 }
 
+/**
+ * Citations, defensively.
+ *
+ * These become anchors the user can click, so a row missing its URL is dropped
+ * rather than rendered as a dead link, and the label falls back to the URL
+ * rather than to an empty string.
+ */
+function toCitations(raw: unknown): Citation[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((row) => row as Record<string, unknown>)
+    .filter((row) => typeof row?.url === 'string' && row.url.length > 0)
+    .map((row) => ({
+      url: row.url as string,
+      label: typeof row.label === 'string' && row.label ? row.label : (row.url as string),
+      tool: typeof row.tool === 'string' ? row.tool : '',
+    }));
+}
+
 function toChatJobResult(raw: Record<string, unknown>): ChatJobResult {
   return {
     response: typeof raw.response === 'string' ? raw.response : '',
     thinkingTime: typeof raw.thinking_time === 'number' ? raw.thinking_time : 0,
     sources: Array.isArray(raw.sources) ? (raw.sources as string[]) : [],
+    citations: toCitations(raw.citations),
+    followups: Array.isArray(raw.followups)
+      ? (raw.followups as unknown[]).filter((f): f is string => typeof f === 'string')
+      : [],
     detectedSymbol: optional(raw.detected_symbol as string | null),
+    focusInherited: raw.focus_inherited === true,
+    intent: optional(raw.intent as string | null),
     sessionTitle: optional(raw.session_title as string | null),
   };
 }

@@ -5,6 +5,7 @@ import {
   Brain,
   Send,
   Loader2,
+  Square,
   Sparkles,
   Microscope,
   Clock,
@@ -15,8 +16,8 @@ import {
   Menu,
   Trash2,
   ChevronRight,
+  ExternalLink,
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 import ChatSidebar from './ChatSidebar';
 import ChatModeBackdrop from './ChatModeBackdrop';
 import ThinkingCandles from './ThinkingCandles';
@@ -28,14 +29,22 @@ import {
   fetchSessionMessages,
   saveChatMessage as saveChatMessageApi,
   startChatJob,
+  cancelChatJob,
   fetchChatStatus,
   type ChatSession,
 } from '@/lib/api';
 import { useChatJob } from '@/hooks/queries';
 import StepTimeline from './chat/StepTimeline';
-import { toStepRow, toStoredSteps, type ChatStep } from '@/lib/chat-job';
+import Markdown from './ui/Markdown';
+import { toStepRow, toStoredSteps, type ChatStep, type Citation } from '@/lib/chat-job';
 
 type ResponseStyle = 'concise' | 'detailed';
+
+// How much of the transcript travels with a turn. See the comment where it is
+// used — the lower bound is set by `chat_focus.FOCUS_LOOKBACK_TURNS` on the
+// server, which is 4 user messages.
+const HISTORY_WINDOW = 12;
+const HISTORY_MESSAGE_CHARS = 2000;
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -54,6 +63,14 @@ interface ChatMessage {
    * messages for the same reason `mode` is — the steps are not persisted yet.
    */
   steps?: ChatStep[];
+  /**
+   * The pages behind the answer. Not persisted either, so a restored message
+   * shows the links the model chose to inline and nothing more.
+   */
+  citations?: Citation[];
+  /** The asset this turn resolved to, and whether it was carried over. */
+  focusSymbol?: string;
+  focusInherited?: boolean;
 }
 
 // The style picker used to be two words that swapped a grey background, so the
@@ -166,6 +183,7 @@ export default function OracleChatPage() {
   // started it: the backend runs the turn as a job so its steps can be reported
   // while they happen, and this id is what the poller follows.
   const [activeJobId, setActiveJobId] = useState<string | undefined>(undefined);
+  const [followups, setFollowups] = useState<string[]>([]);
   const chatJob = useChatJob(activeJobId);
 
   // Session State
@@ -179,6 +197,11 @@ export default function OracleChatPage() {
   // in-flight turn belongs to — the user can switch sessions while waiting.
   const handledJobRef = useRef<string | undefined>(undefined);
   const jobSessionRef = useRef<string | null>(null);
+  // A session this component just created for the turn it is sending. Its
+  // messages are already on screen, and the row that persists them is still in
+  // flight, so loading its history would replace the optimistic bubble with an
+  // empty list — the first message of a new chat would vanish.
+  const freshSessionRef = useRef<string | null>(null);
 
   // Check chat availability on mount
   useEffect(() => {
@@ -194,6 +217,10 @@ export default function OracleChatPage() {
 
   // Load messages when session changes
   useEffect(() => {
+    if (currentSessionId && freshSessionRef.current === currentSessionId) {
+      freshSessionRef.current = null;
+      return;
+    }
     if (user?.id && currentSessionId) {
       loadSessionMessages(currentSessionId);
     } else if (!currentSessionId) {
@@ -325,8 +352,16 @@ export default function OracleChatPage() {
           timestamp: new Date(),
           mode: pendingStyle,
           steps: job.steps,
+          citations: result.citations,
+          focusSymbol: result.detectedSymbol,
+          focusInherited: result.focusInherited,
         },
       ]);
+
+      // Suggestions are per-turn, not per-message: they belong to the answer on
+      // screen, and keeping them on an older bubble would offer the user
+      // follow-ups to a conversation that has already moved on.
+      setFollowups(result.followups ?? []);
 
       // The backend auto-titles a session on its first turn and returns the
       // title it persisted, so the sidebar can drop the raw message slice it
@@ -367,6 +402,7 @@ export default function OracleChatPage() {
 
     setMessages((prev) => [...prev, userMessage]);
     setInputValue('');
+    setFollowups([]);
     setPendingStyle(responseStyle);
     setIsLoading(true);
 
@@ -379,6 +415,7 @@ export default function OracleChatPage() {
         const session = await createChatSession(title);
         if (session?.id) {
           activeSessionId = session.id;
+          freshSessionRef.current = session.id;
           setCurrentSessionId(session.id);
           setSessions((prev) => [session, ...prev]);
         }
@@ -408,10 +445,19 @@ export default function OracleChatPage() {
     }
 
     try {
-      // Build history for context (exclude current message)
-      const history = messages.map((m) => ({
+      // The transcript the turn resolves its subject from, bounded.
+      //
+      // This used to send every message of the session on every turn, with no
+      // cap on count or length — a long conversation grew the request until the
+      // server's own trimming was the only thing keeping the prompt in budget.
+      //
+      // The floor is not arbitrary: `chat_focus.FOCUS_LOOKBACK_TURNS` walks
+      // back four *user* messages looking for the subject of a follow-up, so
+      // this window has to comfortably contain that. Cut it below eight and
+      // sticky focus quietly stops working on a restored session.
+      const history = messages.slice(-HISTORY_WINDOW).map((m) => ({
         role: m.role,
-        content: m.content,
+        content: m.content.slice(0, HISTORY_MESSAGE_CHARS),
       }));
 
       // Start the turn as a job and hand it to the poller. The answer arrives
@@ -441,6 +487,35 @@ export default function OracleChatPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     sendMessage(inputValue);
+  };
+
+  /**
+   * Stop the turn that is running.
+   *
+   * Clearing `activeJobId` is what actually stops this client: it disables the
+   * poll and takes the collection effect below out of play, so the answer this
+   * turn was about to produce is never appended. That is also why there is no
+   * "cancelled" branch down there — with no active job id, the effect returns
+   * before it can render anything.
+   *
+   * The local state goes first and the request after, because the point of
+   * pressing stop is that the composer comes back immediately. The server call
+   * still matters: it frees the LLM and the upstream feeds rather than leaving
+   * them working on an answer nobody will read.
+   */
+  const cancelTurn = () => {
+    const jobId = activeJobId;
+    if (!jobId) return;
+
+    setActiveJobId(undefined);
+    setIsLoading(false);
+    inputRef.current?.focus();
+
+    void cancelChatJob(jobId).catch(() => {
+      // The turn is already gone from this client's point of view. A failed
+      // cancel means the server keeps working for a few more seconds and then
+      // throws the answer away — worth nothing to report.
+    });
   };
 
   const handleSuggestionClick = (text: string) => {
@@ -577,62 +652,79 @@ export default function OracleChatPage() {
                         )}
                       </div>
                     )}
-                    <div className="prose prose-sm prose-invert max-w-none">
-                      {message.role === 'assistant' ? (
-                        <ReactMarkdown
-                          components={{
-                            // Custom styling for markdown elements
-                            strong: ({ children }: { children?: ReactNode }) => (
-                              <strong className="text-fg font-semibold">{children}</strong>
-                            ),
-                            code: ({ children }: { children?: ReactNode }) => (
-                              <code className="bg-surface-2 text-fg px-1 py-0.5 rounded text-sm font-mono">
-                                {children}
-                              </code>
-                            ),
-                            h1: ({ children }: { children?: ReactNode }) => (
-                              <h1 className="text-md font-semibold text-fg mt-3 mb-1.5">
-                                {children}
-                              </h1>
-                            ),
-                            h2: ({ children }: { children?: ReactNode }) => (
-                              <h2 className="text-base font-semibold text-fg mt-3 mb-1.5">
-                                {children}
-                              </h2>
-                            ),
-                            h3: ({ children }: { children?: ReactNode }) => (
-                              <h3 className="text-base font-semibold text-fg mt-2 mb-1">
-                                {children}
-                              </h3>
-                            ),
-                            ul: ({ children }: { children?: ReactNode }) => (
-                              <ul className="list-disc list-inside space-y-1 text-fg-muted">
-                                {children}
-                              </ul>
-                            ),
-                            ol: ({ children }: { children?: ReactNode }) => (
-                              <ol className="list-decimal list-inside space-y-1 text-fg-muted">
-                                {children}
-                              </ol>
-                            ),
-                            li: ({ children }: { children?: ReactNode }) => (
-                              <li className="text-fg-muted">{children}</li>
-                            ),
-                            p: ({ children }: { children?: ReactNode }) => (
-                              <p className="text-fg-muted leading-relaxed mb-2">{children}</p>
-                            ),
-                            hr: () => <hr className="border-line my-4" />,
-                          }}
-                        >
-                          {message.content}
-                        </ReactMarkdown>
-                      ) : (
-                        <p className="text-fg">{message.content}</p>
-                      )}
-                    </div>
+                    {/* The shared renderer, not an inline one. The chat page
+                        used to define its own `ReactMarkdown` components with
+                        no `remarkGfm`, which meant the tables `chat/system.md`
+                        explicitly asks the model for arrived as rows of raw
+                        pipe characters. The `prose prose-*` classes went with
+                        it — Tailwind Typography is not installed. */}
+                    {message.role === 'assistant' ? (
+                      <Markdown content={message.content} variant="chat" />
+                    ) : (
+                      <p className="text-base text-fg">{message.content}</p>
+                    )}
+
+                    {message.role === 'assistant' && message.focusSymbol && (
+                      <div className="mt-2.5 flex items-center gap-1.5">
+                        <span className="label">Read</span>
+                        <span className="px-1.5 py-0.5 rounded-md bg-surface-2 border border-line text-xs font-mono tabnum text-fg">
+                          {message.focusSymbol}
+                        </span>
+                        {/* Said out loud on purpose. The turn answered about an
+                            asset this message never named, and a reader who
+                            cannot see that has no way to catch the one case
+                            where the carry-over was wrong. */}
+                        {message.focusInherited && (
+                          <span className="text-xs text-fg-subtle">carried from earlier</span>
+                        )}
+                      </div>
+                    )}
+
+                    {message.citations && message.citations.length > 0 && (
+                      <div className="mt-3 pt-2.5 border-t border-line">
+                        <p className="label mb-1.5">Sources</p>
+                        <ul className="flex flex-wrap gap-x-3 gap-y-1">
+                          {message.citations.map((citation) => (
+                            <li key={citation.url}>
+                              <a
+                                href={citation.url}
+                                target="_blank"
+                                rel="noopener noreferrer nofollow"
+                                className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
+                              >
+                                {citation.label}
+                                <ExternalLink className="w-3 h-3" aria-hidden="true" />
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
+
+              {/* Where the conversation could go next.
+                  Shown only under the latest answer and only while nothing is
+                  in flight: a suggestion is about the turn on screen, and
+                  leaving one attached to an older bubble would offer a
+                  follow-up to a conversation that has already moved on. */}
+              {!isLoading && followups.length > 0 && (
+                <div className="flex justify-start">
+                  <div className="flex flex-wrap gap-1.5 max-w-[80%] pl-1">
+                    {followups.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        onClick={() => handleSuggestionClick(suggestion)}
+                        className="px-2.5 py-1 rounded-md border border-line bg-surface text-xs text-fg-muted hover:text-fg hover:border-line-strong transition-colors"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Loading indicator */}
               {isLoading && (
@@ -716,13 +808,25 @@ export default function OracleChatPage() {
                 disabled={isLoading || isAvailable === false}
               />
               <button
-                type="submit"
-                aria-label="Send message"
-                disabled={!inputValue.trim() || isLoading || isAvailable === false}
-                className={`flex items-center justify-center w-8 h-8 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity ${mode.send}`}
+                /* While a turn is running this is a stop button, not a
+                   disabled send button. A turn can spend minutes gathering
+                   evidence, and the spinner used to be the one thing on screen
+                   that looked like a control and was not — so a question asked
+                   by mistake had to be waited out. */
+                type={isLoading ? 'button' : 'submit'}
+                aria-label={isLoading ? 'Stop this turn' : 'Send message'}
+                onClick={isLoading ? cancelTurn : undefined}
+                disabled={isLoading ? false : !inputValue.trim() || isAvailable === false}
+                className={`group flex items-center justify-center w-8 h-8 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity ${mode.send}`}
               >
                 {isLoading ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <>
+                    {/* Spinning until the pointer is over it, then a stop
+                        square: one says the turn is working, the other says
+                        what pressing will do. */}
+                    <Loader2 className="w-3.5 h-3.5 animate-spin group-hover:hidden" />
+                    <Square className="w-3 h-3 hidden group-hover:block fill-current" />
+                  </>
                 ) : (
                   <Send className="w-3.5 h-3.5" />
                 )}

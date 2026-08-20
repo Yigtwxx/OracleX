@@ -43,6 +43,20 @@ class ChatRequest(BaseModel):
     history: Optional[List[ChatMessage]] = None
     session_id: Optional[str] = None
     style: Optional[str] = "detailed"  # 'detailed' or 'concise'
+    # Set when the user pins or changes the focus asset from the badge in the
+    # UI. It is a client-supplied string and is treated as one: the turn resolves
+    # it against the asset registry rather than trusting it, so this cannot be
+    # used to put an arbitrary ticker into the set the planner validates
+    # model-named symbols against. See services/chat_focus.resolve_state.
+    focus_override: Optional[str] = None
+
+
+class Citation(BaseModel):
+    """One source behind an answer. The label is the host, never a page title."""
+
+    url: str
+    label: str
+    tool: str
 
 
 class ChatResponse(BaseModel):
@@ -53,6 +67,20 @@ class ChatResponse(BaseModel):
     # wrong answer diagnosable without reading the server log.
     sources: List[str] = []
     detected_symbol: Optional[str] = None
+    # Whether the subject was named by this message or carried over from an
+    # earlier one. The focus badge reads it; so does anyone wondering from a log
+    # why a turn answered about an asset the question never mentioned.
+    focus_inherited: bool = False
+    # What kind of question the turn decided this was. Surfaced because it
+    # selects the answer's rule block, and a wrong answer is far easier to
+    # diagnose when you can see which rules it was held to.
+    intent: Optional[str] = None
+    # The pages the answer was actually built from — {url, label, tool}. These
+    # used to be collected per tool and discarded, because `sources` above was
+    # overwritten with tool names before the response was built.
+    citations: List[Citation] = []
+    # Two or three next questions, rendered as buttons under the answer.
+    followups: List[str] = []
     # Set only on the turn that auto-titles a session, so the client can update
     # its sidebar without refetching the session list. None on every other turn.
     session_title: Optional[str] = None
@@ -135,6 +163,7 @@ async def oracle_chat(request: ChatRequest, user: Optional[AuthUser] = Depends(g
             history,
             style=request.style,
             user_id=user.id if user else None,
+            focus_override=request.focus_override,
         )
     except BaseException:
         if title_task:
@@ -160,6 +189,10 @@ async def oracle_chat(request: ChatRequest, user: Optional[AuthUser] = Depends(g
         thinking_time=result["thinking_time"],
         sources=result.get("sources", []),
         detected_symbol=result.get("detected_symbol"),
+        focus_inherited=result.get("focus_inherited", False),
+        intent=result.get("intent"),
+        citations=result.get("citations", []),
+        followups=result.get("followups", []),
         session_title=session_title,
     )
 
@@ -203,6 +236,7 @@ async def start_chat_job(
                     style=request.style,
                     user_id=user_id,
                     on_step=controls.on_step,
+                    focus_override=request.focus_override,
                 ),
                 timeout=TURN_TIMEOUT,
             )
@@ -242,6 +276,31 @@ async def get_chat_job(job_id: str, user: Optional[AuthUser] = Depends(get_optio
     if job is None or job.kind != analysis_jobs.KIND_CHAT or job.owner_id != user_id:
         raise HTTPException(status_code=404, detail="Chat job not found")
     return job.to_dict()
+
+
+@router.delete("/api/chat/jobs/{job_id}")
+async def cancel_chat_job(job_id: str, user: Optional[AuthUser] = Depends(get_optional_user)):
+    """
+    Stop a turn that is still running.
+
+    A turn can spend minutes gathering evidence, and a question asked by mistake
+    — or one the user has already answered for themselves — should not have to
+    be waited out. Cancelling frees the LLM and the upstream feeds immediately.
+
+    The same ownership check as `get_chat_job`, for the same reason: a chat job
+    holds a question and its answer, so a stranger must not be able to confirm
+    an id exists, let alone stop it. 404 rather than 403.
+    """
+    job = await analysis_jobs.get_job(job_id)
+    user_id = user.id if user else None
+    if job is None or job.kind != analysis_jobs.KIND_CHAT or job.owner_id != user_id:
+        raise HTTPException(status_code=404, detail="Chat job not found")
+
+    cancelled = await analysis_jobs.cancel_job(job_id)
+    if cancelled is None:
+        raise HTTPException(status_code=404, detail="Chat job not found")
+    log_info(f"Chat turn cancelled: {job_id}")
+    return cancelled.to_dict()
 
 
 @router.get("/api/chat/status")
