@@ -1,12 +1,13 @@
 'use client';
 
 import { RefreshCw } from 'lucide-react';
-import { useMacroBoard } from '@/hooks/queries';
+import { useMacroBoard, useMacroRegime } from '@/hooks/queries';
 import { MacroQuote } from '@/lib/api';
 import CommodityPanel from './macro/CommodityPanel';
 import HeroCard from './macro/HeroCard';
 import IndexPanel from './macro/IndexPanel';
 import MacroRatios from './macro/MacroRatios';
+import RegimeCard from './macro/RegimeCard';
 
 /**
  * The four instruments across the top, and the short names they wear there.
@@ -24,6 +25,7 @@ const HERO: { symbol: string; label: string }[] = [
 
 export default function MacroPage() {
   const board = useMacroBoard();
+  const regime = useMacroRegime();
 
   const quotes = new Map<string, MacroQuote>();
   for (const row of board.data?.commodities ?? []) quotes.set(row.symbol, row);
@@ -90,6 +92,11 @@ export default function MacroPage() {
           </div>
         ) : (
           <>
+            {/* The page's one-line answer, above the instruments it was read
+                from. Absent entirely when too many feeds were missing to score
+                it — the board below already reports what went wrong. */}
+            <RegimeCard regime={regime.data} isLoading={regime.isLoading} />
+
             {/* Top Row: headline instruments */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {HERO.map(({ symbol, label }) => (

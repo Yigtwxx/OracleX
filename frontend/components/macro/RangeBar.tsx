@@ -1,5 +1,6 @@
 'use client';
 
+import { IdentityBarClasses } from '@/lib/assetIdentity';
 import { formatPrice, rangePosition } from './format';
 
 interface RangeBarProps {
@@ -8,6 +9,11 @@ interface RangeBarProps {
   high: number | null;
   /** `full` labels both ends; `compact` is the unlabelled row variant. */
   variant?: 'full' | 'compact';
+  /**
+   * The instrument's own colour, where it has one. Identity, not direction —
+   * the bar is gold-coloured on the gold row whether gold is up or down.
+   */
+  accent?: IdentityBarClasses;
 }
 
 /**
@@ -21,11 +27,18 @@ interface RangeBarProps {
  * marker would be read as a measurement, and there is no honest neutral position
  * to fall back to — the midpoint is itself a claim.
  */
-export default function RangeBar({ price, low, high, variant = 'compact' }: RangeBarProps) {
+export default function RangeBar({ price, low, high, variant = 'compact', accent }: RangeBarProps) {
   const position = rangePosition(price, low, high);
   if (position === null) return null;
 
   const percent = position * 100;
+
+  // The hue is dimmed on the fill and left at full strength on the marker, which
+  // keeps the existing hierarchy: the marker is the reading, the fill only
+  // reinforces it. `opacity-40` rather than a `/40` colour modifier because the
+  // palette is `var()`-based and Tailwind cannot compute alpha on those.
+  const fillClass = accent ? `${accent.fill} opacity-40` : 'bg-line-strong';
+  const markerClass = accent ? accent.marker : 'bg-fg';
 
   return (
     <div className="w-full">
@@ -33,11 +46,11 @@ export default function RangeBar({ price, low, high, variant = 'compact' }: Rang
         {/* The filled portion is decorative reinforcement of the marker, not a
             second reading — same colour family, lower contrast. */}
         <div
-          className="absolute inset-y-0 left-0 rounded-full bg-line-strong"
+          className={`absolute inset-y-0 left-0 rounded-full ${fillClass}`}
           style={{ width: `${percent}%` }}
         />
         <div
-          className="absolute top-1/2 w-1.5 h-1.5 -mt-[3px] -ml-[3px] rounded-full bg-fg"
+          className={`absolute top-1/2 w-1.5 h-1.5 -mt-[3px] -ml-[3px] rounded-full ${markerClass}`}
           style={{ left: `${percent}%` }}
         />
       </div>

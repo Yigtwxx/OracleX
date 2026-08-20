@@ -11,9 +11,18 @@
  * calls it by this name throughout.
  */
 
-import { assetIdentityClass } from '@/lib/assetIdentity';
+import {
+  assetIdentityBarClasses,
+  assetIdentityClass,
+  IdentityBarClasses,
+} from '@/lib/assetIdentity';
 
 /** Classes for a commodity's name, or the ordinary foreground for everything else. */
 export function metalClass(symbol: string, fallback = 'text-fg'): string {
   return assetIdentityClass(symbol, fallback);
+}
+
+/** Bar classes for a commodity, or `undefined` where the neutral bar is correct. */
+export function metalBarClasses(symbol: string): IdentityBarClasses | undefined {
+  return assetIdentityBarClasses(symbol);
 }

@@ -6,7 +6,7 @@ import SparklineChart from '@/components/overview/SparklineChart';
 import Delta from './Delta';
 import RangeBar from './RangeBar';
 import { UNKNOWN, formatPrice } from './format';
-import { metalClass } from './metals';
+import { metalBarClasses, metalClass } from './metals';
 
 /** Groups in the order the panel lists them, heaviest macro signal first. */
 const GROUP_ORDER: CommodityGroup[] = ['metals', 'energy', 'agriculture'];
@@ -50,7 +50,12 @@ function CommodityRow({ row }: { row: MacroCommodity }) {
       </div>
 
       <div className="mt-2">
-        <RangeBar price={row.price} low={row.low_52w} high={row.high_52w} />
+        <RangeBar
+          price={row.price}
+          low={row.low_52w}
+          high={row.high_52w}
+          accent={metalBarClasses(row.symbol)}
+        />
       </div>
     </div>
   );

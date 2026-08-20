@@ -5,7 +5,7 @@ import SparklineChart from '@/components/overview/SparklineChart';
 import Delta from './Delta';
 import RangeBar from './RangeBar';
 import { UNKNOWN, formatPrice } from './format';
-import { metalClass } from './metals';
+import { metalBarClasses, metalClass } from './metals';
 
 interface HeroCardProps {
   quote: MacroQuote | undefined;
@@ -67,7 +67,13 @@ export default function HeroCard({ quote, label, unit }: HeroCardProps) {
         )}
       </div>
 
-      <RangeBar price={quote.price} low={quote.low_52w} high={quote.high_52w} variant="full" />
+      <RangeBar
+        price={quote.price}
+        low={quote.low_52w}
+        high={quote.high_52w}
+        variant="full"
+        accent={metalBarClasses(quote.symbol)}
+      />
     </div>
   );
 }

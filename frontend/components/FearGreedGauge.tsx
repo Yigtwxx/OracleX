@@ -14,6 +14,10 @@ interface FearGreedGaugeProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
+// Arc geometry is authored against a 200-unit width; the height carries the
+// half-circle (100) plus room for the labels sitting under its ends.
+const VIEWBOX_H = 123;
+
 export default function FearGreedGauge({ data, isLoading, size = 'md' }: FearGreedGaugeProps) {
   const [animatedValue, setAnimatedValue] = useState(0);
 
@@ -27,11 +31,12 @@ export default function FearGreedGauge({ data, isLoading, size = 'md' }: FearGre
     }
   }, [data?.value]);
 
-  // Size configurations
+  // The heights track VIEWBOX_H at each width. Anything else letterboxes the
+  // drawing inside the SVG box, shrinking the arc for no reason.
   const sizeConfig = {
-    sm: { width: 120, height: 70, fontSize: 'text-lg', labelSize: 'text-2xs' },
-    md: { width: 200, height: 110, fontSize: 'text-2xl', labelSize: 'text-xs' },
-    lg: { width: 280, height: 150, fontSize: 'text-2xl', labelSize: 'text-base' },
+    sm: { width: 132, height: 81, fontSize: 'text-xl', labelSize: 'text-xs' },
+    md: { width: 200, height: 123, fontSize: 'text-2xl', labelSize: 'text-sm' },
+    lg: { width: 280, height: 172, fontSize: 'text-2xl', labelSize: 'text-md' },
   };
 
   const config = sizeConfig[size];
@@ -69,8 +74,10 @@ export default function FearGreedGauge({ data, isLoading, size = 'md' }: FearGre
 
   return (
     <div className="flex flex-col items-center">
-      {/* Gauge SVG */}
-      <svg width={config.width} height={config.height} viewBox="0 0 200 110">
+      {/* Gauge SVG. The viewBox has to clear the baseline of the end labels at
+          y=115 — at the old height of 110 they fell outside it and rendered
+          sliced in half. */}
+      <svg width={config.width} height={config.height} viewBox={`0 0 200 ${VIEWBOX_H}`}>
         {/* Gradient definition */}
         <defs>
           <linearGradient id={getGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
@@ -120,10 +127,14 @@ export default function FearGreedGauge({ data, isLoading, size = 'md' }: FearGre
           );
         })}
 
-        {/* Needle */}
+        {/* Needle. The overshoot in the curve is deliberate — a real gauge
+            needle swings past its mark and settles back. The duration is not
+            the same call: at 1s it read as an animation rather than as a
+            reading landing, and the payload refreshes often enough that the
+            swing was a recurring distraction. */}
         <g
           transform={`rotate(${needleRotation}, 100, 100)`}
-          style={{ transition: 'transform 1s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
+          style={{ transition: 'transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1)' }}
         >
           <line
             x1="100"
@@ -139,16 +150,17 @@ export default function FearGreedGauge({ data, isLoading, size = 'md' }: FearGre
         </g>
 
         {/* Labels */}
-        <text x="20" y="115" fill="var(--fg-subtle)" fontSize="9" textAnchor="start">
+        <text x="18" y="116" fill="var(--fg-subtle)" fontSize="13" textAnchor="start">
           Fear
         </text>
-        <text x="180" y="115" fill="var(--fg-subtle)" fontSize="9" textAnchor="end">
+        <text x="182" y="116" fill="var(--fg-subtle)" fontSize="13" textAnchor="end">
           Greed
         </text>
       </svg>
 
-      {/* Value display */}
-      <div className="text-center -mt-2">
+      {/* Value display. Pulled up into the arc's empty middle, but no further
+          than the end labels' baseline. */}
+      <div className="text-center -mt-3">
         <div
           className={`${config.fontSize} font-mono tabnum`}
           style={{ color: getColor(data.value) }}

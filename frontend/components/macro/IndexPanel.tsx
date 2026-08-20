@@ -41,7 +41,9 @@ function IndexRow({ row }: { row: MacroIndex }) {
 
   return (
     <div className="px-4 py-2.5 border-b border-line last:border-b-0 hover:bg-surface-2 transition-colors flex items-center gap-3">
-      <span className="shrink-0 text-base leading-none" aria-hidden="true">
+      {/* Larger than the row's text: an emoji flag draws well inside its em box,
+          so at the body size it reads as a smudge rather than as a country. */}
+      <span className="shrink-0 text-xl leading-none" aria-hidden="true">
         {regionMeta(row.region).flag}
       </span>
 
