@@ -22,10 +22,17 @@ Work through the snapshot systematically and produce structured evidence:
    not an observation.
 2. **confirmations** — where two or more independent signals agree (e.g. breadth
    and Fear & Greed both defensive; RSI and trend both extended). Name both
-   signals and their values.
+   signals and their values. The technical block carries three timeframes per
+   asset: treat agreement across them, and a price band several timeframes
+   confirmed, as the strongest confirmations available — and always say which
+   timeframe a reading came from, because "RSI is 41" means different things on
+   a 4h and a weekly chart.
 3. **contradictions** — where signals disagree. These are the most valuable part
    of the analysis. If price is up but breadth is negative, that is a
-   contradiction worth surfacing.
+   contradiction worth surfacing. A timeframe conflict is one of these: a
+   bearish weekly under a bullish 4h says the bounce is inside a downtrend, and
+   an RSI divergence says the last leg was not confirmed by momentum. The
+   snapshot states both — carry them across rather than re-deriving them.
 4. **data_gaps** — feeds listed as unavailable, plus any conclusion that cannot
    be drawn because of them. Be specific about what could NOT be assessed.
 5. **themes** — 2-4 narrative threads that tie the observations together, each
