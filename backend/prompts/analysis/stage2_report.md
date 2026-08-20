@@ -39,18 +39,45 @@ smoothing it over.
 **If the snapshot's "Technical levels" section is marked unavailable, write one
 sentence saying levels could not be computed for this report and nothing else in
 this section. Do NOT produce the table.** A spot price is not a support level; a
-24h change is not a trend reading. Support, resistance, pivot, RSI, ATR and trend
-exist only if the technicals feed supplied them, and constructing them from
-prices is fabrication.
+24h change is not a trend reading. Support, resistance, RSI, ATR and trend exist
+only if the technicals feed supplied them, and constructing them from prices is
+fabrication.
 
-Otherwise, reproduce a table for the majors covered in the snapshot, copying the
-values exactly as given:
+Otherwise, work each covered asset in three passes.
 
-| Asset | Price | Trend | RSI | Support | Resistance | Pivot | ATR |
+**1 — The view from a distance.** Before any level, place the asset in its own
+history: where in the multi-year range it trades, how far from that range's high
+and low, where it sits against the 200-bar SMA, and what the swing structure is
+doing. This is the paragraph that decides whether everything below is a dip in an
+uptrend or a bounce in a downtrend, so it comes first.
 
-Follow the table with a short read on what the levels imply: which level is the
-one that matters, and what a break of it would signal. Only use levels present
-in the snapshot.
+**2 — The timeframes.** One row per timeframe, copied from the snapshot:
+
+| Asset | TF | Trend | RSI(14) | RSI 5-bar | ATR % |
+
+Then say in one or two sentences whether the timeframes agree. The snapshot
+computes that agreement — quote it rather than deciding it yourself. Where they
+conflict, name which horizon each signal belongs to: a bearish weekly with a
+neutral 4h is a different statement from either alone. Read RSI as level *and*
+direction — 40 and rising is not 40 and falling — and mention any divergence the
+snapshot flagged, with the timeframe it was found on.
+
+**3 — The zones.** Reproduce the snapshot's support and resistance bands:
+
+| Asset | Side | Horizon | Zone | Distance | Confirmed on | Touches | Strength |
+
+Copy each band **as a band**, both bounds, exactly as printed. Never quote a
+single price as a level, never round a bound to a neater number, and never
+introduce a level that is not in the table — the space between two bands is
+empty because nothing traded there, not because a level is missing. Horizon is
+the snapshot's, from the timeframe that confirmed the band; do not relabel a
+long-horizon band as short-term because it happens to be close to spot.
+
+Close with the read: which band is the one that matters over the {{timeframe}}
+horizon, what a close beyond it would signal, and which band the structure says
+price is more likely to reach first. Prefer bands with several touches, high
+strength, and confirmation on more than one timeframe — say so when that is why
+you picked one.
 
 ## Derivatives & Liquidity
 
@@ -92,20 +119,23 @@ never treat an unscored headline as neutral.
 | Scenario | Probability | Trigger | Key levels | Invalidation |
 
 Base, Bull and Bear, probabilities summing to 100%. Every level referenced must
-come from the snapshot; if no technical levels were available, use observable
-triggers instead (a breadth reading, a Fear & Greed threshold, a liquidation
-imbalance) and leave the levels column as "n/a". The invalidation column states
+come from the snapshot's zone table, quoted as the band it is; if no technical
+levels were available, use observable triggers instead (a breadth reading, a
+Fear & Greed threshold, a liquidation imbalance) and leave the levels column as
+"n/a". The invalidation column states
 the specific observation that would end the scenario.
 
 ## Watchlist & Key Levels
 
-| Asset | Level | Type | Why it matters |
+| Asset | Zone | Horizon | Type | Why it matters |
 
-Five to eight rows, ordered by importance over the {{timeframe}} horizon. Every
-value in the Level column must be copied from the snapshot. If the technicals
-feed was unavailable, replace this table with a short list of what to watch
-(assets, metrics and thresholds that the snapshot does support) and say that
-price levels could not be computed.
+Five to eight rows, ordered by importance over the {{timeframe}} horizon. Cover
+all three horizons where the snapshot supplies them — a watchlist of five
+short-term bands is a day-trading sheet, not a {{timeframe}} view. Every zone
+must be copied from the snapshot's zone table as a band, with the horizon the
+snapshot assigned it. If the technicals feed was unavailable, replace this table
+with a short list of what to watch (assets, metrics and thresholds that the
+snapshot does support) and say that price levels could not be computed.
 
 ## Risk Disclosures & Data Coverage
 
