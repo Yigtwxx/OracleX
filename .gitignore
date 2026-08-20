@@ -85,6 +85,7 @@ backend/data/*.bak-*/
 # watchlist.json, eth_address_history.json, analysis_reports.json.
 backend/data/liquidations.json
 backend/data/ai_notes.json
+backend/data/user_notes.json
 backend/data/chain_metrics.json
 backend/data/news_analyses.json
 backend/data/news_attribution.json
