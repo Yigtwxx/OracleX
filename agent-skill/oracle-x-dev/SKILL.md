@@ -1,7 +1,7 @@
 ---
 name: oracle-x-dev
 description: Extend the Oracle-X financial terminal codebase — add or change a FastAPI endpoint, wire a new upstream data source into the health badge, register a blockchain adapter, write a prompt or an LLM-backed note, and test any of it the way this repository tests things. Use whenever work touches backend/routers, backend/services, backend/prompts, backend/tests or frontend/lib in the Oracle-X repo, whenever someone asks how to add a route, a data provider, a chain, a prompt or a note here, and whenever a change is about to be committed and needs to clear the four quality gates. Consult it before writing the first line, because this codebase has conventions — one-service routers, duck-typed chain adapters, prompts as files with literal call sites, monkeypatch at the import site — that a reasonable-looking change will violate silently.
-version: "1.2.1"
+version: "1.3.0"
 license: Complete terms in LICENSE.txt
 metadata:
   homepage: "https://github.com/Yigtwxx/OracleX"
