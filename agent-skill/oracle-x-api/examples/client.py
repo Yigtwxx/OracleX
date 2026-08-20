@@ -101,7 +101,18 @@ def _decode(response: httpx.Response, path: str) -> Any:
         raise OracleXError(f"{path}: ORACLE_X_TOKEN is missing or expired")
     if response.status_code == 503:
         raise OracleXError(f"{path}: no provider is currently serving this endpoint")
-    response.raise_for_status()
+    if response.status_code == 422:
+        # FastAPI's validation error. Almost always a required query parameter
+        # the caller did not know about — check references/endpoints.md for the
+        # route rather than retrying the same call.
+        raise OracleXError(f"{path}: rejected the parameters — {response.text[:200]}")
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        # Everything reaches the caller as an OracleXError so that a partial
+        # failure inside a concurrent fan-out can be recorded as one, rather
+        # than tearing down the whole batch with a transport-library traceback.
+        raise OracleXError(f"{path}: HTTP {response.status_code}") from exc
     return response.json()
 
 
@@ -123,10 +134,13 @@ if __name__ == "__main__":
     except OracleXError as exc:
         raise SystemExit(f"unreachable: {exc}") from exc
 
-    categories = report.get("categories", report)
-    if isinstance(categories, dict):
-        for name, entry in categories.items():
-            status = entry.get("status", entry) if isinstance(entry, dict) else entry
-            print(f"  {name:<20} {status}")
-    else:
-        print(report)
+    print(f"status:   {report.get('status', '?')}")
+    for category in report.get("categories", []):
+        label = category.get("label", category.get("key", "?"))
+        state = category.get("state", "?")
+        # `idle` is not a fault: the category simply has not been called since
+        # the process started. Reporting it as a failure would send a caller
+        # chasing an outage that is really a cold cache.
+        critical = " (critical)" if category.get("critical") else ""
+        detail = f" — {category['detail']}" if category.get("detail") else ""
+        print(f"  {label:<20} {state}{critical}{detail}")

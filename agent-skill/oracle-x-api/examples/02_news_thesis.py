@@ -17,29 +17,34 @@ import sys
 import time
 from typing import Any
 
-from client import NotFound, OracleXError, get, post
+from client import OracleXError, get, post
 
 POLL_INTERVAL_SECONDS = 3.0
 POLL_TIMEOUT_SECONDS = 180.0
 
 
 def latest_news_id(asset_type: str = "crypto") -> str:
-    items = get("/api/news", {"limit": 5, "asset_type": asset_type})
-    rows = items.get("news", items) if isinstance(items, dict) else items
+    feed = get("/api/news", {"limit": 5, "asset_type": asset_type})
+    rows = feed.get("items") or []
     if not rows:
         raise OracleXError(
             "The news cache is empty. The scheduler may not have run yet — "
             "check /api/system/health."
         )
-    return str(rows[0].get("id") or rows[0].get("news_id"))
+    return str(rows[0]["id"])
 
 
 def analysis_for(news_id: str) -> dict[str, Any]:
-    """Return the LLM read of one article, generating it only if needed."""
-    try:
-        return get(f"/api/news/{news_id}/analysis")
-    except NotFound:
-        pass  # Nothing cached — fall through and generate it.
+    """Return the LLM read of one article, generating it only if needed.
+
+    The cached read answers 200 with a JSON `null` body when nothing has been
+    generated yet — not 404. Treating a falsy body as an answer is how a caller
+    ends up reporting "no analysis available" for an article the terminal would
+    happily analyse in twenty seconds.
+    """
+    cached = get(f"/api/news/{news_id}/analysis")
+    if cached:
+        return cached
 
     job = post(f"/api/news/{news_id}/analysis/jobs")
     job_id = job.get("job_id") or job.get("id")
@@ -63,15 +68,19 @@ def analysis_for(news_id: str) -> dict[str, Any]:
     )
 
 
-def precedent(headline: str) -> Any:
+def precedent(headline: str, summary: str = "") -> dict[str, Any]:
     """Ask the store whether this story has run before.
 
     This is the step that separates a summary from a thesis. A regulatory
     headline resembling four earlier ones, each followed by a drawdown, is a
     different object from one with no precedent — and the answer only exists
     inside this instance's own memory.
+
+    Skip it when the cached analysis already carries a `precedents` list: the
+    analysis pipeline runs the same lookup, so calling again re-embeds the
+    headline for a result already in hand.
     """
-    return post("/api/rag/news-similarity", {"text": headline})
+    return post("/api/rag/news-similarity", {"title": headline, "summary": summary})
 
 
 def main() -> int:
@@ -84,15 +93,36 @@ def main() -> int:
 
         analysis = analysis_for(news_id)
         print("## Analysis")
-        print(analysis.get("summary") or analysis.get("analysis") or analysis)
+        print(
+            f"Sentiment: {analysis.get('sentiment')} "
+            f"(confidence {analysis.get('confidence')})"
+        )
+        print(
+            f"Risk: {analysis.get('risk_level')} · "
+            f"horizon {analysis.get('time_horizon')} · "
+            f"impact {analysis.get('price_impact')}"
+        )
+        print(f"\n{analysis.get('reasoning', '')}")
+        if analysis.get("invalidation"):
+            print(f"\nInvalidated by: {analysis['invalidation']}")
 
         print("\n## Precedent")
-        similar = precedent(headline)
-        matches = similar.get("results", similar) if isinstance(similar, dict) else []
+        # The analysis already ran the similarity lookup. Reuse it, and only
+        # pay for a fresh embedding when it did not.
+        matches = analysis.get("precedents")
+        if matches is None:
+            similar = precedent(headline, article.get("summary", ""))
+            matches = similar.get("similar_events") or []
+            if similar.get("summary"):
+                print(similar["summary"])
         if not matches:
             print("Nothing in the store resembles this. Treat it as unprecedented.")
         for match in matches[:5]:
-            print(f"- {match.get('title', match)}")
+            print(
+                f"- {match.get('title')} ({match.get('date')}) → "
+                f"{match.get('outcome')}, {match.get('price_change')}% "
+                f"(similarity {match.get('similarity', '?')})"
+            )
     except OracleXError as exc:
         print(exc, file=sys.stderr)
         return 1

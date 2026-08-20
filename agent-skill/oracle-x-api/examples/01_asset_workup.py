@@ -34,18 +34,32 @@ def is_equity(symbol: str) -> bool:
     return not upper.endswith(("USDT", "USDC", "USD", "BTC", "ETH"))
 
 
+def failed(view: Any) -> bool:
+    """True when a view is an error record rather than data or a clean absence."""
+    return isinstance(view, dict) and "__error__" in view
+
+
 def workup(symbol: str) -> dict[str, Any]:
     """Fetch every independent view of one symbol concurrently."""
     calls: dict[str, Callable[[httpx.Client], Any]] = {
-        "detail": lambda c: get(f"/api/asset-detail/{symbol}", client=c),
+        "price": lambda c: get(f"/api/price/{symbol}", client=c),
         "technical": lambda c: get(f"/api/technical/{symbol}", client=c),
         "memory": lambda c: get(f"/api/rag/insights/{symbol}", client=c),
     }
     if is_equity(symbol):
         calls["ownership"] = lambda c: get(f"/api/ownership/assets/{symbol}", client=c)
+        # `type` defaults to the crypto branch, which resolves through
+        # CoinGecko and answers 404 for a ticker. An equity has to say so.
+        calls["fundamentals"] = lambda c: get(
+            f"/api/asset-detail/{symbol}", {"type": "stock"}, client=c
+        )
     else:
+        # `/levels/` is a histogram of liquidations that already happened and
+        # requires an explicit price_min/price_max window; `/map/` is the
+        # forward-looking estimate and needs neither, which is what a workup
+        # wants.
         calls["liquidations"] = lambda c: get(
-            f"/api/liquidations/levels/{symbol}", client=c
+            f"/api/liquidations/map/{symbol}", client=c
         )
 
     results: dict[str, Any] = {}
@@ -64,44 +78,98 @@ def workup(symbol: str) -> dict[str, Any]:
                 # the caller can say so rather than staying silent.
                 results[name] = None
             except OracleXError as exc:
-                results[name] = {"error": str(exc)}
+                results[name] = {"__error__": str(exc)}
+
+    # If nothing came back, the instance is down rather than thin on data.
+    # Returning the dict anyway would let the caller render a summary out of
+    # four failures, which reads exactly like an answer and is the one outcome
+    # a workup must never produce.
+    if all(failed(view) for view in results.values()):
+        raise OracleXError(
+            f"No view of {symbol} could be fetched. "
+            f"{next(iter(results.values()))['__error__']}"
+        )
     return results
 
 
 def summarize(symbol: str, data: dict[str, Any]) -> str:
+    """Render the workup, keeping the three outcomes visibly distinct.
+
+    Data, a clean absence (the endpoint answered 404), and a failure (the call
+    never landed) have to read differently. Collapsing the last two into
+    silence is how a report ends up implying the instance confirmed something
+    it was never asked.
+    """
     lines = [f"# {symbol}", ""]
 
-    detail = data.get("detail")
-    if isinstance(detail, dict):
-        price = detail.get("price") or detail.get("current_price")
-        change = detail.get("change_24h") or detail.get("price_change_24h")
-        lines.append(f"Price: {price}  ({change}% 24h)" if price else "Price: n/a")
+    quote = data.get("price")
+    if failed(quote):
+        lines.append(f"Price: unavailable — {quote['__error__']}")
+    elif isinstance(quote, dict):
+        # The payload names its upstream. Carrying that through matters: two
+        # venues disagree by a few basis points, and a user comparing this
+        # answer against their own screen should be able to see which one
+        # answered rather than assume the difference is an error.
+        value = quote.get("price")
+        source = quote.get("source")
+        lines.append(f"Price: {value} ({source})" if value else "Price: n/a")
+    else:
+        lines.append("Price: the instance could not resolve this symbol.")
 
     technical = data.get("technical")
-    if technical is None:
-        lines.append("Technicals: the instance could not compute levels here.")
-    elif isinstance(technical, dict):
-        lines.append("")
-        lines.append("## Levels")
-        for zone in (technical.get("zones") or [])[:6]:
-            kind = zone.get("type", "?")
-            low, high = zone.get("low"), zone.get("high")
-            confirmed = ", ".join(zone.get("timeframes", [])) or "?"
-            lines.append(
-                f"- {kind}: {low}–{high} (confirmed on {confirmed}, "
-                f"strength {zone.get('strength', '?')})"
-            )
+    lines.append("")
+    lines.append("## Levels")
+    if failed(technical):
+        lines.append(f"Unavailable — {technical['__error__']}")
+    elif technical is None:
+        lines.append("The instance could not compute levels for this symbol.")
+    else:
+        lines.append(
+            f"Price {technical.get('current_price')} · "
+            f"trend {technical.get('trend')} · "
+            f"RSI {technical.get('rsi_value')} ({technical.get('rsi_signal')})"
+        )
+        # `zones` is keyed by kind — support / resistance / inside — and each
+        # zone carries the timeframes that confirmed it. That confluence list
+        # is the point of the endpoint: a band agreed on by 1d+1w is a
+        # different claim from one seen only on 4h, and dropping it would
+        # flatten the answer back into a plain number.
+        zones = technical.get("zones") or {}
+        for kind in ("support", "resistance"):
+            for zone in (zones.get(kind) or [])[:3]:
+                confirmed = ", ".join(zone.get("timeframes") or []) or "?"
+                lines.append(
+                    f"- {kind}: {zone.get('low')}–{zone.get('high')} "
+                    f"({zone.get('distance_percent')}% away, confirmed on "
+                    f"{confirmed}, strength {zone.get('strength', '?')})"
+                )
+        if not zones:
+            lines.append("No zones returned. Inspect the raw payload.")
 
-    if data.get("liquidations"):
-        lines += ["", "## Leverage", "Liquidation levels retrieved — see raw payload."]
-    if data.get("ownership"):
-        lines += ["", "## Holders", "Institutional positions retrieved."]
+    for key, heading, present in (
+        ("liquidations", "Leverage", "Liquidation map retrieved."),
+        ("ownership", "Holders", "Institutional positions retrieved."),
+        ("fundamentals", "Fundamentals", "Company data retrieved."),
+    ):
+        if key not in data:
+            continue
+        view = data[key]
+        lines += ["", f"## {heading}"]
+        if failed(view):
+            lines.append(f"Unavailable — {view['__error__']}")
+        elif view:
+            lines.append(f"{present} See the raw payload.")
+        else:
+            lines.append("Nothing recorded for this symbol.")
 
     memory = data.get("memory")
-    if memory:
-        lines += ["", "## Precedent", "The store holds prior context for this symbol."]
+    lines += ["", "## Precedent"]
+    if failed(memory):
+        lines.append(f"Unavailable — {memory['__error__']}")
+    elif memory:
+        lines.append("The store holds prior context for this symbol.")
     else:
-        lines += ["", "## Precedent", "The memory has nothing on this symbol yet."]
+        lines.append("The memory has nothing on this symbol yet.")
 
     return "\n".join(lines)
 

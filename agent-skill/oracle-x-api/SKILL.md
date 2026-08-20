@@ -62,7 +62,7 @@ in `references/endpoints.md`, call it.
 | Index levels (S&P, NASDAQ, DXY, …) | `GET /api/market/indices` | Shares the macro board's cache, so it agrees with the macro page. |
 | Support, resistance, RSI, trend | `GET /api/technical/{symbol}` | Zones are built per timeframe and scored by how many horizons confirm them. Do not recompute this from candles. |
 | Raw OHLCV | `GET /api/market/candles/{symbol}` | Only when you genuinely need the series — for levels, use `/api/technical`. |
-| Everything about one asset | `GET /api/asset-detail/{symbol}` | One call instead of five when the question is broad. |
+| Company fundamentals | `GET /api/asset-detail/{symbol}?type=stock` | P/E, sector, 52-week range, analyst targets. `type=stock` is required for equities; the crypto branch resolves through CoinGecko and 404s on a symbol it cannot map. |
 | Sentiment | `GET /api/fear-greed` | Both the crypto and equity gauges. |
 | Latest news | `GET /api/news?limit=…&asset_type=…` | Served from the scheduler's cache. |
 | What a specific article means | `GET /api/news/{news_id}/analysis` | The cached LLM read. If absent, start a job (below). |
@@ -71,7 +71,7 @@ in `references/endpoints.md`, call it.
 | "What kind of market is this?" | `GET /api/macro/regime` | A computed label and score, plus a written note. The label is always present; the note may not be. |
 | Chain activity, fees, congestion | `GET /api/chains/board` | Per-chain metrics under one adapter contract. |
 | Something unusual on-chain | `GET /api/chains/anomalies` | Measured against each chain's own baseline, not a global threshold. |
-| Liquidations | `GET /api/home/liquidations`, `GET /api/liquidations/levels/{symbol}` | Aggregate first, per-symbol levels when the question is about one asset. |
+| Liquidations | `GET /api/home/liquidations`, `GET /api/liquidations/map/{symbol}` | Aggregate first, then the per-symbol map. `/levels/` is a histogram of what already happened and needs `price_min` and `price_max`; `/map/` is the forward-looking estimate and needs neither. |
 | Funding / leverage positioning | `GET /api/home/funding-rates` | |
 | Whale movement | `GET /api/onchain/whales` | Large-transaction flow with direction. |
 | Who holds this stock | `GET /api/ownership/assets/{symbol}` | Institutional positions for one ticker. |
@@ -112,8 +112,17 @@ actually serving.
 **Timestamps are part of the answer.** Most payloads carry one. Market data
 without a time is a claim about now that may be about an hour ago; quote it.
 
-**Prefer one broad call to five narrow ones.** `/api/asset-detail/{symbol}`
-exists for exactly the question "tell me about X".
+**Send the symbol in the form the endpoint expects.** Crypto pairs are
+`BTCUSDT` or `BINANCE:ETHUSDT`; equities are the plain ticker with
+`?type=stock` where the route takes one. A 404 on a symbol you believe exists
+is usually the wrong form rather than missing data — `references/endpoints.md`
+records which routes care.
+
+**Fan out rather than asking one endpoint to do everything.** There is no
+single "tell me about X" call. A full read on an asset is four independent
+requests — price, technicals, leverage, memory — and since none depends on
+another they cost one round trip when issued together.
+`references/recipes.md` has the sequence.
 
 ## Long-running work: the job pattern
 

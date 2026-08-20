@@ -16,9 +16,9 @@ The question behind "what's going on with ETH" is really four questions. Answer
 them in one pass rather than four round trips of conversation.
 
 ```
-GET /api/asset-detail/{symbol}      → price, change, basic context
+GET /api/price/{symbol}             → the number itself
 GET /api/technical/{symbol}         → zones, RSI, trend per timeframe
-GET /api/liquidations/levels/{symbol} → where leverage is stacked
+GET /api/liquidations/map/{symbol}  → where leverage is stacked
 GET /api/rag/insights/{symbol}      → what the memory holds about it
 ```
 
@@ -32,8 +32,12 @@ that gives levels without the third part is a chart reading, not intelligence.
 If the ticker is an equity, add ownership:
 
 ```
-GET /api/ownership/assets/{symbol}  → institutional positions
+GET /api/ownership/assets/{symbol}          → institutional positions
+GET /api/asset-detail/{symbol}?type=stock   → P/E, sector, analyst targets
 ```
+
+`type=stock` is not optional for an equity: the parameter defaults to the
+crypto branch, which resolves through CoinGecko and answers 404 for a ticker.
 
 `examples/01_asset_workup.py` runs exactly this.
 
@@ -46,12 +50,18 @@ GET  /api/news?limit=20&asset_type=crypto
 GET  /api/news/{news_id}/analysis            → cached LLM read; may 404
 POST /api/news/{news_id}/analysis/jobs       → only if the cache missed
 GET  /api/news/analysis/jobs/{job_id}        → poll
-POST /api/rag/news-similarity                → has this story run before?
+POST /api/rag/news-similarity                → only if `precedents` was absent
 ```
 
 Check the cache before starting a job. Analysis is generated once and stored,
 so the common case costs one call, and starting a job for something already
 analysed spends the operator's provider budget for a result they already have.
+One trap: the cached read answers `200` with a JSON `null` body when nothing
+has been generated — not `404`. Test the body, not the status.
+
+The stored analysis also carries a `precedents` list, because the pipeline runs
+the similarity lookup itself. When it is there, use it; `POST
+/api/rag/news-similarity` is for the case where it is not.
 
 `examples/02_news_thesis.py` runs this sequence.
 
