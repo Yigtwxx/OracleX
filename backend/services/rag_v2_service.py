@@ -1122,7 +1122,9 @@ def _generate_context_summary(results: Dict) -> str:
     return "\n".join(parts) if parts else "Tarihsel veri bulunamadı."
 
 
-def render_event_lines(events: List[Dict], limit: int = 3) -> List[str]:
+def render_event_lines(
+    events: List[Dict], limit: int = 3, include_similarity: bool = False
+) -> List[str]:
     """
     Retrieved events as prompt lines, including how each one actually resolved.
 
@@ -1135,6 +1137,13 @@ def render_event_lines(events: List[Dict], limit: int = 3) -> List[str]:
     lines: List[str] = []
     for event in events[:limit]:
         line = f"- {event['date']} ({event['type']}) {event.get('symbol', '')}: {event['event']}"
+
+        # Only the chat turn asks for this. An analogy is worth as much as its
+        # match is close, and without the score the model cannot tell a precise
+        # precedent from a loose one — so it either hedges everything or hedges
+        # nothing. The news pipeline's lines are unchanged by default.
+        if include_similarity and event.get("similarity") is not None:
+            line += f" [match {event['similarity']:.2f}]"
 
         apparent = event.get("apparent_sentiment")
         if apparent:
@@ -1205,7 +1214,7 @@ def get_rag_context_v2(
 
     if results["events"]:
         context_parts.append("Past events:")
-        context_parts.extend(render_event_lines(results["events"]))
+        context_parts.extend(render_event_lines(results["events"], include_similarity=True))
         context_parts.append("")
 
     if results["prices"]:

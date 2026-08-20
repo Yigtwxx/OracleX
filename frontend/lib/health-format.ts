@@ -28,6 +28,10 @@ export function stateColor(state: SourceState): string {
       return 'var(--up)';
     case 'degraded':
       return 'var(--warn)';
+    // Neutral, like idle: nothing is wrong with a source that was last used an
+    // hour ago, so it must not borrow the colour of one that is failing.
+    case 'stale':
+      return 'var(--fg-subtle)';
     case 'down':
       return 'var(--down)';
     default:
@@ -69,6 +73,9 @@ export function formatDetail(
   if (state === 'idle') return 'henüz veri yok';
 
   const age = formatAge(lastOkAt, nowMs);
+  // Says why the row is quiet rather than leaving a bare age next to a grey
+  // dot, which reads as "last seen" — as if contact had been lost.
+  if (state === 'stale') return age ? `${age} kullanıldı` : 'henüz veri yok';
   const parts: string[] = [];
   if (age) parts.push(age);
   if (state === 'ok') {

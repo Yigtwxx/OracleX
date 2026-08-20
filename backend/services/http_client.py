@@ -111,6 +111,37 @@ async def get_json(
 
 
 @_observe
+async def post_json(
+    url: str,
+    *,
+    payload: Any,
+    headers: Optional[dict] = None,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> Any:
+    """
+    POST `payload` as JSON to `url` and return the parsed JSON response.
+
+    Added for JSON-RPC, which is POST-only: the chain adapters ask a node for a
+    block the same way every other service asks an API for a quote, and routing
+    it through here is what puts those nodes on the health badge without each
+    adapter reporting itself.
+
+    `payload` is deliberately untyped. A JSON-RPC batch is a *list* of request
+    objects sent as one body, and that is the shape the EVM adapter relies on to
+    read a dozen blocks in a single round trip.
+
+    Same contract as `get_json`: raises on non-2xx and on transport failures.
+    Note that this only covers HTTP-level failure. JSON-RPC reports its own
+    errors inside a 200 body, so callers must still check for an `error` member.
+    """
+    merged_headers = {**DEFAULT_HEADERS, **(headers or {})}
+    async with httpx.AsyncClient(timeout=timeout, headers=merged_headers) as client:
+        response = await client.post(url, json=payload)
+        response.raise_for_status()
+        return response.json()
+
+
+@_observe
 async def get_text(
     url: str,
     *,

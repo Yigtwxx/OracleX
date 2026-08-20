@@ -13,6 +13,12 @@ reported as `idle` rather than guessed at, and the badge treats idle as "not a
 problem" — the alternative, probing on a timer, would spend quota to answer a
 question no user is asking.
 
+The same reasoning applies once a category goes quiet again: a long silence is
+reported as `stale`, which is shown but never counted as a fault. Only a call
+that actually failed can turn the badge yellow or red. Categories that are only
+called when a user asks for them — the LLM chain, the database — opt out of
+staleness entirely, because there silence means nobody asked.
+
 State is per-process and in memory. A restart resets it, which is correct: a
 verdict about a provider from before the restart says nothing about now.
 """
@@ -32,12 +38,23 @@ from urllib.parse import urlparse
 # the app wrong rather than merely thinner — those are what turn the badge red.
 
 
+# How long a polled category may stay silent before the panel stops vouching
+# for its last success. Generous, because the slowest categories are polled on a
+# fifteen-minute schedule and a row that greys out between two healthy refreshes
+# is worse than no row at all.
+STALE_AFTER_S = 30 * 60
+
+
 @dataclass(frozen=True)
 class Category:
     key: str
     label: str
     critical: bool
     providers: tuple[str, ...]
+    # Seconds of silence after which the category reads as `stale`, or None to
+    # never go stale. None is for the demand-driven categories: nothing polls
+    # them, so their age measures how long since a user last needed them.
+    stale_after_s: Optional[float] = STALE_AFTER_S
 
 
 CATEGORIES: tuple[Category, ...] = (
@@ -48,12 +65,33 @@ CATEGORIES: tuple[Category, ...] = (
         ("Binance", "OKX", "Bybit", "CoinGecko", "Kraken"),
     ),
     Category("stream", "Live Stream", True, ("Price websocket",)),
-    Category("database", "Database", True, ("Supabase",)),
+    Category("database", "Database", True, ("Supabase",), stale_after_s=None),
     Category("stocks", "Stocks", False, ("Yahoo Finance", "Nasdaq", "FMP")),
     Category("news", "News", False, ("Investing", "CoinDesk", "TreeOfAlpha", "RSS feeds")),
-    Category("onchain", "On-chain", False, ("mempool.space", "LlamaRPC", "Blockscout")),
-    Category("macro", "Macro & Sentiment", False, ("Federal Reserve", "CNN Fear & Greed")),
-    Category("ai", "AI / LLM", False, ("Local LLM chain",)),
+    Category(
+        "onchain",
+        "On-chain",
+        False,
+        (
+            "mempool.space",
+            "LlamaRPC",
+            "Blockscout",
+            "Coin Metrics",
+            "publicnode",
+            "Base RPC",
+            "Arbitrum RPC",
+            "OP Mainnet RPC",
+            "Solana RPC",
+            "TronGrid",
+        ),
+    ),
+    Category(
+        "macro",
+        "Macro & Sentiment",
+        False,
+        ("Federal Reserve", "CNN Fear & Greed", "PizzINT"),
+    ),
+    Category("ai", "AI / LLM", False, ("Local LLM chain",), stale_after_s=None),
 )
 
 _BY_KEY = {c.key: c for c in CATEGORIES}
@@ -85,10 +123,30 @@ _HOST_MAP: dict[str, str] = {
     "publicnode.com": "onchain",
     "blockscout.com": "onchain",
     "coinmetrics.io": "onchain",
+    # The Chains board's own nodes. Every one of these is a public RPC endpoint
+    # for a single chain, so they are the same kind of dependency as the three
+    # above and lose the same thing when they fail — one column of the board,
+    # not the app. Mapped by registrable domain because each vendor fronts
+    # several subdomains (arb1./nova., mainnet./sepolia.) and the suffix match
+    # is what keeps this list from having to track them.
+    "base.org": "onchain",
+    "arbitrum.io": "onchain",
+    "optimism.io": "onchain",
+    "solana.com": "onchain",
+    "trongrid.io": "onchain",
+    # BSC's fallback seed node. Named `binance.org` rather than treated as an
+    # exchange host: this serves chain state, not the trading API, and a failure
+    # here costs the BNB Chain row rather than any price.
+    "binance.org": "onchain",
     # Macro & sentiment
     "federalreserve.gov": "macro",
     "dataviz.cnn.io": "macro",
     "faireconomy.media": "macro",
+    # The Pentagon Pizza Index's upstream. Grouped with macro & sentiment rather
+    # than given a category of its own: losing it costs one novelty gauge on the
+    # macro board, which is the same shape of loss as losing the Fear & Greed
+    # feed beside it.
+    "pizzint.watch": "macro",
     # Everything editorial. Listed rather than defaulted so an unmapped host is
     # visible as unmapped instead of quietly inflating the news category.
     "investing.com": "news",
@@ -102,12 +160,6 @@ _HOST_MAP: dict[str, str] = {
     "koinbulteni.com": "news",
     "uzmancoin.com": "news",
 }
-
-# How stale a category's last success may be before it is called `degraded` even
-# though nothing has failed. Generous, because the slowest categories are polled
-# on a fifteen-minute schedule and a badge that goes yellow between two healthy
-# refreshes is worse than no badge.
-STALE_AFTER_S = 30 * 60
 
 # Consecutive failures before a category is reported as down rather than merely
 # degraded. One failure is usually a blip; three in a row is an outage.
@@ -202,7 +254,7 @@ class _Source:
     consecutive_failures: int = 0
     consecutive_outage_failures: int = 0
 
-    def state(self, now: float) -> str:
+    def state(self, now: float, stale_after: Optional[float] = STALE_AFTER_S) -> str:
         if self.consecutive_outage_failures >= DOWN_AFTER_FAILURES:
             return "down"
         if self.consecutive_failures:
@@ -213,7 +265,13 @@ class _Source:
             return "degraded"
         if self.last_ok_at is None:
             return "idle"
-        return "degraded" if now - self.last_ok_at > STALE_AFTER_S else "ok"
+        if stale_after is not None and now - self.last_ok_at > stale_after:
+            # Old news, not bad news. Reported separately so the badge can stay
+            # green: nothing failed here, the category simply has not been
+            # exercised recently, and calling that `degraded` made a quiet
+            # afternoon look like an incident.
+            return "stale"
+        return "ok"
 
 
 @dataclass
@@ -279,7 +337,7 @@ class HealthRegistry:
         rows = []
         for category in CATEGORIES:
             source = self._sources[category.key]
-            state = source.state(now)
+            state = source.state(now, category.stale_after_s)
             rows.append(
                 {
                     "key": category.key,
@@ -289,7 +347,7 @@ class HealthRegistry:
                     "state": state,
                     "last_ok_at": source.last_ok_at,
                     "latency_ms": source.last_latency_ms,
-                    "detail": source.last_error if state != "ok" else None,
+                    "detail": source.last_error if state in ("degraded", "down") else None,
                 }
             )
 
@@ -304,9 +362,10 @@ def _overall(rows: list[dict]) -> str:
     """
     Collapse the board into the one word on the badge.
 
-    `idle` never degrades the verdict — a category nobody has called yet is not
-    evidence of a fault. A build where every category is idle reports `starting`,
-    which is what the frontend shows before the first data lands.
+    `idle` and `stale` never degrade the verdict — a category nobody has called
+    yet, or has not called lately, is not evidence of a fault; only a call that
+    failed is. A build where every category is idle reports `starting`, which is
+    what the frontend shows before the first data lands.
     """
     if any(r["critical"] and r["state"] == "down" for r in rows):
         return "offline"

@@ -6,7 +6,9 @@ import { API_BASE_URL } from '@/lib/api';
 /** How often the badge asks the backend for the current board. */
 const POLL_INTERVAL_MS = 10_000;
 
-export type SourceState = 'ok' | 'degraded' | 'down' | 'idle';
+/** `stale` is a healthy category that has simply been quiet for a while —
+    shown, but never treated as a fault. */
+export type SourceState = 'ok' | 'stale' | 'degraded' | 'down' | 'idle';
 export type OverallStatus = 'live' | 'degraded' | 'offline' | 'starting';
 
 export interface HealthCategory {

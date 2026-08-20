@@ -22,11 +22,90 @@ export interface NewsItem {
  * because a genuinely thin market may yield some indicators and not others,
  * and the panel says so rather than showing a placeholder in their place.
  */
+/** RSI on one timeframe: the level, and which way it is going. */
+export interface RsiRead {
+  value?: number | null;
+  signal?: string | null;
+  period?: number;
+  change_5_bars?: number | null;
+  slope?: 'rising' | 'falling' | 'flat' | null;
+  divergence?: string | null;
+}
+
+/** One chart of the same asset, read on its own terms. */
+export interface TimeframeRead {
+  timeframe: string;
+  horizon: 'short' | 'medium' | 'long' | string;
+  bars?: number;
+  covers_days?: number | null;
+  trend?: string | null;
+  atr?: number | null;
+  atr_percent?: number | null;
+  rsi?: RsiRead;
+}
+
+/**
+ * A band price reversed in — never a single level.
+ *
+ * Both bounds are sent because both were measured. Rendering only `mid` would
+ * put back the false precision the backend removed when it stopped quoting
+ * support as one decimal.
+ */
+export interface PriceZone {
+  low: number;
+  high: number;
+  mid: number;
+  touches: number;
+  flip: boolean;
+  /** 0-100: how often, how recently, on what volume, and whether it flipped. */
+  strength: number;
+  horizon: 'short' | 'medium' | 'long' | string;
+  timeframe: string;
+  /** Every timeframe that found this band — three agreeing is the strong case. */
+  timeframes: string[];
+  confluence: string[];
+  distance_percent: number;
+}
+
+/** Where this price sits in its own multi-year history. */
+export interface ChartStructure {
+  range_high?: number | null;
+  range_low?: number | null;
+  range_bars?: number | null;
+  range_timeframe?: string | null;
+  position_percent?: number | null;
+  distance_to_high_percent?: number | null;
+  distance_to_low_percent?: number | null;
+  sma50?: number | null;
+  sma200?: number | null;
+  price_vs_sma200_percent?: number | null;
+  swing_structure?: string | null;
+  timeframe_alignment?: string | null;
+}
+
 export interface TechnicalSignals {
   rsi_signal?: string;
+  /**
+   * Preformatted price bands (`"$61,830 – $63,238"`), nearest first — not
+   * numbers, and not single prices: the backend computes support as an area
+   * price reversed in across 4h/1d/1w candles. Render as given.
+   */
   support_levels?: string[];
   resistance_levels?: string[];
   target_price?: string;
+
+  /**
+   * The multi-timeframe read behind those bands. Every field is optional: an
+   * analysis stored before this shape existed still parses, and the panel falls
+   * back to the preformatted lists above.
+   */
+  current_price?: number | null;
+  primary_timeframe?: string | null;
+  timeframes?: TimeframeRead[];
+  support_zones?: PriceZone[];
+  resistance_zones?: PriceZone[];
+  inside_zones?: PriceZone[];
+  structure?: ChartStructure | null;
 }
 
 export interface SentimentAnalysis {

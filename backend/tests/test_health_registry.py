@@ -1,10 +1,13 @@
 """Tests for the data-source health registry behind the LIVE badge."""
 
+import time
+
 import httpx
 import pytest
 
 from services.health_registry import (
     DOWN_AFTER_FAILURES,
+    STALE_AFTER_S,
     HealthRegistry,
     category_for_url,
     is_rate_limited,
@@ -108,6 +111,43 @@ class TestStateTransitions:
         registry.record("prices_crypto", ok=True)
         registry.record("prices_crypto", ok=False, error=httpx.ConnectTimeout("x"))
         assert _row(registry.snapshot(), "prices_crypto")["state"] == "degraded"
+
+
+def _age(registry: HealthRegistry, key: str, seconds: float) -> None:
+    """Backdate a category's last success, as if it had gone quiet."""
+    registry._sources[key].last_ok_at = time.time() - seconds
+
+
+class TestStaleness:
+    def test_a_quiet_polled_category_is_stale_not_degraded(self, registry: HealthRegistry):
+        registry.record("macro", ok=True, latency_ms=403)
+        _age(registry, "macro", STALE_AFTER_S + 60)
+        row = _row(registry.snapshot(), "macro")
+        assert row["state"] == "stale"
+        # Nothing failed, so the row must not invent a reason.
+        assert row["detail"] is None
+
+    def test_staleness_does_not_colour_the_badge(self, registry: HealthRegistry):
+        registry.record("prices_crypto", ok=True)
+        registry.record("macro", ok=True)
+        _age(registry, "macro", STALE_AFTER_S + 60)
+        assert registry.snapshot()["status"] == "live"
+
+    @pytest.mark.parametrize("key", ["ai", "database"])
+    def test_demand_driven_categories_never_go_stale(self, registry: HealthRegistry, key: str):
+        # Nothing polls these, so a long silence means nobody asked — an idle
+        # afternoon must not read as a fault.
+        registry.record(key, ok=True, latency_ms=9)
+        _age(registry, key, STALE_AFTER_S * 10)
+        assert _row(registry.snapshot(), key)["state"] == "ok"
+
+    def test_a_fault_outranks_staleness(self, registry: HealthRegistry):
+        registry.record("macro", ok=True)
+        _age(registry, "macro", STALE_AFTER_S + 60)
+        registry.record("macro", ok=False, error=httpx.ConnectTimeout("x"))
+        row = _row(registry.snapshot(), "macro")
+        assert row["state"] == "degraded"
+        assert row["detail"] == "timeout"
 
 
 class TestOverallStatus:

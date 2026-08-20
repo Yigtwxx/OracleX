@@ -38,6 +38,7 @@ from routers import (
     home,
     macro,
     live,
+    chains,
     analysis,
     rag,
     chat,
@@ -95,6 +96,22 @@ async def lifespan(app: FastAPI):
         logger.info("Admin panel enabled for %d address(es)", len(settings.admin_emails))
     else:
         logger.warning("ADMIN_EMAILS is empty — the admin panel is closed to everyone")
+
+    # The scrape ladder's browser rung is on by default, and it needs binaries
+    # that pip does not install (`./venv/bin/scrapling install`). Missing them
+    # is not fatal — the ladder reports "that site needs a browser and one is
+    # not available" and the turn answers without it — but a deployment that
+    # thinks it can read Reddit and silently cannot is worth one loud line.
+    if settings.SCRAPLING_ALLOW_BROWSER:
+        try:
+            from scrapling.fetchers import AsyncStealthySession  # noqa: F401
+        except Exception as e:  # noqa: BLE001 — a missing browser is a warning
+            logger.warning(
+                "SCRAPLING_ALLOW_BROWSER is on but no browser is available (%s). "
+                "JavaScript-only sites will be reported as unreadable. "
+                "Run `./venv/bin/scrapling install` to enable them.",
+                e,
+            )
 
     # Declare the warm-up steps before running any of them, so the frontend's
     # boot gate can show the whole list from its very first poll.
@@ -386,6 +403,7 @@ def create_app() -> FastAPI:
     app.include_router(home.router)  # /api/home/*, /api/onchain/whales
     app.include_router(macro.router)  # /api/macro/board
     app.include_router(live.router)  # /api/live/events, /api/live/streams, /api/live/tape
+    app.include_router(chains.router)  # /api/chains/board
     app.include_router(
         analysis.router
     )  # /api/analysis/reports, /api/analysis/jobs, /api/analysis/notes

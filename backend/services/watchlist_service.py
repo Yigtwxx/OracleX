@@ -2,6 +2,23 @@
 Watchlist Service
 Handles CRUD operations for user watchlists and fetches real-time prices
 for both Crypto (CoinGecko) and Stocks (Yahoo Finance).
+
+**Watchlists are per user.** They used to live in a single
+`backend/data/watchlist.json` with no `user_id` anywhere in this module, and
+`routers/watchlist.py` exposed every endpoint with no auth dependency — so
+every account saw, and could delete, every other account's lists. That was
+survivable while nothing else read them; it stopped being survivable the moment
+chat, which is authenticated, wanted one as a tool.
+
+Storage is the `watchlists` table, which has been in the schema since migration
+001 — with a `user_id`, RLS policies and an index — and which this module simply
+never used. There was no missing table; there was a service that ignored the one
+that already existed. Every function now takes the user id the caller's JWT was
+verified against.
+
+The JSON file is not read on any request path. `import_legacy_file` exists for
+an operator who wants to hand the old lists to one account on purpose, because
+the old store has no user to attribute them to.
 """
 
 import asyncio
@@ -9,8 +26,7 @@ import json
 import logging
 import os
 import time
-import uuid
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import httpx
 
@@ -19,66 +35,186 @@ from services.stock_market_service import fetch_single_stock
 
 logger = logging.getLogger(__name__)
 
-DATA_FILE = "data/watchlist.json"
+# The pre-migration store. Read only by `import_legacy_file`, never on a
+# request path — see the module docstring.
+LEGACY_DATA_FILE = "data/watchlist.json"
+
+# One user cannot have unbounded lists or unbounded symbols in them. Not a
+# security boundary — RLS is — but a bound on what one account can make the
+# price hydrator fetch on every poll.
+MAX_LISTS_PER_USER = 20
+MAX_ITEMS_PER_LIST = 100
+
+VALID_ASSET_TYPES = ("STOCK", "CRYPTO")
 
 
-# In-memory cache for simple persistence
-def _load_db():
-    if not os.path.exists(DATA_FILE):
+def _load_legacy() -> List[Dict]:
+    if not os.path.exists(LEGACY_DATA_FILE):
         return []
     try:
-        with open(DATA_FILE) as f:
+        with open(LEGACY_DATA_FILE) as f:
             return json.load(f)
     except (OSError, json.JSONDecodeError):
         return []
 
 
-def _save_db(data):
-    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=2)
-
-
-async def get_watchlists():
+def _clean_items(raw: Any) -> List[Dict[str, str]]:
     """
-    Get all watchlists with current market data.
+    The `items` column, reduced to entries this code will actually price.
+
+    It is `jsonb` with no shape enforced by the database, and it has been
+    writable by any authenticated client since migration 001 — so what comes out
+    is treated like anything else that crossed a trust boundary: an unknown
+    asset type is dropped rather than handed to a price fetcher, and duplicates
+    are collapsed so one list cannot make the hydrator fetch the same quote
+    fifty times.
     """
-    watchlists = _load_db()
-    if not watchlists:
+    if not isinstance(raw, list):
         return []
 
-    # Collect all symbols to fetch
-    # For this MVP, we will try to detect type or store type in the watchlist item.
+    cleaned: List[Dict[str, str]] = []
+    seen: set = set()
+    for entry in raw[:MAX_ITEMS_PER_LIST]:
+        if not isinstance(entry, dict):
+            continue
+        symbol = str(entry.get("symbol") or "").strip().upper()
+        asset_type = str(entry.get("type") or "CRYPTO").strip().upper()
+        if not symbol or symbol in seen or asset_type not in VALID_ASSET_TYPES:
+            continue
+        seen.add(symbol)
+        cleaned.append({"symbol": symbol, "type": asset_type})
+    return cleaned
 
-    # We'll assume the structure is:
-    # { "id": "uuid", "name": "Tech", "items": [ {"symbol": "AAPL", "type": "STOCK"}, {"symbol": "BTC", "type": "CRYPTO"} ] }
 
-    return await _hydrate_prices(watchlists)
+def _rows_to_lists(rows: List[Dict]) -> List[Dict]:
+    """Table rows in the shape the price hydrator and the UI expect."""
+    return [
+        {
+            "id": row["id"],
+            "name": row.get("name") or "Watchlist",
+            "items": _clean_items(row.get("items")),
+        }
+        for row in rows
+    ]
 
 
-async def create_watchlist(name: str, items: List[Dict[str, str]]):
+async def get_watchlists(user_id: str) -> List[Dict]:
+    """This user's watchlists, with current market data."""
+    if not user_id:
+        return []
+
+    from services.supabase_service import get_supabase
+
+    client = get_supabase()
+    if client is None:
+        logger.warning("Supabase is not configured; watchlists are unavailable")
+        return []
+
+    rows = (
+        client.table("watchlists")
+        .select("id, name, items")
+        .eq("user_id", user_id)
+        .order("updated_at", desc=True)
+        .limit(MAX_LISTS_PER_USER)
+        .execute()
+    ).data or []
+    if not rows:
+        return []
+
+    return await _hydrate_prices(_rows_to_lists(rows))
+
+
+async def create_watchlist(user_id: str, name: str, items: List[Dict[str, str]]) -> List[Dict]:
     """
-    Create a new watchlist.
+    Create a watchlist owned by `user_id`.
+
     items: List of {"symbol": "BTC", "type": "CRYPTO"}
     """
-    db = _load_db()
-    new_list = {
-        # A positional id collides with an existing list as soon as one is
-        # deleted, which would make the next delete remove the wrong watchlist.
-        "id": uuid.uuid4().hex,
-        "name": name,
-        "items": items,
-    }
-    db.append(new_list)
-    _save_db(db)
-    return await _hydrate_prices([new_list])
+    if not user_id:
+        raise PermissionError("a watchlist needs an owner")
+
+    from services.supabase_service import get_supabase
+
+    client = get_supabase()
+    if client is None:
+        raise RuntimeError("Supabase is not configured")
+
+    # Cleaned before the insert rather than after the read, so the column never
+    # comes to hold an entry this code would refuse to price.
+    created = (
+        client.table("watchlists")
+        .insert(
+            {
+                "user_id": user_id,
+                "name": (name or "").strip()[:80] or "Watchlist",
+                "items": _clean_items(items),
+            }
+        )
+        .execute()
+    ).data
+    if not created:
+        raise RuntimeError("the watchlist could not be created")
+
+    return await _hydrate_prices(_rows_to_lists(created))
 
 
-async def delete_watchlist(list_id: str):
-    db = _load_db()
-    new_db = [w for w in db if w["id"] != list_id]
-    _save_db(new_db)
+async def delete_watchlist(user_id: str, list_id: str) -> Dict[str, str]:
+    """
+    Delete one of this user's watchlists.
+
+    The `user_id` filter is the deletion's authorisation, not a convenience:
+    the backend holds the service-role key, which bypasses RLS, so a delete
+    without it would take any list whose id was guessed.
+    """
+    if not user_id:
+        raise PermissionError("a watchlist needs an owner")
+
+    from services.supabase_service import get_supabase
+
+    client = get_supabase()
+    if client is None:
+        raise RuntimeError("Supabase is not configured")
+
+    client.table("watchlists").delete().eq("id", list_id).eq("user_id", user_id).execute()
     return {"status": "success"}
+
+
+async def watchlist_symbols(user_id: str) -> List[str]:
+    """
+    Just the symbols, for callers that do not need prices.
+
+    `services.ownership.consensus.watchlist_overlap` and the chat tool both want
+    this; hydrating prices for them would be a round of network work thrown away.
+    """
+    if not user_id:
+        return []
+
+    from services.supabase_service import get_supabase
+
+    client = get_supabase()
+    if client is None:
+        return []
+
+    rows = (client.table("watchlists").select("items").eq("user_id", user_id).execute()).data or []
+
+    return sorted({item["symbol"] for row in rows for item in _clean_items(row.get("items"))})
+
+
+async def import_legacy_file(user_id: str) -> Dict[str, int]:
+    """
+    Hand the pre-migration `data/watchlist.json` lists to one account.
+
+    Not called from anywhere: the old store has no user to attribute its lists
+    to, so which account should receive them is a decision an operator makes,
+    not one this module can infer. Run it from a shell when that decision has
+    been made.
+    """
+    legacy = _load_legacy()
+    imported = 0
+    for entry in legacy[:MAX_LISTS_PER_USER]:
+        await create_watchlist(user_id, entry.get("name") or "Imported", entry.get("items") or [])
+        imported += 1
+    return {"imported": imported, "found": len(legacy)}
 
 
 # -----------------------------------------------------------------------------

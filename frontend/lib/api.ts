@@ -1,6 +1,7 @@
 import { NewsItem, SentimentAnalysis } from '@/store/useStore';
 import { getSupabase } from '@/lib/supabase';
 import { toChatJob, type ChatJob, type StoredChatStep } from '@/lib/chat-job';
+import type { AiNote } from '@/lib/ai-note';
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const API_BASE = API_BASE_URL;
@@ -670,6 +671,133 @@ export interface MacroBoard {
 
 export async function fetchMacroBoard(): Promise<MacroBoard> {
   return apiFetch<MacroBoard>('/api/macro/board');
+}
+
+/** One of the three votes behind the regime label. `signal` is -1, 0 or +1. */
+export interface MacroRegimeComponent {
+  key: string;
+  label: string;
+  signal: number;
+  /**
+   * The figure, already rounded to the grain its vote was decided on. The note
+   * is written from these strings, so a cached sentence can never quote a number
+   * that has since moved.
+   */
+  reading: string;
+}
+
+/**
+ * The cross-asset read, and the sentence explaining it.
+ *
+ * `label` and `score` are computed on the server and are always present, so the
+ * card renders whether or not `note` ever arrives. `not_measured` is not
+ * decoration: this board carries no rates, credit or volatility feed, and a read
+ * that does not say so overclaims.
+ */
+export interface MacroRegime {
+  label: string;
+  score: number;
+  components: MacroRegimeComponent[];
+  /** Components whose inputs were missing. Two or more and `label` is 'Unavailable'. */
+  unavailable: string[];
+  not_measured: string[];
+  /** Set when the index readings span sessions that are not all open. */
+  session_caveat: string | null;
+  context: string[];
+  stale: boolean;
+  as_of: string;
+  note: AiNote;
+}
+
+export async function fetchMacroRegime(): Promise<MacroRegime> {
+  return apiFetch<MacroRegime>('/api/macro/regime', { anonymous: true });
+}
+
+// ==========================================
+// PENTAGON PIZZA INDEX
+// ==========================================
+
+/**
+ * `insufficient_data` and `unavailable` both arrive with a null index and mean
+ * different things: the venues were shut, versus the source could not be read.
+ * The UI branches on this rather than on `index === null` so those two never
+ * collapse into one message.
+ */
+export type PizzaIndexStatus =
+  | 'quiet'
+  | 'normal'
+  | 'elevated'
+  | 'spike'
+  | 'insufficient_data'
+  | 'unavailable';
+
+/** One pizzeria near the Pentagon: our reading, and the source's own beside it. */
+export interface PizzaVenue {
+  place_id: string;
+  name: string;
+  address: string | null;
+  /** Live Google busyness, 0–100. Null when the venue is closed or silent. */
+  current: number | null;
+  /** The venue's usual busyness for this local weekday and hour. */
+  baseline: number | null;
+  /** `current / baseline`, clamped server-side. Null when not meaningful. */
+  ratio: number | null;
+  is_closed: boolean;
+  /** Why this venue did not contribute, so a blank row can explain itself. */
+  excluded_reason: string | null;
+  /** The source's own derived figures. Where these and `ratio` disagree, that is the signal. */
+  source_pct_of_usual: number | null;
+  source_is_spike: boolean;
+  source_spike_magnitude: number | null;
+  freshness: string | null;
+  /** This venue's own 24h, on the same hour grid as `PizzaIndex.history`. */
+  history: PizzaVenueHour[];
+}
+
+export interface PizzaVenueHour {
+  /** Matches a `PizzaIndexHour.hour_et` one-for-one, so the rows stack. */
+  hour_et: string;
+  /** Null where this venue reported nothing that hour — the slot stays empty. */
+  ratio: number | null;
+}
+
+/** One hour of the trend, scored by the same rules as the headline reading. */
+export interface PizzaIndexHour {
+  /** Local (America/New_York) hour the bucket covers, truncated to :00. */
+  hour_et: string;
+  /** Null where too few venues reported that hour — the slot is kept, not closed. */
+  index: number | null;
+  venues_used: number;
+}
+
+/**
+ * The Pentagon Pizza Index.
+ *
+ * `index` is a multiple of usual busyness, not a 0–100 score, and the UI renders
+ * it that way on purpose — see `lib/pizza-index.ts`.
+ */
+export interface PizzaIndex {
+  index: number | null;
+  status: PizzaIndexStatus;
+  label: string;
+  venues_used: number;
+  venues_total: number;
+  venues: PizzaVenue[];
+  history: PizzaIndexHour[];
+  as_of: string;
+  /** True when replayed from cache after the source could not be reached. */
+  stale: boolean;
+  source: string;
+  source_url: string;
+}
+
+/**
+ * Unlike the two macro endpoints above, this one never answers 503 — a failed
+ * scrape of a novelty gauge must not surface as a page-level error, so the
+ * failure arrives as `status: 'unavailable'` in an otherwise normal payload.
+ */
+export async function fetchPizzaIndex(): Promise<PizzaIndex> {
+  return apiFetch<PizzaIndex>('/api/macro/pizza-index', { anonymous: true });
 }
 
 // ==========================================
@@ -1561,6 +1689,20 @@ export async function fetchChatJob(jobId: string): Promise<ChatJob> {
   return toChatJob(raw);
 }
 
+/**
+ * Stop a turn that is still running.
+ *
+ * A turn can spend minutes gathering evidence, so a question asked by mistake
+ * needs a way out that is not waiting for it to finish. Returns the settled
+ * job; the caller decides whether to say anything about it.
+ */
+export async function cancelChatJob(jobId: string): Promise<ChatJob> {
+  const raw = await apiFetch<Record<string, unknown>>(`/api/chat/jobs/${jobId}`, {
+    method: 'DELETE',
+  });
+  return toChatJob(raw);
+}
+
 export async function fetchChatSessions(): Promise<ChatSession[]> {
   const data = await apiFetch<{ sessions: ChatSession[] }>('/api/chat/sessions');
   return data.sessions ?? [];
@@ -2304,6 +2446,65 @@ export async function fetchWatchlistOverlap(): Promise<{ overlap: OwnershipConse
   });
 }
 
+/** Holders on one side of one asset, for the quarter. */
+export interface OwnershipFlowSide {
+  symbol: string;
+  label: string;
+  holders: string[];
+  holder_count: number;
+  total_value_usd: number;
+}
+
+/** An asset some holders added and others trimmed in the same quarter. */
+export interface OwnershipContested {
+  symbol: string;
+  buyers: string[];
+  sellers: string[];
+}
+
+/**
+ * Last quarter's 13F activity, aggregated.
+ *
+ * Every dollar figure is as-filed at the same quarter end, which is the only
+ * reason summing them is legitimate here. `value_is_partial` means some moves
+ * carried no filed value, so the totals are floors — never present them as
+ * totals, and never render a missing figure as zero.
+ */
+export interface OwnershipFlowFacts {
+  quarter: string;
+  period: string;
+  filed_from: string | null;
+  filed_to: string | null;
+  tilt: 'net_buying' | 'net_selling' | 'balanced' | 'insufficient';
+  gross_bought_usd: number;
+  gross_sold_usd: number;
+  net_usd: number;
+  buy_count: number;
+  sell_count: number;
+  entities_reporting: number;
+  entities_tracked: number;
+  unpriced_moves: number;
+  value_is_partial: boolean;
+  /** Moves from treasury, on-chain and insider sources, deliberately excluded. */
+  other_activity_count: number;
+  headlines: string[];
+  consensus_bought: OwnershipFlowSide[];
+  consensus_sold: OwnershipFlowSide[];
+  contested: OwnershipContested[];
+  /** Holders with a single filing on record, so no change is computable for them. */
+  baseline_entities: string[];
+}
+
+/** `facts` is null when no board exists or no holder has a comparable quarter. */
+export interface OwnershipFlowNote {
+  facts: OwnershipFlowFacts | null;
+  note: AiNote;
+}
+
+export async function fetchOwnershipFlowNote(): Promise<OwnershipFlowNote> {
+  return apiFetch<OwnershipFlowNote>('/api/ownership/flow-note', { anonymous: true });
+}
+
 // ==========================================
 // LIVE TAB
 // ==========================================
@@ -2427,4 +2628,221 @@ export interface LiveStreamersResponse {
 
 export async function fetchLiveStreamers(): Promise<LiveStreamersResponse> {
   return apiFetch<LiveStreamersResponse>('/api/live/streamers');
+}
+
+// ==========================================
+// CHAINS PAGE
+// ==========================================
+
+/** Which adapter read the chain. Decides what a row can and cannot report. */
+export type ChainFamily = 'evm' | 'bitcoin' | 'solana' | 'tron';
+
+/**
+ * What a chain's load reading actually measures.
+ *
+ * Deliberately not normalised away: the three are not the same quantity, and a
+ * single "congestion %" across all of them would be a comparison the data does
+ * not support. The UI prints the basis next to the bar.
+ */
+export type ChainLoadBasis =
+  /** gasUsed / gasLimit on the newest block. */
+  | 'block_fullness'
+  /** Projected blocks whose median fee is still bidding for space. */
+  | 'fee_contested_backlog'
+  /** Share of Solana's scheduled slots that no leader produced. */
+  | 'skipped_slots';
+
+export interface ChainLoad {
+  percent: number;
+  basis: ChainLoadBasis;
+}
+
+export interface ChainBlock {
+  height: number;
+  /**
+   * The block's own hash, in whatever form its chain publishes — hex with an
+   * `0x` prefix on the EVM chains, bare hex on Bitcoin and TRON, base58 on
+   * Solana. Null when the source omitted it. See `shortenHash`.
+   */
+  hash?: string | null;
+  /** Null when the source published the block without a timestamp. */
+  timestamp_ms: number | null;
+  tx_count: number | null;
+  /** Null where the chain has no meaningful capacity ceiling — see `ChainRow`. */
+  fill_percent: number | null;
+  gas_used?: number | null;
+  gas_limit?: number | null;
+  size_bytes?: number | null;
+  /**
+   * Solana only: this row is a group of scheduled slots, not one block, and
+   * these two say how many of them produced a block. Ten individual slots would
+   * span four seconds, so the stream groups them to cover a comparable window —
+   * and the pair doubles as the row's own capacity reading, which is why the
+   * bar can be drawn segment by segment.
+   */
+  slots_produced?: number;
+  slots_scheduled?: number;
+}
+
+export interface ChainFee {
+  /** Cost of the chain's simplest value transfer, in its own coin. */
+  transfer_native: number | null;
+  transfer_usd: number | null;
+  gas_price_gwei?: number | null;
+  base_fee_gwei?: number | null;
+  /** OP-stack only: the part of the bill that pays to post data to Ethereum. */
+  l1_data_fee_native?: number | null;
+  /** Bitcoin quotes per virtual byte, across four urgency tiers. */
+  fastest_sat_vb?: number | null;
+  half_hour_sat_vb?: number | null;
+  hour_sat_vb?: number | null;
+  economy_sat_vb?: number | null;
+  /** The fee is a protocol constant, not a live quote — Solana and TRON. */
+  is_fixed?: boolean;
+  /** Why the fee is zero, when it is genuinely zero rather than unmeasured. */
+  free_reason?: string;
+}
+
+export interface ChainRow {
+  key: string;
+  name: string;
+  /** Ticker fees are paid in. Five of the eight rows settle in ETH. */
+  symbol: string;
+  family: ChainFamily;
+  /** The cadence the protocol aims for, which is what `block_time_seconds` is read against. */
+  target_block_seconds: number;
+  explorer_block_url: string;
+  /**
+   * Leading characters of `ChainBlock.hash` that encode the height rather than
+   * the digest, and which a short label must skip. Non-zero on TRON only.
+   */
+  hash_height_prefix_chars?: number;
+  height: number | null;
+  /** When the newest block landed. Null on Solana, which is not dated per slot. */
+  last_block_at: number | null;
+  block_time_seconds: number | null;
+  /** How long a window the cadence was averaged over. */
+  cadence_span_seconds: number | null;
+  tx_count: number | null;
+  /** Null where the chain publishes no capacity this can be measured against. */
+  load: ChainLoad | null;
+  fee: ChainFee | null;
+  /** Newest first. */
+  blocks: ChainBlock[];
+  /**
+   * Present only when `blocks` rows are groups rather than single blocks, and
+   * carrying how many slots each row covers. Solana only.
+   */
+  stream_bucket_slots?: number;
+  /** Native coin burned per day, where the chain burns any. */
+  burn_native_per_day?: number | null;
+  mempool?: {
+    tx_count: number | null;
+    vsize: number | null;
+    /** Blocks deep in transactions that are actually bidding for space. */
+    backlog_blocks: number | null;
+    /** Blocks deep counting everything queued, dust included. */
+    raw_backlog_blocks: number | null;
+    contested_fee_threshold_sat_vb: number | null;
+    total_fee_sat: number | null;
+  };
+  throughput?: {
+    tps: number | null;
+    /** Excludes consensus voting, which is about half of Solana's headline TPS. */
+    non_vote_tps: number | null;
+    skipped_slot_percent: number | null;
+  };
+  economics?: {
+    hashrate?: number | null;
+    difficulty?: number | null;
+    difficulty_change_percent?: number | null;
+    difficulty_progress_percent?: number | null;
+    difficulty_retarget_at?: number | null;
+    difficulty_blocks_remaining?: number | null;
+    halving_height?: number | null;
+    halving_blocks_remaining?: number | null;
+    halving_estimated_at?: number | null;
+    epoch?: number | null;
+    epoch_progress_percent?: number | null;
+    epoch_ends_at?: number | null;
+    block_height?: number | null;
+  };
+  /** Why this chain could not be read. Null on every row that reported. */
+  error: string | null;
+}
+
+export interface ChainFlowAsset {
+  symbol: string;
+  /** Positive means more value moved onto exchanges than off them. */
+  net_flow_usd: number | null;
+  active_addresses: number | null;
+  transactions: number | null;
+}
+
+export interface ChainsBoardResponse {
+  chains: ChainRow[];
+  /**
+   * Daily exchange flow. Covers BTC and ETH only — the free tier this reads
+   * refuses the other assets, so the strip names its own limit rather than
+   * showing six chains as zero.
+   */
+  flows: { assets: ChainFlowAsset[]; as_of: string | null };
+  prices: Record<string, number | null>;
+  as_of: string;
+  stale: boolean;
+}
+
+/**
+ * The Chains board.
+ *
+ * Unguarded, like the other board fetchers: a failure has to surface as an
+ * error state. Note the endpoint itself rarely fails — it is eight independent
+ * providers and reports a dead chain as a row carrying `error`, so the page's
+ * usual "something is wrong" path is per row, not per request.
+ */
+export async function fetchChainsBoard(): Promise<ChainsBoardResponse> {
+  return apiFetch<ChainsBoardResponse>('/api/chains/board');
+}
+
+/**
+ * One detected condition, with a sentence already written for it server-side.
+ *
+ * `basis` is what the reading was measured against — a count of prior days, an
+ * hour band, the current mempool. It is not optional context: "fees are high"
+ * and "fees are high for this hour of day" are different claims.
+ */
+export interface ChainAnomaly {
+  chain: string;
+  chain_name: string;
+  kind: string;
+  severity: 'high' | 'notable';
+  text: string;
+  basis: string;
+  window: string | null;
+  magnitude: number;
+}
+
+/**
+ * What on the board is not normal.
+ *
+ * `anomalies` is computed in Python and is the product; `note` is commentary. An
+ * unreachable model costs the sentence and never the detection. An empty
+ * `anomalies` means the board is quiet, which is why the strip renders nothing
+ * at all rather than an "all normal" banner.
+ */
+export interface ChainAnomalyReport {
+  anomalies: ChainAnomaly[];
+  /** Detected but not shown, because only the worst few fit on one line. */
+  suppressed: number;
+  checked: string[];
+  /** Chain key to why it could not be judged. A gap, never a quiet network. */
+  not_checkable: Record<string, string>;
+  coverage: string;
+  as_of: string | null;
+  stale: boolean;
+  note: AiNote;
+}
+
+export async function fetchChainAnomalies(): Promise<ChainAnomalyReport> {
+  return apiFetch<ChainAnomalyReport>('/api/chains/anomalies');
 }

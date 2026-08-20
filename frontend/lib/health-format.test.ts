@@ -37,4 +37,8 @@ describe('formatDetail', () => {
   it('does not claim an age for a source that has never been called', () => {
     expect(formatDetail('idle', null, null, null, NOW)).toBe('henüz veri yok');
   });
+
+  it('says a quiet source was last used, not that it failed', () => {
+    expect(formatDetail('stale', NOW / 1000 - 2400, 118, null, NOW)).toBe('40dk önce kullanıldı');
+  });
 });

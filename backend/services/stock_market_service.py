@@ -106,11 +106,11 @@ def _chart_to_candles(payload: dict) -> list[dict]:
     return candles
 
 
-def _yfinance_candles(symbol: str, interval: str) -> list[dict]:
+def _yfinance_candles(symbol: str, interval: str, period: str = CANDLE_RANGE) -> list[dict]:
     """Same bars via yfinance, used only when the chart endpoint comes back empty."""
     import yfinance as yf
 
-    history = yf.Ticker(symbol).history(period=CANDLE_RANGE, interval=interval)
+    history = yf.Ticker(symbol).history(period=period, interval=interval)
     if history is None or history.empty:
         return []
 
@@ -224,9 +224,17 @@ async def fetch_stock_candles_between(
     return candles
 
 
-async def fetch_stock_candles(symbol: str, interval: str = "1d") -> list[dict]:
+async def fetch_stock_candles(
+    symbol: str, interval: str = "1d", range_: str = CANDLE_RANGE
+) -> list[dict]:
     """
-    Daily OHLCV bars for an equity or index, oldest-first.
+    OHLCV bars for an equity or index, oldest-first.
+
+    `range_` is Yahoo's period parameter and defaults to `CANDLE_RANGE`, which is
+    what a single-timeframe technical read needs. The multi-timeframe read asks
+    for two years of daily and weekly bars through the same call rather than a
+    second fetcher — Yahoo takes the window as a parameter, and one cache key per
+    (symbol, interval, range) keeps the wider request from evicting the narrow one.
 
     Yahoo's chart endpoint answers "Too Many Requests" to ordinary HTTP clients
     no matter what User-Agent they send — it fingerprints the TLS handshake — so
@@ -236,7 +244,7 @@ async def fetch_stock_candles(symbol: str, interval: str = "1d") -> list[dict]:
     analysis code path is identical for crypto and equities. Empty list when
     Yahoo has no history — never a synthesised series.
     """
-    cache_key = f"stock_candles_{symbol.upper()}_{interval}"
+    cache_key = f"stock_candles_{symbol.upper()}_{interval}_{range_}"
     cached = market_cache.get(cache_key)
     if cached is not None:
         return cached
@@ -245,7 +253,7 @@ async def fetch_stock_candles(symbol: str, interval: str = "1d") -> list[dict]:
     try:
         payload = await get_json_impersonated(
             f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}",
-            params={"range": CANDLE_RANGE, "interval": interval},
+            params={"range": range_, "interval": interval},
             timeout=20.0,
         )
         candles = _chart_to_candles(payload)
@@ -257,7 +265,7 @@ async def fetch_stock_candles(symbol: str, interval: str = "1d") -> list[dict]:
         # through when the chart endpoint does not. It is synchronous, hence the
         # thread.
         try:
-            candles = await asyncio.to_thread(_yfinance_candles, symbol, interval)
+            candles = await asyncio.to_thread(_yfinance_candles, symbol, interval, range_)
         except Exception as e:
             logger.warning("yfinance candles unavailable for %s: %s", symbol, e)
 

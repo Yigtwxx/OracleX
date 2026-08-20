@@ -2,6 +2,8 @@
 
 import { useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { aiNotePollInterval } from '@/lib/ai-note';
+import { useOptionalAuth } from '@/contexts/AuthContext';
 import {
   fetchOnChainData,
   fetchFundingRates,
@@ -10,10 +12,14 @@ import {
   fetchHeatmapData,
   fetchMacroCalendar,
   fetchMacroBoard,
+  fetchMacroRegime,
+  fetchPizzaIndex,
   fetchLiveEvents,
   fetchLiveStreams,
   fetchLiveStreamers,
   fetchLiveTape,
+  fetchChainsBoard,
+  fetchChainAnomalies,
   fetchMarketOverview,
   fetchFearGreedIndex,
   fetchNasdaqOverview,
@@ -39,6 +45,7 @@ import {
   fetchOwnershipConsensus,
   fetchAssetOwners,
   fetchWatchlistOverlap,
+  fetchOwnershipFlowNote,
   type TimeFrame,
   type Note,
   type AnalysisJob,
@@ -58,10 +65,16 @@ export const queryKeys = {
   heatmap: (limit: number, includePegged: boolean) => ['heatmap', limit, includePegged] as const,
   macroCalendar: ['macroCalendar'] as const,
   macroBoard: ['macroBoard'] as const,
+  // Named `macroRegime`, not `regimeNote`: `notes` below already means the notes
+  // a user writes on a report, and the two must not read as the same thing.
+  macroRegime: ['macroRegime'] as const,
+  pizzaIndex: ['pizzaIndex'] as const,
   liveEvents: ['liveEvents'] as const,
   liveStreams: ['liveStreams'] as const,
   liveStreamers: ['liveStreamers'] as const,
   liveTape: (limit: number) => ['liveTape', limit] as const,
+  chainsBoard: ['chainsBoard'] as const,
+  chainAnomalies: ['chainAnomalies'] as const,
   marketOverview: ['marketOverview'] as const,
   fearGreedIndex: ['fearGreedIndex'] as const,
   nasdaqOverview: ['nasdaqOverview'] as const,
@@ -84,6 +97,7 @@ export const queryKeys = {
   ownershipConsensus: ['ownershipConsensus'] as const,
   ownershipAsset: (symbol: string) => ['ownershipAsset', symbol] as const,
   ownershipWatchlistOverlap: ['ownershipWatchlistOverlap'] as const,
+  ownershipFlowNote: ['ownershipFlowNote'] as const,
   // Community. The hooks live in hooks/useCommunity.ts, but the keys stay here
   // so there is one place to look when invalidating across features.
   // `scope` is the viewer id for the "My Posts" tab and 'all' for the board —
@@ -215,6 +229,49 @@ export function useMacroBoard() {
   });
 }
 
+const MACRO_REFRESH_MS = 120 * 1000;
+
+/**
+ * The cross-asset regime read.
+ *
+ * Two cadences in one hook. Settled, it tracks the board it is derived from at
+ * 120s. While the sentence is being written it looks again every few seconds,
+ * then stops — including when the note will never arrive, so a page left open
+ * against a dead provider chain does not re-ask it forever.
+ */
+export function useMacroRegime() {
+  return useQuery({
+    queryKey: queryKeys.macroRegime,
+    queryFn: fetchMacroRegime,
+    staleTime: 60 * 1000,
+    refetchInterval: (query) => {
+      const generating = aiNotePollInterval(query.state.data?.note);
+      return generating === false ? MACRO_REFRESH_MS : generating;
+    },
+  });
+}
+
+/**
+ * The Pentagon Pizza Index.
+ *
+ * Ten minutes, matching the server's own cache. The upstream samples roughly
+ * hourly, so a tighter interval would only re-read the same snapshot — and this
+ * payload is a full scrape behind the cache, which is not a page anyone should
+ * be re-triggering on a fast loop.
+ *
+ * No `retry` override and no error branch in the consumers: the endpoint answers
+ * 200 with `status: 'unavailable'` rather than failing, so an outage arrives as
+ * data the panel renders rather than as a query error.
+ */
+export function usePizzaIndex() {
+  return useQuery({
+    queryKey: queryKeys.pizzaIndex,
+    queryFn: fetchPizzaIndex,
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 10 * 60 * 1000,
+  });
+}
+
 // ==========================================
 // LIVE PAGE HOOKS
 // ==========================================
@@ -281,6 +338,50 @@ export function useLiveTape(limit = 50) {
 }
 
 // ==========================================
+// CHAINS PAGE HOOKS
+// ==========================================
+
+/**
+ * The Chains board.
+ *
+ * Ten seconds, matching the server's own cache exactly — polling faster only
+ * re-reads the same payload, and polling slower would leave the cache to expire
+ * unused so that some unlucky request pays for eight chains' worth of fetching.
+ *
+ * That interval is not what makes the page feel live, and it is not trying to
+ * be: the fastest chain here produces four blocks a second, which no poll can
+ * chase. The cards animate against each block's own server timestamp between
+ * refreshes, so the page keeps moving while this sits still.
+ */
+export function useChainsBoard() {
+  return useQuery({
+    queryKey: queryKeys.chainsBoard,
+    queryFn: fetchChainsBoard,
+    staleTime: 10 * 1000,
+    refetchInterval: 10 * 1000,
+  });
+}
+
+// Far slower than the board's ten seconds, deliberately. These readings are
+// measured against days of history and an hour-long note; nothing about them can
+// change six times a minute, and matching the board's cadence would only add
+// requests that return the same payload.
+const CHAIN_ANOMALY_REFRESH_MS = 60 * 1000;
+
+/** What on the board is not normal, and the note explaining why. */
+export function useChainAnomalies() {
+  return useQuery({
+    queryKey: queryKeys.chainAnomalies,
+    queryFn: fetchChainAnomalies,
+    staleTime: 30 * 1000,
+    refetchInterval: (query) => {
+      const generating = aiNotePollInterval(query.state.data?.note);
+      return generating === false ? CHAIN_ANOMALY_REFRESH_MS : generating;
+    },
+  });
+}
+
+// ==========================================
 // OVERVIEW PAGE HOOKS
 // ==========================================
 
@@ -330,10 +431,20 @@ export function useNews(assetType?: string) {
 // WATCHLIST HOOKS
 // ==========================================
 
+/**
+ * The signed-in user's watchlists.
+ *
+ * Gated on there being a user at all. Watchlists became per-user — they used to
+ * be one shared file behind three unauthenticated endpoints — so a signed-out
+ * visitor has none rather than everyone's, and firing the query anyway would
+ * poll a 401 every thirty seconds.
+ */
 export function useWatchlists() {
+  const { user } = useOptionalAuth();
   return useQuery({
-    queryKey: queryKeys.watchlists,
+    queryKey: [...queryKeys.watchlists, user?.id ?? 'anonymous'],
     queryFn: fetchWatchlists,
+    enabled: !!user,
     staleTime: 30 * 1000,
     refetchInterval: 30 * 1000,
   });
@@ -661,6 +772,23 @@ export function useOwnershipBoard() {
     queryFn: fetchOwnershipBoard,
     staleTime: OWNERSHIP_STALE_TIME,
     refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Last quarter's institutional flow, narrated.
+ *
+ * Keeps the no-polling rule above — 13F filings land quarterly, so there is
+ * nothing to poll for — with one exception: while the sentence is being written,
+ * it looks again every few seconds until the run settles either way.
+ */
+export function useOwnershipFlowNote() {
+  return useQuery({
+    queryKey: queryKeys.ownershipFlowNote,
+    queryFn: fetchOwnershipFlowNote,
+    staleTime: OWNERSHIP_STALE_TIME,
+    refetchOnWindowFocus: false,
+    refetchInterval: (query) => aiNotePollInterval(query.state.data?.note),
   });
 }
 

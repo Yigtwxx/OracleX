@@ -28,11 +28,91 @@ class AnalysisRequest(BaseModel):
     current_price: Optional[float] = None  # Current market price for technical analysis
 
 
+class RsiRead(BaseModel):
+    """RSI on one timeframe: the level, and which way it is going."""
+
+    value: Optional[float] = None
+    signal: Optional[str] = None
+    period: int = 14
+    change_5_bars: Optional[float] = None
+    slope: Optional[str] = None  # rising | falling | flat
+    divergence: Optional[str] = None
+
+
+class TimeframeRead(BaseModel):
+    """One chart of the same asset, read on its own terms."""
+
+    timeframe: str
+    horizon: str  # short | medium | long
+    bars: int = 0
+    covers_days: Optional[int] = None
+    trend: Optional[str] = None
+    atr: Optional[float] = None
+    atr_percent: Optional[float] = None
+    rsi: RsiRead = RsiRead()
+
+
+class PriceZone(BaseModel):
+    """
+    A band price reversed in, not a level.
+
+    Both bounds travel because that is what was measured; a client rendering
+    only `mid` would be presenting a precision the method does not have.
+    """
+
+    low: float
+    high: float
+    mid: float
+    touches: int = 0
+    flip: bool = False
+    strength: int = 0  # 0-100
+    horizon: str = "medium"
+    timeframe: str = ""
+    timeframes: List[str] = []
+    confluence: List[str] = []
+    distance_percent: float = 0.0
+
+
+class ChartStructure(BaseModel):
+    """Where this price sits in its own multi-year history."""
+
+    range_high: Optional[float] = None
+    range_low: Optional[float] = None
+    range_bars: Optional[int] = None
+    range_timeframe: Optional[str] = None
+    position_percent: Optional[float] = None
+    distance_to_high_percent: Optional[float] = None
+    distance_to_low_percent: Optional[float] = None
+    sma50: Optional[float] = None
+    sma200: Optional[float] = None
+    price_vs_sma200_percent: Optional[float] = None
+    swing_structure: Optional[str] = None
+    timeframe_alignment: Optional[str] = None
+
+
 class TechnicalSignals(BaseModel):
+    """
+    The computed chart read attached to a news analysis.
+
+    The first four fields are the shape this model has always had, and clients
+    still render them: preformatted bands, nearest first. Everything below is
+    the multi-timeframe read behind them — already computed for the prompt, and
+    carried here so a reader sees the same evidence the model was given rather
+    than a summary of it.
+    """
+
     rsi_signal: Optional[str] = "Neutral"
     support_levels: List[str] = []
     resistance_levels: List[str] = []
     target_price: Optional[str] = None
+
+    current_price: Optional[float] = None
+    primary_timeframe: Optional[str] = None
+    timeframes: List[TimeframeRead] = []
+    support_zones: List[PriceZone] = []
+    resistance_zones: List[PriceZone] = []
+    inside_zones: List[PriceZone] = []
+    structure: Optional[ChartStructure] = None
 
 
 class SentimentAnalysis(BaseModel):

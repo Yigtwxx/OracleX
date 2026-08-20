@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import { Plus, Trash2, Eye, AlertTriangle } from 'lucide-react';
 import { useWatchlists, useCreateWatchlist, useDeleteWatchlist } from '@/hooks/queries';
+import { useOptionalAuth } from '@/contexts/AuthContext';
 import CreateWatchlistModal from './CreateWatchlistModal';
 
 export default function WatchlistWidget() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
+  const { user } = useOptionalAuth();
   const { data: watchlists = [], isLoading, isError, refetch } = useWatchlists();
   const createMutation = useCreateWatchlist();
   const deleteMutation = useDeleteWatchlist();
@@ -33,6 +35,25 @@ export default function WatchlistWidget() {
   };
 
   const isBusy = isLoading || createMutation.isPending;
+
+  // Watchlists are per account now — they used to be one shared file behind
+  // three unauthenticated endpoints, which meant every visitor saw and could
+  // delete everyone else's. A signed-out visitor is told why the panel is
+  // empty rather than shown an empty list or a failed request.
+  if (!user) {
+    return (
+      <section>
+        <h2 className="text-md font-semibold text-fg mb-3">Your Watchlists</h2>
+        <div className="surface p-8 text-center">
+          <Eye className="w-5 h-5 mx-auto mb-3 text-fg-subtle" />
+          <h3 className="text-base text-fg mb-1">Sign in to keep a watchlist</h3>
+          <p className="text-base text-fg-subtle">
+            Watchlists are saved to your account, so they follow you between devices.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   if (isBusy && watchlists.length === 0) {
     return <div className="surface h-40 shimmer" />;

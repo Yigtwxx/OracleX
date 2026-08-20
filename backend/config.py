@@ -144,20 +144,52 @@ class Settings(BaseSettings):
     USE_REAL_API: bool = True
     USE_AI: bool = True
 
-    # Whether the model chooses which tools a chat turn runs. Off by default:
-    # the fixed plan is the production path until the planner prompt has been
-    # tuned against the local model actually serving chat, and a bad plan costs
-    # a whole turn. With it off `chat_planner` still runs and still returns the
-    # heuristic plan, so the code path is exercised either way.
-    CHAT_PLANNER_ENABLED: bool = False
+    # Whether the model chooses which tools a chat turn runs.
+    #
+    # This was off, and the reason it is now on is that "off" turned out not to
+    # mean "the previous behaviour" — it meant `read_chart`, `read_page` and
+    # `social_search` were never called on any turn, because the keyword plan
+    # they degrade to never named them. Three tools were written, tested and
+    # unreachable.
+    #
+    # The risk it was off for is real: a bad plan costs a whole turn. What
+    # changed is that the plan is now chosen from a catalogue capped at
+    # `chat_tools.MAX_CATALOGUE_TOOLS` and filtered by intent, so a small local
+    # model picks from five or six options rather than nineteen — and every
+    # failure path still ends at `heuristic_plan`, which is itself now
+    # intent-routed and can reach the new tools.
+    #
+    # Measure before changing this back: `python evals/eval_planner.py`.
+    CHAT_PLANNER_ENABLED: bool = True
+
+    # The reflection round: a second, bounded look at whether the evidence
+    # gathered is enough to answer, and one chance to fix it. Separate from the
+    # planner flag on purpose — two risky behaviours that must be revertible
+    # independently.
+    CHAT_REFLECTION_ENABLED: bool = True
 
     # ── Scraping ────────────────────────────────────────────────────────────
     # Whether the scrape ladder may launch a real browser for the handful of
     # hosts that serve a JavaScript shell (see services/scrape_service.py).
-    # Costs a browser download via `scrapling install` and ~6-15s per page, so
-    # it is opt-in: with this off the ladder still runs, it just cannot read
-    # Reddit or X. CI leaves it off — no browser is installed there.
-    SCRAPLING_ALLOW_BROWSER: bool = False
+    #
+    # On by default now, because "off" meant the chat could not read Reddit, X,
+    # StockTwits or TradingView at all — and those are where the answer is for a
+    # whole class of question. It costs ~6-15s per page and a browser download
+    # via `scrapling install`.
+    #
+    # It is safe to leave on without one: `main.py` checks at startup whether a
+    # browser is actually importable and records a degraded health entry if it
+    # is not, and the ladder reports "that site needs a browser and one is not
+    # available" rather than failing. CI has no browser and needs no change.
+    SCRAPLING_ALLOW_BROWSER: bool = True
+
+    # Per-turn scrape quotas for the chat pipeline. Settings rather than
+    # constants because reading pages is the slowest thing a turn does and the
+    # right number depends on the deployment's patience, not on the code.
+    # The browser quota stays at 1 deliberately: a browser launch is ~6-15s and
+    # raising it spends a fifth of a turn on one class of evidence.
+    CHAT_MAX_SCRAPES_PER_TURN: int = 3
+    CHAT_MAX_BROWSER_PER_TURN: int = 1
 
     # ── CORS ────────────────────────────────────────────────────────────────
     # Comma-separated list of allowed origins for the frontend.

@@ -14,7 +14,7 @@ import re
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from services import llm
 from services.article_service import Article, render_article_block
@@ -81,6 +81,8 @@ def _technical_block(technical: Optional[Dict[str, Any]]) -> str:
 
     lines = [
         "TECHNICAL LEVELS (computed from market data — authoritative, copy exactly):",
+        "Support and resistance are bands price reversed in, not single prices. Quote both "
+        "bounds; a neater number inside a band is not a level.",
         f"- Support: {levels('support_levels')}",
         f"- Resistance: {levels('resistance_levels')}",
         f"- RSI: {technical.get('rsi_signal') or 'n/a'} ({technical.get('rsi_value', 'n/a')})",
@@ -91,7 +93,50 @@ def _technical_block(technical: Optional[Dict[str, Any]]) -> str:
         lines.append(f"- Trend: {technical['trend']}")
     if technical.get("atr"):
         lines.append(f"- ATR: {technical['atr']}")
+    lines += _horizon_lines(technical)
     return "\n".join(lines)
+
+
+def _horizon_lines(technical: Dict[str, Any]) -> List[str]:
+    """
+    The multi-timeframe context behind the flat levels above.
+
+    A news verdict is a short-horizon call, but "RSI 41" reads very differently
+    depending on whether the weekly is in an uptrend and where in its own range
+    the asset trades. Both are already computed, so the only question was whether
+    to spend the tokens; three lines is what that judgement came to.
+    """
+    lines: List[str] = []
+
+    reads = technical.get("timeframes") or {}
+    if reads:
+        parts = []
+        for label, read in reads.items():
+            rsi = (read.get("rsi") or {}).get("value")
+            slope = (read.get("rsi") or {}).get("slope") or ""
+            cell = f"RSI {rsi:.1f} {slope}".strip() if isinstance(rsi, (int, float)) else "RSI n/a"
+            parts.append(f"{label} {read.get('trend') or 'n/a'}, {cell}")
+        lines.append(f"- Per timeframe: {' | '.join(parts)}")
+
+    structure = technical.get("structure") or {}
+    if structure.get("position_percent") is not None:
+        lines.append(
+            f"- Position: {structure['position_percent']:.0f}% of its "
+            f"{structure.get('range_bars')}-bar {structure.get('range_timeframe')} range, "
+            f"{structure.get('distance_to_high_percent', 0):+.1f}% from that high"
+        )
+    if structure.get("timeframe_alignment"):
+        lines.append(f"- Timeframe agreement: {structure['timeframe_alignment']}")
+
+    divergences = [
+        f"{label} {read['rsi']['divergence']}"
+        for label, read in reads.items()
+        if (read.get("rsi") or {}).get("divergence")
+    ]
+    if divergences:
+        lines.append(f"- RSI divergence: {'; '.join(divergences)}")
+
+    return lines
 
 
 def _precedent_block(rag_context: str) -> str:

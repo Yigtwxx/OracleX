@@ -43,7 +43,9 @@ def _source_files() -> List[Path]:
     ]
 
 
-def _call_sites() -> Tuple[List[Tuple[str, str, Set[str]]], List[Tuple[str, str]]]:
+def _call_sites() -> Tuple[
+    List[Tuple[str, str, Set[str]]], List[Tuple[str, str]], List[Tuple[str, str]]
+]:
     """
     Find every `render_prompt` / `load_prompt` call with a literal template name.
 
@@ -51,9 +53,20 @@ def _call_sites() -> Tuple[List[Tuple[str, str, Set[str]]], List[Tuple[str, str]
     ``(file, template_name, supplied_keys)`` and a load site is
     ``(file, template_name)``. Calls whose first argument is not a string literal
     are skipped — `render_prompt` forwards a variable to `load_prompt` internally.
+
+    A ``prompt=`` keyword naming a template is returned separately, as a spec
+    site. `ai_notes` renders its templates through a `NoteSpec`, so the name is
+    declared once on the spec and reaches `render_prompt` as a variable; without
+    this the note templates would look dead. They are kept apart from load sites
+    because a spec template *is* rendered and so is expected to carry
+    placeholders. The placeholder half of the contract is not lost — each surface
+    asserts it against its own ``note_values()`` in that surface's test file,
+    which is where the supplied keys are actually known.
     """
     render_sites: List[Tuple[str, str, Set[str]]] = []
     load_sites: List[Tuple[str, str]] = []
+    spec_sites: List[Tuple[str, str]] = []
+    templates = set(_template_names())
 
     for path in _source_files():
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -65,6 +78,20 @@ def _call_sites() -> Tuple[List[Tuple[str, str, Set[str]]], List[Tuple[str, str]
 
             func = node.func
             fname = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
+
+            named = next(
+                (
+                    kw.value.value
+                    for kw in node.keywords
+                    if kw.arg == "prompt"
+                    and isinstance(kw.value, ast.Constant)
+                    and isinstance(kw.value.value, str)
+                ),
+                None,
+            )
+            if named and named in templates:
+                spec_sites.append((where, named))
+
             if fname not in {"render_prompt", "load_prompt"}:
                 continue
             if not node.args or not isinstance(node.args[0], ast.Constant):
@@ -79,10 +106,10 @@ def _call_sites() -> Tuple[List[Tuple[str, str, Set[str]]], List[Tuple[str, str]
             else:
                 load_sites.append((where, template))
 
-    return render_sites, load_sites
+    return render_sites, load_sites, spec_sites
 
 
-RENDER_SITES, LOAD_SITES = _call_sites()
+RENDER_SITES, LOAD_SITES, SPEC_SITES = _call_sites()
 TEMPLATE_NAMES = _template_names()
 
 
@@ -97,7 +124,9 @@ def test_load_prompt_every_template_reads_successfully(name):
 
 @pytest.mark.parametrize("name", TEMPLATE_NAMES)
 def test_load_prompt_template_is_referenced_by_code(name):
-    referenced = {t for _, t, _ in RENDER_SITES} | {t for _, t in LOAD_SITES}
+    referenced = (
+        {t for _, t, _ in RENDER_SITES} | {t for _, t in LOAD_SITES} | {t for _, t in SPEC_SITES}
+    )
     assert name in referenced, (
         f"Template '{name}' is not referenced by any render_prompt/load_prompt call — "
         "it is either dead or the call site uses a name that does not match the file"
