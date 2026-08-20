@@ -188,29 +188,33 @@ def asset_owners(symbol: str) -> list[dict[str, Any]]:
     return rows
 
 
-async def watchlist_overlap() -> list[dict[str, Any]]:
+async def watchlist_overlap(user_id: str | None) -> list[dict[str, Any]]:
     """
-    Which of the user's watched symbols the tracked holders also hold.
+    Which of *this user's* watched symbols the tracked holders also hold.
+
+    The user id is required rather than optional-in-practice: this used to call
+    a `get_watchlists()` that read one shared file, so the panel showed the
+    tracked holders overlaid on whatever watchlist happened to be on disk rather
+    than on the caller's own. An anonymous caller gets an empty list, which is the
+    honest answer to "what overlaps with your watchlist" when there is no you.
 
     Returns an empty list when nothing overlaps or the watchlist cannot be read.
     A panel with nothing to say should render nothing at all rather than an
     empty box explaining its own emptiness.
     """
-    try:
-        from services.watchlist_service import get_watchlists
+    if not user_id:
+        return []
 
-        watchlists = await get_watchlists()
+    try:
+        from services.watchlist_service import watchlist_symbols
+
+        watched = await watchlist_symbols(user_id)
     except Exception as e:
         logger.info("Ownership: watchlist unavailable for overlap (%s)", e)
         return []
 
-    symbols: set[str] = set()
-    for entry in watchlists or []:
-        for item in (entry or {}).get("items", []):
-            raw = (item or {}).get("symbol")
-            if isinstance(raw, str) and raw.strip():
-                # Watchlists store pair notation; the board stores bare tickers.
-                symbols.add(raw.strip().upper().replace("USDT", "").replace("/", ""))
+    # Watchlists store pair notation; the board stores bare tickers.
+    symbols = {raw.upper().replace("USDT", "").replace("/", "") for raw in watched if raw}
 
     if not symbols:
         return []

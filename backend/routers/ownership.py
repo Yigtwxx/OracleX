@@ -12,12 +12,14 @@ that is a real answer, and it is served as 200 with `has_data: false`.
 """
 
 import logging
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from dependencies.auth import require_admin
+from dependencies.auth import AuthUser, get_optional_user, require_admin
 from models.ownership import EntityDetail, Move, OwnershipBoard
 from services.ownership import consensus
+from services.ownership.flow_note import build_flow_facts, flow_note
 from services.ownership import (
     EntityNotFound,
     OwnershipError,
@@ -110,17 +112,39 @@ async def get_asset_owners(symbol: str):
         raise _http_error(error) from error
 
 
-@router.get("/watchlist-overlap")
-async def get_watchlist_overlap():
+@router.get("/flow-note")
+async def get_flow_note():
     """
-    Which watched symbols the tracked holders also hold.
+    What the tracked institutions did last quarter, narrated.
+
+    The only ownership endpoint that does not 503 when the board is missing. The
+    others are the page; this is a paragraph above it, and an outage here should
+    cost the paragraph rather than raise a second error for something the page
+    has already reported from its own board query.
+
+    `facts` carries the deterministic aggregation and renders whether or not the
+    note itself arrives.
+    """
+    facts = build_flow_facts()
+    return {"facts": facts, "note": await flow_note(facts)}
+
+
+@router.get("/watchlist-overlap")
+async def get_watchlist_overlap(user: Optional[AuthUser] = Depends(get_optional_user)):
+    """
+    Which of the caller's watched symbols the tracked holders also hold.
+
+    Optional auth rather than required: the rest of the ownership board is
+    public and this endpoint answering 401 would break the page for a signed-out
+    visitor. An anonymous caller simply has no watchlist, and gets the same
+    empty list as a caller whose watchlist does not overlap.
 
     Answers 200 with an empty list rather than an error when there is no
     watchlist or no overlap: the panel hides itself, and a failure here should
     never be what breaks the page.
     """
     try:
-        return {"overlap": await consensus.watchlist_overlap()}
+        return {"overlap": await consensus.watchlist_overlap(user.id if user else None)}
     except OwnershipError:
         return {"overlap": []}
 

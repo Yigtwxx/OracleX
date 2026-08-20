@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AlertTriangle, ArrowLeft, RefreshCw } from 'lucide-react';
 import type { OwnershipCategory } from '@/lib/api';
-import { useOwnershipBoard } from '@/hooks/queries';
+import { useOwnershipBoard, useOwnershipFlowNote } from '@/hooks/queries';
 import CategoryFilter from './ownership/CategoryFilter';
 import EntityCard from './ownership/EntityCard';
 import EntityDetail from './ownership/EntityDetail';
@@ -12,6 +12,7 @@ import EntityRail from './ownership/EntityRail';
 import LatestMovesStrip from './ownership/LatestMovesStrip';
 import AssetOwnersPanel from './ownership/AssetOwnersPanel';
 import ConsensusPanel from './ownership/ConsensusPanel';
+import FlowNote from './ownership/FlowNote';
 import WatchlistOverlap from './ownership/WatchlistOverlap';
 import { CATEGORY_LABEL, formatDate } from './ownership/format';
 
@@ -20,6 +21,7 @@ const SKELETON_CARDS = 8;
 
 export default function OwnershipPage() {
   const board = useOwnershipBoard();
+  const flowNote = useOwnershipFlowNote();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -170,6 +172,11 @@ export default function OwnershipPage() {
                 baseline={board.data.entities.every((entity) => entity.last_move === null)}
               />
             )}
+
+            {/* The quarter in prose, above the tables that enumerate it.
+                Absent when no holder has a comparable filing, which is not the
+                same as a quarter in which nobody traded. */}
+            <FlowNote data={flowNote.data} />
 
             <WatchlistOverlap onSelectAsset={setAssetLookup} />
 
