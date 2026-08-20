@@ -1,5 +1,6 @@
 'use client';
 
+import { isValidElement, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -10,9 +11,10 @@ import remarkGfm from 'remark-gfm';
  * typography plugin: the app runs a dense terminal-style type scale and a
  * general-purpose prose stylesheet would fight it at every size.
  *
- * Two variants:
+ * Three variants:
  *
  *   report     everything, including tables — reports are mostly tables
+ *   chat       the same, at a bubble's scale rather than a document's
  *   community  user-generated content, deliberately narrower (see below)
  *
  * ── Why the community variant is restricted ──────────────────────────────────
@@ -100,6 +102,97 @@ const base: Components = {
   td: ({ children }) => <td className="px-2.5 py-2 text-fg-muted tabnum align-top">{children}</td>,
 };
 
+/**
+ * ── Tinted table cells (report variant only) ─────────────────────────────────
+ * A report's substance is its tables, and a reader scanning one for "where is
+ * support" should not have to read every row to find it. The rule from
+ * globals.css still holds — colour carries direction, nothing else — so the
+ * only cells tinted are the ones whose entire text *is* a directional label:
+ * the Side column of the zone table, the Type column of the watchlist, the
+ * Scenario column, the Trend column.
+ *
+ * The match is deliberately narrow. A cell only qualifies if it is short and
+ * the label stands alone as a word, so the "Why it matters" prose that happens
+ * to mention support stays muted, and a figure is never tinted — direction on
+ * a distance number would read as good/bad, which it is not. Anything that
+ * does not match keeps the default `text-fg-muted`.
+ *
+ * The community variant deliberately does not inherit this: a table a stranger
+ * wrote should not be able to paint itself.
+ */
+const LABEL_MAX_LENGTH = 28;
+
+const CELL_TONES: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\b(support|bullish|bull)\b/i, 'text-up'],
+  [/\b(resistance|bearish|bear)\b/i, 'text-down'],
+  [/\b(inside|neutral)\b/i, 'text-warn'],
+];
+
+/**
+ * Flattens a cell back to plain text. Cells are usually a bare string, but a
+ * `**Support**` arrives as an element, and that should still match.
+ */
+function cellText(node: ReactNode): string {
+  if (node == null || typeof node === 'boolean') return '';
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(cellText).join('');
+  if (isValidElement(node)) return cellText((node.props as { children?: ReactNode }).children);
+  return '';
+}
+
+function cellTone(children: ReactNode): string | null {
+  const text = cellText(children).trim();
+  if (!text || text.length > LABEL_MAX_LENGTH) return null;
+  return CELL_TONES.find(([pattern]) => pattern.test(text))?.[1] ?? null;
+}
+
+const report: Components = {
+  ...base,
+  td: ({ children }) => (
+    <td className={`px-2.5 py-2 tabnum align-top ${cellTone(children) ?? 'text-fg-muted'}`}>
+      {children}
+    </td>
+  ),
+};
+
+/**
+ * ── The chat variant ─────────────────────────────────────────────────────────
+ * A chat bubble is not a report. `report`'s vertical rhythm is built for a
+ * full-width document and blows a bubble out; the answer's own text also runs
+ * to a few hundred words rather than a few thousand, so the headings step down
+ * one level and the margins tighten.
+ *
+ * What it keeps from `report` is the part that matters: `remarkGfm` and the
+ * tinted table cells. The chat page used to render its own inline
+ * `ReactMarkdown` with no GFM at all, which meant the tables the system prompt
+ * explicitly asks the model for arrived as rows of raw pipe characters.
+ */
+const chat: Components = {
+  ...report,
+  h1: ({ children }) => (
+    <h2 className="text-md font-semibold text-fg mt-4 mb-1.5 first:mt-0">{children}</h2>
+  ),
+  h2: ({ children }) => (
+    <h3 className="text-base font-semibold text-fg mt-3 mb-1.5 first:mt-0">{children}</h3>
+  ),
+  h3: ({ children }) => (
+    <h4 className="text-base font-semibold text-fg mt-3 mb-1 first:mt-0">{children}</h4>
+  ),
+  p: ({ children }) => (
+    <p className="text-base text-fg mb-2.5 last:mb-0 leading-relaxed">{children}</p>
+  ),
+  ul: ({ children }) => (
+    <ul className="list-disc pl-4 mb-2.5 space-y-1 text-base text-fg marker:text-fg-subtle">
+      {children}
+    </ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="list-decimal pl-4 mb-2.5 space-y-1 text-base text-fg marker:text-fg-subtle">
+      {children}
+    </ol>
+  ),
+};
+
 const community: Components = {
   ...base,
   h1: ({ children }) => (
@@ -131,7 +224,7 @@ const community: Components = {
   ),
 };
 
-const VARIANTS = { report: base, community } as const;
+const VARIANTS = { report, community, chat } as const;
 
 export interface MarkdownProps {
   content: string;

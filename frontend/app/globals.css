@@ -126,6 +126,17 @@
   --asset-stock: #3b5bdb;
   --asset-unknown: #6b6b74;
 
+  /* The Pentagon Pizza badge's glyph, in the header chrome.
+     Identity, not a reading — the badge already carries its reading in the
+     number's colour, and a glyph that also changed hue would be saying it twice
+     in two different palettes. So this is a fixed hue and deliberately not
+     --warn: an amber pizza sitting a pixel from the amber stale dot would read
+     as a second warning rather than as a logo.
+     Placed at 21deg, roughly midway between --down's red and --warn's amber, so
+     it is the same family as neither at 14px, and clears 6:1 on --surface and
+     on the hover fill. */
+  --pizza: #e8763a;
+
   /* Navigation identity — one hue per destination.
      This is the one place in the app where colour labels a *place* rather than
      a value, so it gets its own family instead of borrowing --up/--warn/--data-*.
@@ -150,6 +161,13 @@
      --nav-admin, which is the trade accepted here: the admin tab only renders
      for admins, so the two are almost never in the bar together. */
   --nav-live: #ff4d4d;
+  /* Sits two tabs from --nav-macro's cyan, which is the pairing to justify. The
+     two are not the same hue read twice: Macro is pale and desaturated (69% S,
+     70% L), this is vivid and a third darker (93% S, 60% L), and Live's red is
+     between them in the bar. Cool rather than warm on purpose — it lands
+     between broadcast red and Ownership's stone grey, and a second warm stop
+     there would blur the boundary of the market cluster. */
+  --nav-chains: #38bdf8;
   --nav-ownership: #b0bac9;
   --nav-analysis: #e879b8;
   --nav-chat: #3ecfa0;
@@ -347,6 +365,67 @@ body {
    `:where()` still beats inheritance, so an unqualified label is unchanged. */
 :where(.label) {
   color: var(--fg-muted);
+}
+
+/* Expanding search capsule for the wide table headers. At rest it is a compact
+   field wide enough to read as one; focused it grows. The glass read is a
+   translucent fill over a blurred backdrop with a lit top edge, so the panel
+   behind it still shows through instead of being covered by another opaque
+   box — the point is that it looks like it is sitting on the header, not
+   punched into it. */
+.glass-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  width: 132px;
+  padding: 0 9px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.025));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.3);
+  transition:
+    width 180ms cubic-bezier(0.4, 0, 0.2, 1),
+    background 120ms,
+    border-color 120ms;
+}
+
+/* Hover opens it too, so the field is already at full width by the time the
+   click lands — the capsule never grows out from under the pointer. */
+.glass-search:hover,
+.glass-search[data-open='true'] {
+  width: 260px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05));
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.glass-search input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-size: 12px;
+  color: var(--fg);
+}
+
+.glass-search input::placeholder {
+  color: var(--fg-subtle);
+}
+
+/* The capsule is a width animation, which is exactly the kind of motion this
+   preference is asking to drop; the open/closed states still differ. */
+@media (prefers-reduced-motion: reduce) {
+  .glass-search {
+    transition:
+      background 120ms,
+      border-color 120ms;
+  }
 }
 
 /* Metal sheen: a faint halo in the element's own colour, for the metal labels on
@@ -660,6 +739,75 @@ body {
 .nav-tab[data-nav='live']:hover svg path:nth-child(1),
 .nav-tab[data-nav='live']:hover svg path:nth-child(5) {
   animation: nav-fx-ripple 350ms 450ms cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+}
+
+/* Chains — the chain draws itself, and only once it is whole does the next
+ * block land on top of it. Strictly sequential, and the order is the reading:
+ * you cannot append to a chain that does not exist yet.
+ *
+ *   0ms    the icon is empty — nothing drawn, no block
+ *   0-560  the L draws itself in one continuous stroke
+ *   500    the block starts falling, while the last stretch is still drawing
+ *   560-720 it lands, with the same bounce the Ownership pieces take
+ *
+ * lucide's Blocks is exactly two children, and it is the *path* that has to go
+ * first even though the rect is child 1 — hence the delay on child 1 and none
+ * on child 2. That inversion is the gesture.
+ *
+ * The draw is a dash the length of the whole path, walked in from a full offset
+ * rather than a dasharray that subdivides it. 72 is the path's own length
+ * rounded up (it measures ~68 units): the value only has to be at least the
+ * length, and the reason it must not be *under* it is that a shorter dash
+ * repeats, so the stroke would grow from several places at once instead of
+ * tracing one continuous line. At the finished frame the offset is 0 and a
+ * single dash longer than the path is indistinguishable from a solid stroke,
+ * which is why this needs no `forwards` — it resolves into the rest state.
+ *
+ * The path's own start point is what makes the trace read. It begins at the
+ * bottom of the inner divider, climbs it, wraps the tall block anticlockwise,
+ * runs the base, comes up the right edge and finishes along the divider at
+ * y=14 — directly beneath where the new block is about to arrive. The stroke
+ * hands off to the drop. */
+@keyframes nav-fx-draw {
+  from {
+    stroke-dashoffset: 72;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Not shared with nav-fx-fall: that one drops from -16px, which is off-canvas
+ * for a piece already sitting at y=3. This falls from just above its own slot
+ * and carries the opacity, so the first frame is genuinely empty rather than a
+ * block hanging above the icon. */
+@keyframes nav-fx-land {
+  0% {
+    opacity: 0;
+    transform: translateY(-7px);
+  }
+  30% {
+    opacity: 1;
+  }
+  70% {
+    transform: translateY(1.2px);
+  }
+  88% {
+    transform: translateY(-0.6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.nav-tab[data-nav='chains']:hover svg path {
+  stroke-dasharray: 72;
+  animation: nav-fx-draw 560ms cubic-bezier(0.35, 0, 0.2, 1) backwards;
+}
+
+.nav-tab[data-nav='chains']:hover svg rect {
+  animation: nav-fx-land 220ms 500ms linear backwards;
 }
 
 /* Ownership — the building drops into place from above, in the order you would

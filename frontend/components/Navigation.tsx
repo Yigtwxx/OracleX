@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import {
   LayoutDashboard,
   BarChart3,
+  Blocks,
   ChevronDown,
   Bitcoin,
   LineChart,
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import LiveStatusBadge from '@/components/LiveStatusBadge';
+import PizzaIndexBadge from '@/components/PizzaIndexBadge';
 import { useIsAdmin } from '@/hooks/useAdmin';
 import { useUnreadCount } from '@/hooks/useSocial';
 import { formatUnread } from '@/lib/social';
@@ -61,6 +63,17 @@ const NAV_ITEMS: NavItem[] = [
   // beat apart — Macro is what the world looks like, Live is what is happening
   // to it right now.
   { key: 'live', href: '/live', label: 'Live', icon: Radio, tint: 'var(--nav-live)' },
+  // Directly after Live, which continues the run rather than starting a new one:
+  // Macro is what the world looks like, Live is what is happening to it, and
+  // this is the state of the rails underneath while it does. Placing it here
+  // also keeps the market views contiguous — Overview through Chains — instead
+  // of leaving Ownership between them.
+  //
+  // Not `Boxes`, whose eleven children are mush at 14px, and not `Layers`,
+  // which Heatmap already owns. `Blocks` is two elements, and the pair is the
+  // subject: a chain, and the block about to join it. The hover gesture in
+  // globals.css is built on exactly that split.
+  { key: 'chains', href: '/chains', label: 'Chains', icon: Blocks, tint: 'var(--nav-chains)' },
   {
     key: 'ownership',
     href: '/ownership',
@@ -234,10 +247,9 @@ export default function Navigation() {
     // rotated diagonal) needs to play out whole. Anything past this and the bar
     // stops reading as a terminal chrome strip and starts eating the board.
     <header className="h-14 shrink-0 border-b border-line bg-surface flex items-center px-4 sticky top-0 z-50">
-      {/* '/home', not '/': a logo inside the terminal that ejects you to the
-          marketing page is a trap. The landing page is reachable from its own
-          footer link instead. */}
-      <Link href="/home" className="flex items-center gap-2 pr-4 shrink-0">
+      {/* '/', not '/home': the logo is the way back out to the landing page.
+          The terminal itself is reachable from the nav tabs. */}
+      <Link href="/" className="flex items-center gap-2 pr-4 shrink-0">
         <Logo size={18} className="text-fg shrink-0" />
         <span className="text-md font-semibold tracking-tight text-fg whitespace-nowrap">
           Oracle-X
@@ -325,7 +337,13 @@ export default function Navigation() {
         </div>
       </nav>
 
-      <LiveStatusBadge />
+      {/* Right of the tabs, left of the health badge — chrome, not board. It
+          used to be a panel on Macro and a card on Home and Overview; here it
+          is one reading on every tab, at the size a novelty gauge earns. */}
+      <div className="flex items-center gap-2 pl-3 shrink-0">
+        <PizzaIndexBadge />
+        <LiveStatusBadge />
+      </div>
     </header>
   );
 }

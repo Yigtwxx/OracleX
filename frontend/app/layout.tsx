@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -17,11 +17,42 @@ const jetbrainsMono = JetBrains_Mono({
   display: 'swap',
 });
 
+const TITLE = 'Oracle-X | Financial Intelligence Terminal';
+const DESCRIPTION =
+  'AI-powered financial analysis with blockchain verification. Real-time insights for stocks and crypto.';
+
 export const metadata: Metadata = {
-  title: 'Oracle-X | Financial Intelligence Terminal',
-  description:
-    'AI-powered financial analysis with blockchain verification. Real-time insights for stocks and crypto.',
+  // Every relative metadata URL — the generated `opengraph-image` included —
+  // resolves against this, and without it Next drops the card entirely rather
+  // than emitting a relative one. Deployments set the real origin; the fallback
+  // is the dev port so a locally pasted link still unfurls.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3100'),
+  title: TITLE,
+  description: DESCRIPTION,
   keywords: ['finance', 'AI', 'trading', 'stocks', 'crypto', 'blockchain', 'analysis'],
+  openGraph: {
+    type: 'website',
+    siteName: 'Oracle-X',
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+};
+
+/**
+ * The terminal has one theme and it is dark. `colorScheme` is what tells the
+ * browser that, so form controls, the native scrollbar and the tap highlight
+ * come up dark instead of the light defaults the app never styles; `themeColor`
+ * paints the mobile address bar in `--bg` so the chrome stops at the same
+ * colour the page starts at.
+ */
+export const viewport: Viewport = {
+  colorScheme: 'dark',
+  themeColor: '#0a0a0c',
 };
 
 /**

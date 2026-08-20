@@ -21,6 +21,8 @@ export default function OverviewPage({
   const cryptoMarket = useMarketOverview(isCrypto);
   const fearGreed = useFearGreedIndex(isCrypto);
   const nasdaq = useNasdaqOverview(!isCrypto);
+  // Not gated on market type: the Pentagon reading is about attention, and it
+  // says the same thing whether the page is showing crypto or equities.
 
   // Derive the active data based on market type
   const marketData = isCrypto
@@ -99,7 +101,7 @@ export default function OverviewPage({
 
       <div className="max-w-[1800px] mx-auto px-4 py-4 space-y-4">
         {/* ===== TRENDING / GAINERS / LOSERS CARDS ===== */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
           {/* Fear & Greed Card */}
           <div className="lg:col-span-1 surface p-4">
             <div className="flex items-center gap-2 mb-3">

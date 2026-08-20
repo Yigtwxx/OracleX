@@ -17,6 +17,24 @@ function Divider() {
   return <div className="w-px h-4 bg-line" />;
 }
 
+/**
+ * The API prefixes the session message with a coloured emoji ("🟠 Pre-market
+ * …"). This bar already draws its own status dot in the same colour, so the
+ * emoji arrives as a second, far larger ball beside it. Strips a leading run of
+ * pictographic characters and keeps the words.
+ *
+ * Surrogate pairs are matched explicitly rather than with a `\p{...}` escape,
+ * which would need a higher compile target than this project builds against.
+ */
+const LEADING_EMOJI = new RegExp(
+  // A surrogate pair (everything above the BMP, where the coloured circles
+  // live), or a BMP symbol/arrow, or a variation selector — one or more of
+  // them at the very start, plus the space that follows.
+  '^(?:[\\uD800-\\uDBFF][\\uDC00-\\uDFFF]|[\\u2190-\\u2BFF]|\\uFE0F)+\\s*'
+);
+
+const stripLeadingEmoji = (message: string): string => message.replace(LEADING_EMOJI, '');
+
 function Stat({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2">
@@ -96,8 +114,12 @@ export default function MarketStatsBar({
                   <span className="text-base font-mono tabnum text-fg">
                     {marketData?.eth_dominance ? `${marketData.eth_dominance.toFixed(1)}%` : '--'}
                   </span>
-                  {marketData?.eth_dominance && (
-                    <DominanceBar percent={marketData.eth_dominance * 4} color="var(--data-eth)" />
+                  {/* Same scale as the BTC bar beside it. It used to be drawn
+                      at 4x, presumably so a ~10% share was not a sliver — but
+                      two share bars sitting side by side are read against each
+                      other, and at 4x a 10% ETH matched a 40% BTC. */}
+                  {marketData?.eth_dominance != null && (
+                    <DominanceBar percent={marketData.eth_dominance} color="var(--data-eth)" />
                   )}
                 </Stat>
               </>
@@ -108,7 +130,9 @@ export default function MarketStatsBar({
                 <Divider />
                 <div className="flex items-center gap-2">
                   <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
-                  <span className={`text-base ${statusStyle.text}`}>{status.message}</span>
+                  <span className={`text-base ${statusStyle.text}`}>
+                    {stripLeadingEmoji(status.message)}
+                  </span>
                 </div>
               </>
             )}

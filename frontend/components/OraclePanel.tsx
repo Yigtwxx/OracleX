@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useStore } from '@/store/useStore';
 import { useNewsAnalysis, useNewsAnalysisJob } from '@/hooks/queries';
 import StageChecklist from '@/components/analysis/StageChecklist';
+import TechnicalPanel from '@/components/analysis/TechnicalPanel';
 import {
   Activity,
   AlertTriangle,
@@ -365,57 +366,7 @@ function AnalysisBody({
 
       {technical && (
         <Section title="Technical Analysis" icon={Activity}>
-          <div className="space-y-2.5">
-            <div className="flex justify-between items-center border-b border-line pb-2">
-              <span className="text-base text-fg-muted">RSI signal</span>
-              <span className="text-base text-fg">{technical.rsi_signal || '—'}</span>
-            </div>
-
-            <div>
-              <span className="label block mb-1">Support levels</span>
-              <div className="flex flex-wrap gap-1.5">
-                {technical.support_levels?.length ? (
-                  technical.support_levels.map((level, i) => (
-                    <span
-                      key={i}
-                      className="px-1.5 py-0.5 rounded bg-up-bg text-up text-sm font-mono tabnum"
-                    >
-                      {level}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-sm text-fg-subtle">None below current price</span>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <span className="label block mb-1">Resistance levels</span>
-              <div className="flex flex-wrap gap-1.5">
-                {technical.resistance_levels?.length ? (
-                  technical.resistance_levels.map((level, i) => (
-                    <span
-                      key={i}
-                      className="px-1.5 py-0.5 rounded bg-down-bg text-down text-sm font-mono tabnum"
-                    >
-                      {level}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-sm text-fg-subtle">None above current price</span>
-                )}
-              </div>
-            </div>
-
-            {technical.target_price && (
-              <div className="pt-2 border-t border-line">
-                <span className="label block mb-1">Target price</span>
-                <span className={`text-md font-mono tabnum ${style.text}`}>
-                  {technical.target_price}
-                </span>
-              </div>
-            )}
-          </div>
+          <TechnicalPanel technical={technical} />
         </Section>
       )}
 

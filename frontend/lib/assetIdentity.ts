@@ -48,3 +48,48 @@ export function assetIdentityClass(
   if (!symbol) return fallback;
   return IDENTITY_CLASS[symbol] ?? IDENTITY_CLASS[symbol.toUpperCase()] ?? fallback;
 }
+
+/** Background classes for a bar drawn in an asset's own colour. */
+export interface IdentityBarClasses {
+  /** The filled span. Rendered at reduced opacity by its caller. */
+  fill: string;
+  /** The position marker, which carries the hue at full strength. */
+  marker: string;
+}
+
+/**
+ * The same identities as background fills, for the bars beside the names.
+ *
+ * Spelled out again rather than derived from `IDENTITY_CLASS` with a string
+ * swap: Tailwind reads source text, so `text-data-gold` rewritten to
+ * `bg-data-gold` at runtime is a class that was never generated. Same reason the
+ * map above is literal.
+ */
+const IDENTITY_BAR: Record<string, IdentityBarClasses> = {
+  'GC=F': { fill: 'bg-data-gold', marker: 'bg-data-gold' },
+  'SI=F': { fill: 'bg-data-silver', marker: 'bg-data-silver' },
+  'PL=F': { fill: 'bg-data-platinum', marker: 'bg-data-platinum' },
+  'PA=F': { fill: 'bg-data-palladium', marker: 'bg-data-palladium' },
+  'HG=F': { fill: 'bg-data-copper', marker: 'bg-data-copper' },
+
+  GOLD: { fill: 'bg-data-gold', marker: 'bg-data-gold' },
+  XAU: { fill: 'bg-data-gold', marker: 'bg-data-gold' },
+  SILVER: { fill: 'bg-data-silver', marker: 'bg-data-silver' },
+  XAG: { fill: 'bg-data-silver', marker: 'bg-data-silver' },
+  PLATINUM: { fill: 'bg-data-platinum', marker: 'bg-data-platinum' },
+  XPT: { fill: 'bg-data-platinum', marker: 'bg-data-platinum' },
+  PALLADIUM: { fill: 'bg-data-palladium', marker: 'bg-data-palladium' },
+  XPD: { fill: 'bg-data-palladium', marker: 'bg-data-palladium' },
+  COPPER: { fill: 'bg-data-copper', marker: 'bg-data-copper' },
+
+  BTC: { fill: 'bg-data-btc', marker: 'bg-data-btc' },
+  ETH: { fill: 'bg-data-eth', marker: 'bg-data-eth' },
+};
+
+/** Bar classes for an asset, or `undefined` where the neutral bar is correct. */
+export function assetIdentityBarClasses(
+  symbol: string | null | undefined
+): IdentityBarClasses | undefined {
+  if (!symbol) return undefined;
+  return IDENTITY_BAR[symbol] ?? IDENTITY_BAR[symbol.toUpperCase()];
+}
