@@ -631,7 +631,9 @@ frontend/
 │   ├── calibrate_rag_relevance.py   # measures the RAG relevance floor against your store
 │   ├── fetch_landing_imagery.sh     # rebuilds the landing imagery set from Wikimedia
 │   └── generate_brand_assets.py
-├── .github/workflows/ci.yml    # ruff + compileall + pytest | lint, typecheck, test, build
+├── .github/workflows/
+│   ├── ci.yml                  # ruff + compileall + pytest | lint, typecheck, test, build
+│   └── publish-packages.yml    # builds + pushes both images to ghcr.io
 └── .pre-commit-config.yaml     # ruff (backend) + prettier (frontend) + hygiene hooks
 ```
 
@@ -851,6 +853,30 @@ standalone bundle — skip the override explicitly:
 ```bash
 docker compose -f docker-compose.yml up --build
 ```
+
+### Prebuilt images (GHCR)
+
+Every push to `main` publishes both services to the GitHub Container Registry
+(`.github/workflows/publish-packages.yml`), so a server can pull instead of
+build:
+
+```bash
+docker pull ghcr.io/yigtwxx/oraclex-backend:latest
+docker pull ghcr.io/yigtwxx/oraclex-frontend:latest
+```
+
+Tags: `latest` (tip of `main`), `sha-<commit>` for a pinned build, and
+`<major>.<minor>` / `<version>` on `v*` tags. Point the stack at them by setting
+`image:` in `docker-compose.yml` to the `ghcr.io/...` names and dropping the
+`build:` block — or just run the images directly.
+
+The published frontend image has the localhost `NEXT_PUBLIC_*` values baked in,
+since they are inlined into the client bundle at build time. For a real domain,
+either build the frontend yourself (see below) or set the repository variables
+`NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_WS_URL`, `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` so the workflow bakes those in instead. The
+backend image takes all of its configuration at runtime, so it needs no such
+treatment.
 
 ### Ollama
 
@@ -1166,6 +1192,10 @@ attribution, the analysis pipelines, chat intent/focus/memory/budget, the chain
 adapters and their anomaly detection, and the technical zone builder.
 `requirements-dev.txt` deliberately excludes torch and chromadb so CI installs
 only what the tests import.
+
+A second workflow (`.github/workflows/publish-packages.yml`) is delivery, not a
+gate: after a push to `main` — or a `v*` tag — it builds both Dockerfiles and
+pushes them to `ghcr.io`. It never blocks a pull request.
 
 The frontend suite is **18 vitest modules, 260 tests**, concentrated on the
 pure logic where a failure would be silent rather than loud — the scroll canvas
