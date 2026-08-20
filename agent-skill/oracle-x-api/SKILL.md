@@ -12,6 +12,14 @@ metadata:
       anyBins:
         - curl
         - python3
+    primaryEnv: ORACLE_X_URL
+    envVars:
+      - name: ORACLE_X_URL
+        required: false
+        description: Base URL of the running Oracle-X instance. Defaults to http://localhost:8000.
+      - name: ORACLE_X_TOKEN
+        required: false
+        description: Supabase access token, needed only for the chat and watchlist endpoints.
 ---
 
 # Oracle-X

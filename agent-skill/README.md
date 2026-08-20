@@ -23,9 +23,18 @@ source of its own.
 
 ## Install
 
-Download [`Oracle-X-Skill.zip`](./Oracle-X-Skill.zip) and unpack it into your
-agent's skills directory — `~/.claude/skills/` for Claude Code. Or copy the
-directory straight out of a clone:
+```bash
+npx skills add Yigtwxx/OracleX --skill oracle-x-api
+```
+
+The [skills.sh](https://github.com/vercel-labs/skills) CLI reads the skill
+straight out of this repository — there is nothing to publish and no registry
+entry — and installs it into whichever agents it finds on the machine. The
+`--skill` flag matches the `name:` in the frontmatter, not the directory.
+
+Or take it by hand: download
+[`Oracle-X-Skill.zip`](./Oracle-X-Skill.zip) and unpack it into your agent's
+skills directory, or copy the directory out of a clone:
 
 ```bash
 cp -r agent-skill/oracle-x-api ~/.claude/skills/
@@ -79,3 +88,34 @@ a capability. Adding an endpoint to the skill means adding one line to
 
 `SKILL.md` itself stays hand-written. Which endpoint answers which question is
 a judgement, and generating it would produce a list rather than guidance.
+
+## Publishing to ClawHub
+
+ClawHub does not index GitHub on its own — a skill gets there by being pushed,
+from the account that owns the repository:
+
+```bash
+npm install -g clawhub
+clawhub login                                   # GitHub OAuth
+clawhub skill publish ./agent-skill/oracle-x-api \
+  --slug oracle-x-api \
+  --name "Oracle-X API" \
+  --categories finance \
+  --topics "crypto,stocks,market-data,technical-analysis,rag" \
+  --dry-run
+```
+
+Drop `--dry-run` once the output looks right. It installs as
+`clawhub install @Yigtwxx/oracle-x-api`. Two things ClawHub checks that are
+easy to get wrong: the `metadata.openclaw` block has to declare every
+environment variable the skill actually reads, or its scanner flags the
+mismatch — `ORACLE_X_URL` and `ORACLE_X_TOKEN` are declared for that reason —
+and the bundle honours `.gitignore`, so a tool cache left in the directory
+ships with it.
+
+One structural caveat worth knowing before moving anything: skills.sh looks in
+`skills/`, `.claude/skills/` and about sixty other conventional locations
+first, and only falls back to a recursive search when none of them contain a
+skill. `agent-skill/` is found by that fallback. If a `skills/` directory is
+ever added to this repository for something else, discovery here stops working
+and the skill has to move into it.

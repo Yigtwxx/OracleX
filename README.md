@@ -1186,7 +1186,7 @@ anything else that reads the specification — can query a running instance
 without a bespoke integration:
 
 ```bash
-cp -r agent-skill/oracle-x-api ~/.claude/skills/
+npx skills add Yigtwxx/OracleX --skill oracle-x-api
 export ORACLE_X_URL=http://localhost:8000
 ```
 
