@@ -26,8 +26,13 @@ source of its own.
 ## Install
 
 ```bash
+# skills.sh — reads them straight out of this repository
 npx skills add Yigtwxx/OracleX --skill oracle-x-api    # reading an instance
 npx skills add Yigtwxx/OracleX --skill oracle-x-dev    # working on the code
+
+# ClawHub — both are published under @yigtwxx
+clawhub install @yigtwxx/oracle-x-api
+clawhub install @yigtwxx/oracle-x-dev
 ```
 
 The [skills.sh](https://github.com/vercel-labs/skills) CLI reads the skill
@@ -110,8 +115,12 @@ a judgement, and generating it would produce a list rather than guidance.
 
 ## Publishing to ClawHub
 
+Both skills are published at v1.0.0 and moderated CLEAN. ClawHub relicenses
+what it hosts as MIT-0, so the copy there carries no attribution requirement
+even though this repository is MIT.
+
 ClawHub does not index GitHub on its own — a skill gets there by being pushed,
-from the account that owns the repository:
+from the account that owns the repository. To publish an update:
 
 ```bash
 npm install -g clawhub
@@ -132,8 +141,8 @@ clawhub skill publish ./agent-skill/oracle-x-dev \
   --dry-run
 ```
 
-Drop `--dry-run` once the output looks right. It installs as
-`clawhub install @Yigtwxx/oracle-x-api`. Two things ClawHub checks that are
+Drop `--dry-run` once the output looks right; a republish auto-increments the
+patch version. Two things ClawHub checks that are
 easy to get wrong: the `metadata.openclaw` block has to declare every
 environment variable the skill actually reads, or its scanner flags the
 mismatch — `ORACLE_X_URL` and `ORACLE_X_TOKEN` are declared for that reason —
