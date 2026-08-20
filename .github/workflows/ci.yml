@@ -87,3 +87,32 @@ jobs:
       # tell the difference between a stale document and missing data.
       - name: Check generated reference
         run: python scripts/build_agent_skill.py --check
+
+  mcp-server:
+    name: MCP server (lint + tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp-server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install
+        run: pip install -e . ruff pytest pytest-asyncio
+
+      - name: Ruff lint
+        run: ruff check .
+
+      - name: Ruff format
+        run: ruff format --check .
+
+      # These tests never reach the network. They assert that a declined
+      # request, an unreachable instance and a missing token stay
+      # distinguishable in the tool result, which is the property that keeps a
+      # model from reporting an outage as an answer.
+      - name: Tests
+        run: pytest

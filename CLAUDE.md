@@ -114,13 +114,22 @@ alternative cost — and that is the standard to match. A comment restating the
 line below it is noise; a comment explaining why the obvious approach was
 rejected is the reason the file is maintainable. Write in English, always.
 
-## The agent skill
+## Agent-facing packaging
 
-`agent-skill/oracle-x-api/` packages this API for external agents.
-`SKILL.md` is hand-written; `references/endpoints.md` is generated from the
-app's OpenAPI schema. If you add or rename a route in the skill's allowlist
-(`ENDPOINT_GROUPS` in `scripts/build_agent_skill.py`), regenerate it —
-CI fails otherwise.
+Two things wrap this API for outside agents, and both need updating when a
+route in their surface changes.
+
+`agent-skill/` holds two AgentSkills. `oracle-x-api/SKILL.md` is hand-written;
+its `references/endpoints.md` is generated from the app's OpenAPI schema, so
+adding or renaming a route in the allowlist (`ENDPOINT_GROUPS` in
+`scripts/build_agent_skill.py`) means regenerating it — CI fails otherwise.
+`oracle-x-dev/` documents these conventions for agents working on the code.
+
+`mcp-server/` exposes the same instance as 26 MCP tools. It talks HTTP to a
+running backend and imports nothing from it, so it needs no backend changes —
+but a route it calls that changes shape breaks it silently, since its tests
+never touch the network. Its own gates are `ruff` and `pytest` from
+`mcp-server/`.
 
 ## Git
 

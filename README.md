@@ -631,6 +631,8 @@ frontend/
 │   ├── oracle-x-api/           # reading a running instance
 │   ├── oracle-x-dev/           # extending this codebase
 │   └── *.zip                   # generated, for direct download
+├── mcp-server/                 # the same API as 26 MCP tools
+│   └── oracle_x_mcp/           # stdio server; talks HTTP to a live instance
 ├── scripts/
 │   ├── build_agent_skill.py         # regenerates the skill's endpoint reference
 │   ├── calibrate_rag_relevance.py   # measures the RAG relevance floor against your store
@@ -1200,6 +1202,25 @@ committed copy has drifted from the routes:
 ```bash
 python scripts/build_agent_skill.py --check
 ```
+
+### MCP server
+
+[`mcp-server/`](mcp-server/) exposes the same instance to any MCP client as 26
+tools. Both exist on purpose. A skill has to be *consulted*, and measurement
+showed the API skill triggering on almost nothing — a model asked "what is BTC
+doing" answers from its own knowledge rather than going to look for a skill.
+Tools are already in the model's context, so the only decision left is which
+one to call.
+
+```bash
+cd mcp-server && python3.11 -m venv .venv && .venv/bin/pip install -e .
+claude mcp add oracle-x -e ORACLE_X_URL=http://localhost:8000 \
+  -- "$PWD/.venv/bin/python" -m oracle_x_mcp
+```
+
+Tools summarize where the raw payload is a rendering artifact: the liquidation
+map answers with ~8,000 heatmap cells (214 KB), and the tool returns the
+largest clusters per side anchored to spot in 1.1 KB.
 
 ---
 
