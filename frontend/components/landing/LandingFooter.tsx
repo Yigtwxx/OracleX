@@ -46,6 +46,14 @@ export default function LandingFooter() {
           </a>
         </nav>
       </div>
+
+      {/* The landing page carries no model output of its own, so this states
+          what the product is rather than caveating a specific answer. The
+          per-surface notice inside the terminal is `ui/ModelOutputNotice`. */}
+      <p className="mt-2 max-w-3xl text-2xs text-fg-subtle">
+        Oracle-X is a research terminal. It reports market data and model-generated commentary —
+        nothing it produces is investment advice.
+      </p>
     </footer>
   );
 }

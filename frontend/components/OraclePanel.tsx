@@ -20,6 +20,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import type { EvidenceItem, NewsAnalysis, PrecedentAnalogy } from '@/lib/api';
+import ModelOutputNotice from '@/components/ui/ModelOutputNotice';
 
 type Sentiment = 'bullish' | 'bearish' | 'neutral';
 
@@ -453,6 +454,8 @@ function AnalysisBody({
           </>
         )}
       </div>
+
+      <ModelOutputNotice className="px-1 pb-1" />
     </div>
   );
 }
