@@ -627,9 +627,10 @@ frontend/
 ├── docker-compose.yml          # production-shaped stack
 ├── docker-compose.override.yml # dev overrides (bind mounts, --reload, next dev)
 ├── supabase/migrations/        # 001_initial_schema → 014_chat_memory
-├── agent-skill/                # AgentSkill: teaches an agent to read this API
-│   ├── oracle-x-api/           # SKILL.md + references/ + runnable examples
-│   └── Oracle-X-Skill.zip      # generated, for direct download
+├── agent-skill/                # AgentSkills for external coding agents
+│   ├── oracle-x-api/           # reading a running instance
+│   ├── oracle-x-dev/           # extending this codebase
+│   └── *.zip                   # generated, for direct download
 ├── scripts/
 │   ├── build_agent_skill.py         # regenerates the skill's endpoint reference
 │   ├── calibrate_rag_relevance.py   # measures the RAG relevance floor against your store
@@ -1177,16 +1178,16 @@ print(f"Target High: {data['target_high_price']}")
 print(f"Analyst Rec: {data['recommendation']}")
 ```
 
-### Agent skill
+### Agent skills
 
-The same API is also packaged as an
-[AgentSkill](https://agentskills.io/specification) under
+Two [AgentSkills](https://agentskills.io/specification) live under
 [`agent-skill/`](agent-skill/), so a coding agent — Claude Code, OpenClaw, or
-anything else that reads the specification — can query a running instance
-without a bespoke integration:
+anything else that reads the specification — can work with Oracle-X without a
+bespoke integration:
 
 ```bash
-npx skills add Yigtwxx/OracleX --skill oracle-x-api
+npx skills add Yigtwxx/OracleX --skill oracle-x-api    # query a running instance
+npx skills add Yigtwxx/OracleX --skill oracle-x-dev    # work on this codebase
 export ORACLE_X_URL=http://localhost:8000
 ```
 

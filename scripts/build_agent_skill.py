@@ -33,7 +33,17 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 BACKEND = REPO_ROOT / "backend"
 SKILL_DIR = REPO_ROOT / "agent-skill" / "oracle-x-api"
 REFERENCE = SKILL_DIR / "references" / "endpoints.md"
-ZIP_PATH = REPO_ROOT / "agent-skill" / "Oracle-X-Skill.zip"
+
+# Distribution archives, one per skill. The API skill's filename predates the
+# second skill and is linked from published release notes, so it keeps its name
+# rather than gaining a suffix for symmetry.
+ZIP_TARGETS: tuple[tuple[Path, Path], ...] = (
+    (SKILL_DIR, REPO_ROOT / "agent-skill" / "Oracle-X-Skill.zip"),
+    (
+        REPO_ROOT / "agent-skill" / "oracle-x-dev",
+        REPO_ROOT / "agent-skill" / "Oracle-X-Dev-Skill.zip",
+    ),
+)
 
 # The allowlist, grouped the way the skill's decision table groups them. Order
 # here is the order in the generated document, so a reader who scrolls sees the
@@ -311,22 +321,25 @@ def render(spec: dict[str, Any]) -> str:
 
 
 def build_zip() -> None:
-    """Package the skill directory for distribution."""
-    ZIP_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(ZIP_PATH, "w", zipfile.ZIP_DEFLATED) as archive:
-        for path in sorted(SKILL_DIR.rglob("*")):
-            if not path.is_file():
-                continue
-            # Tooling leaves caches inside the skill directory — .ruff_cache,
-            # __pycache__, .DS_Store. They are gitignored, so nothing catches
-            # them on the way into a zip that *is* committed, and they ship to
-            # every person who installs the skill.
-            if any(
-                part.startswith(".") or part == "__pycache__" for part in path.parts
-            ):
-                continue
-            archive.write(path, path.relative_to(SKILL_DIR.parent))
-    print(f"wrote {ZIP_PATH.relative_to(REPO_ROOT)}")
+    """Package each skill directory for distribution."""
+    for skill_dir, zip_path in ZIP_TARGETS:
+        if not (skill_dir / "SKILL.md").exists():
+            raise SystemExit(f"{skill_dir} has no SKILL.md")
+        zip_path.parent.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
+            for path in sorted(skill_dir.rglob("*")):
+                if not path.is_file():
+                    continue
+                # Tooling leaves caches inside the skill directory —
+                # .ruff_cache, __pycache__, .DS_Store. They are gitignored, so
+                # nothing catches them on the way into a zip that *is*
+                # committed, and they ship to everyone who installs the skill.
+                if any(
+                    part.startswith(".") or part == "__pycache__" for part in path.parts
+                ):
+                    continue
+                archive.write(path, path.relative_to(skill_dir.parent))
+        print(f"wrote {zip_path.relative_to(REPO_ROOT)}")
 
 
 def main() -> int:

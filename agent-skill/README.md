@@ -1,12 +1,14 @@
-# Oracle-X Agent Skill
+# Oracle-X Agent Skills
 
-An [AgentSkill](https://agentskills.io/specification) that teaches a coding
-agent to read a running Oracle-X instance — prices and technicals for crypto
-and equities, news with its LLM analysis, macro regime, chain metrics,
-liquidations, ownership, and the terminal's vector memory of past market
-events.
+Two [AgentSkills](https://agentskills.io/specification). They answer different
+questions and are installed independently:
 
-The specification is shared, so the same directory works in
+| Skill | For |
+|---|---|
+| **`oracle-x-api`** | Reading a running instance — prices, technicals, news analysis, macro regime, chain metrics, liquidations, ownership, and the vector memory. |
+| **`oracle-x-dev`** | Working on the codebase — adding an endpoint, an upstream, a chain adapter, a prompt, and testing any of it the way this repository does. |
+
+The specification is shared, so the same directories work in
 [Claude Code](https://claude.com/product/claude-code),
 [OpenClaw](https://github.com/openclaw/openclaw) and other agentic tools.
 
@@ -24,7 +26,8 @@ source of its own.
 ## Install
 
 ```bash
-npx skills add Yigtwxx/OracleX --skill oracle-x-api
+npx skills add Yigtwxx/OracleX --skill oracle-x-api    # reading an instance
+npx skills add Yigtwxx/OracleX --skill oracle-x-dev    # working on the code
 ```
 
 The [skills.sh](https://github.com/vercel-labs/skills) CLI reads the skill
@@ -32,9 +35,10 @@ straight out of this repository — there is nothing to publish and no registry
 entry — and installs it into whichever agents it finds on the machine. The
 `--skill` flag matches the `name:` in the frontmatter, not the directory.
 
-Or take it by hand: download
-[`Oracle-X-Skill.zip`](./Oracle-X-Skill.zip) and unpack it into your agent's
-skills directory, or copy the directory out of a clone:
+Or take them by hand: download
+[`Oracle-X-Skill.zip`](./Oracle-X-Skill.zip) or
+[`Oracle-X-Dev-Skill.zip`](./Oracle-X-Dev-Skill.zip) and unpack into your
+agent's skills directory, or copy a directory out of a clone:
 
 ```bash
 cp -r agent-skill/oracle-x-api ~/.claude/skills/
@@ -61,12 +65,24 @@ oracle-x-api/
 │   ├── auth.md                 # tokens: obtaining, using, verifying
 │   └── recipes.md              # the multi-step reads worth knowing
 └── examples/                   # runnable httpx clients
+
+oracle-x-dev/
+├── SKILL.md                    # the four gates, and the rules that bite
+└── references/
+    ├── endpoint.md             # router → service → cache → error, and registration
+    ├── upstream.md             # http_client, and mapping a host onto the health badge
+    ├── chains.md               # the duck-typed chain adapter contract
+    ├── llm.md                  # the provider chain, prompts as files, the note pattern
+    └── testing.md              # monkeypatch at the import site, and why lib/ is where tests live
 ```
 
-`SKILL.md` is loaded whenever the skill triggers, so it holds only what an agent
-needs to choose correctly. The `references/` files are read on demand — the full
-endpoint reference is 800 lines and has no business in context until a call
-actually needs it.
+`oracle-x-dev` deliberately does not repeat the repository's `CLAUDE.md`. That
+file records what the system *is*; the skill records how to extend it.
+
+In both, `SKILL.md` is loaded whenever the skill triggers, so it holds only what
+an agent needs to choose correctly. The `references/` files are read on demand —
+the endpoint reference alone is 800 lines and has no business in context until a
+call actually needs it.
 
 ## Keeping it current
 
@@ -76,8 +92,11 @@ it cannot drift from the deployed API without CI noticing:
 ```bash
 python scripts/build_agent_skill.py           # regenerate
 python scripts/build_agent_skill.py --check   # CI: fail if stale
-python scripts/build_agent_skill.py --zip     # rebuild the distributable
+python scripts/build_agent_skill.py --zip     # rebuild both distributables
 ```
+
+Only `oracle-x-api` has a generated part. `oracle-x-dev` is entirely
+hand-written, because conventions are not derivable from a schema.
 
 The generator imports the app rather than calling a running server, so it works
 in a checkout with no instance up. It covers an allowlist of ~50 endpoints
@@ -97,11 +116,19 @@ from the account that owns the repository:
 ```bash
 npm install -g clawhub
 clawhub login                                   # GitHub OAuth
+
 clawhub skill publish ./agent-skill/oracle-x-api \
   --slug oracle-x-api \
   --name "Oracle-X API" \
   --categories finance \
   --topics "crypto,stocks,market-data,technical-analysis,rag" \
+  --dry-run
+
+clawhub skill publish ./agent-skill/oracle-x-dev \
+  --slug oracle-x-dev \
+  --name "Oracle-X Development" \
+  --categories development \
+  --topics "fastapi,nextjs,codebase-conventions" \
   --dry-run
 ```
 
