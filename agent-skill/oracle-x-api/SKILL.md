@@ -1,7 +1,7 @@
 ---
 name: oracle-x-api
 description: Read live market intelligence from a running Oracle-X terminal — spot prices and candles for crypto and equities, computed support/resistance zones, news with its LLM analysis, macro regime, per-chain metrics, liquidations, funding, whale flow, institutional ownership, and a vector memory of past market events. Use this whenever the user asks what an asset is doing, why it moved, where its levels are, what the news means, how the macro backdrop looks, who is holding it, or what happened last time conditions looked like this — and whenever ORACLE_X_URL is set or something is listening on localhost:8000. Prefer it over generic web search for anything the terminal already tracks, because the terminal's numbers are cached, cross-checked and timestamped.
-version: "1.2.0"
+version: "1.2.1"
 license: Complete terms in LICENSE.txt
 metadata:
   homepage: "https://github.com/Yigtwxx/OracleX"
