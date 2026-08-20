@@ -342,6 +342,56 @@ async def _fetch_html(url: str, timeout: float, trusted_source: bool) -> str:
     return await get_text_impersonated(url, timeout=timeout)
 
 
+async def fetch_html(
+    url: Optional[str],
+    *,
+    timeout: float = FETCH_TIMEOUT_SECONDS,
+    trusted_source: bool = False,
+) -> tuple[str, str]:
+    """
+    The page's HTML, for a caller that wants to read it as something other than
+    prose.
+
+    `fetch_article` is the right entry point for anything that wants an article.
+    This exists for `scrape_service`'s data rung, which hands the same HTML to
+    two readers — the prose extractor and `finance_extractors` — because a
+    financial page can be a grid, an article, or both.
+
+    It keeps the parts of `fetch_article` that are about the *fetch*: the
+    per-host circuit breaker and the guard's refusal semantics. It deliberately
+    does not use the article cache, which is keyed to extracted prose and would
+    be the wrong shape for a caller that wants the markup.
+
+    Never raises. Returns `("", url)` when nothing came back.
+    """
+    if not url or not url.strip():
+        return "", url or ""
+
+    host = _host_of(url)
+    if _breaker_is_open(host):
+        logger.debug("skipping html fetch for %s: breaker open for %s", url, host)
+        return "", url
+
+    try:
+        html = await asyncio.wait_for(_fetch_html(url, timeout, trusted_source), timeout=timeout)
+    except url_guard.UnsafeURL as e:
+        # A refusal is a property of the URL, not of the host's health — the
+        # same reasoning as in `fetch_article`.
+        logger.info("html fetch for %s refused: %s", url, e)
+        return "", url
+    except TimeoutError:
+        logger.info("html fetch for %s timed out after %.1fs", url, timeout)
+        _record_failure(host)
+        return "", url
+    except Exception as e:  # noqa: BLE001 — a fetch must never take the turn down
+        logger.info("html fetch for %s failed: %s", url, e)
+        _record_failure(host)
+        return "", url
+
+    _record_success(host)
+    return html or "", url
+
+
 async def fetch_article(
     url: Optional[str],
     *,

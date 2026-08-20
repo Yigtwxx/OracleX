@@ -48,7 +48,7 @@ from typing import Optional
 from urllib.parse import urljoin, urlparse
 
 from config import settings
-from services import article_service, url_guard
+from services import article_service, finance_extractors, url_guard
 from services.cache import ServiceCache
 
 logger = logging.getLogger(__name__)
@@ -67,6 +67,18 @@ JS_SHELL_HOSTS = frozenset(
         "twitter.com",
         "stocktwits.com",
         "threads.net",
+        # TradingView renders its symbol pages entirely client-side. It is here
+        # because rung 1b can only read the JSON-LD the server does emit, which
+        # carries the quote and nothing else; the chart context needs the page
+        # to actually run.
+        #
+        # Adding a host to this set widens the addresses an unguarded browser
+        # will ever visit, which is the one thing the module docstring below
+        # says must be a deliberate decision rather than a convenience. It is
+        # deliberate. Note what is *not* here: coinmarketcap.com and finviz.com
+        # both have extractors and both ship usable static HTML, so neither
+        # needs the browser and neither is worth the widening.
+        "tradingview.com",
     }
 )
 
@@ -100,6 +112,11 @@ class ScrapedPage:
     url: str
     via: str  # "direct" | "impersonated" | "browser"
     truncated: bool
+    # Labelled figures, for the handful of hosts that publish a grid rather than
+    # an article. `None` for every other page. See `services.finance_extractors`
+    # — this is additional to `text`, never instead of it, because the prose
+    # path is what carries the paywall-stub check and the length floor.
+    data: Optional["finance_extractors.Extraction"] = None
 
 
 @dataclass(frozen=True)
@@ -191,9 +208,18 @@ async def _climb(target: str, *, allow_browser: bool) -> ScrapeResult:
     if browser_wanted and browser_possible:
         return await _browser_rung(target)
 
-    page = await _direct_rung(target)
-    if page is None:
-        page = await _impersonated_rung(target)
+    # A host we know how to read as data starts one rung lower, because
+    # `article_service.fetch_article` never surfaces the HTML and the figures
+    # are in the markup rather than in the prose. Every other host takes exactly
+    # the path it took before.
+    if finance_extractors.has_extractor(target):
+        page = await _data_rung(target)
+        if page is None:
+            page = await _impersonated_rung(target)
+    else:
+        page = await _direct_rung(target)
+        if page is None:
+            page = await _impersonated_rung(target)
 
     if page is not None:
         _remember(target, page)
@@ -230,6 +256,33 @@ async def _direct_rung(target: str) -> Optional[ScrapedPage]:
     return _from_article(article, via="direct")
 
 
+# ── rung 1b: the same fetch, read as data as well as prose ───────────────────
+
+
+async def _data_rung(target: str) -> Optional[ScrapedPage]:
+    """
+    Rung 1 for the hosts that publish a table.
+
+    It fetches through the same guarded client `article_service` uses, then
+    hands the HTML to *both* readers: `finance_extractors` for the figures and
+    `extract_body` for whatever prose there is. Neither replaces the other —
+    a page can be an article with a quote box, or a grid with no article at all,
+    and both are worth having.
+    """
+    html, final_url = await article_service.fetch_html(target, timeout=DIRECT_TIMEOUT)
+    if not html:
+        return None
+
+    data = finance_extractors.extract(html, final_url)
+    article = article_service.extract_body(html, final_url)
+
+    if article:
+        return _from_article(article, via="direct", data=data)
+    if data:
+        return _from_data(data, final_url, via="direct")
+    return None
+
+
 # ── rung 2: fingerprint impersonation, still guarded ─────────────────────────
 
 
@@ -237,7 +290,13 @@ async def _impersonated_rung(target: str) -> Optional[ScrapedPage]:
     html, final_url = await _impersonated_get(target)
     if not html:
         return None
-    return _from_article(article_service.extract_body(html, final_url), via="impersonated")
+    data = finance_extractors.extract(html, final_url)
+    article = article_service.extract_body(html, final_url)
+    if article:
+        return _from_article(article, via="impersonated", data=data)
+    if data:
+        return _from_data(data, final_url, via="impersonated")
+    return None
 
 
 async def _impersonated_get(target: str) -> tuple[Optional[str], str]:
@@ -348,7 +407,7 @@ async def _browser_rung(target: str) -> ScrapeResult:
 # ── shared ───────────────────────────────────────────────────────────────────
 
 
-def _from_article(article, via: str) -> Optional[ScrapedPage]:
+def _from_article(article, via: str, data=None) -> Optional[ScrapedPage]:
     """Adapt an `article_service.Article` to this module's shape."""
     if not article:
         return None
@@ -358,7 +417,20 @@ def _from_article(article, via: str) -> Optional[ScrapedPage]:
         url=article.url,
         via=via,
         truncated=article.truncated,
+        data=data,
     )
+
+
+def _from_data(data, url: str, via: str) -> ScrapedPage:
+    """
+    A page that yielded figures but no prose.
+
+    This used to be a failure — `ScrapeResult(None, reason="nothing readable")`
+    — and for TradingView and Finviz it is the normal case: the content is a
+    grid, and a prose extractor correctly reports that there is no article on a
+    page that has no article. The figures are the reading.
+    """
+    return ScrapedPage(text="", char_count=0, url=url, via=via, truncated=False, data=data)
 
 
 def reset_state() -> None:

@@ -201,14 +201,35 @@ def _coverage(evidence: Evidence) -> DataCoverage:
 
 
 def _technical_signals(technical: Optional[Dict[str, Any]]) -> Optional[TechnicalSignals]:
-    """Computed levels only. None hides the section rather than showing blanks."""
+    """
+    Computed levels only. None hides the section rather than showing blanks.
+
+    The multi-timeframe read rides along rather than being summarised away: the
+    panel that renders this is the only place a reader can check the levels the
+    verdict was written from, and "support: $61,830 – $63,238" alone does not
+    say that three timeframes found that band or that the weekly is bearish
+    under it. Every field is optional, so an older stored analysis — written
+    before this shape existed — still parses.
+    """
     if not technical:
         return None
+
+    zones = technical.get("zones") or {}
     return TechnicalSignals(
         rsi_signal=technical.get("rsi_signal"),
         support_levels=technical.get("support_levels") or [],
         resistance_levels=technical.get("resistance_levels") or [],
         target_price=technical.get("target_price"),
+        current_price=technical.get("current_price"),
+        primary_timeframe=technical.get("primary_timeframe") or technical.get("timeframe"),
+        # A dict keyed by timeframe becomes an ordered list here: the reading
+        # order (short to long) is part of the meaning, and JSON objects do not
+        # promise it.
+        timeframes=list((technical.get("timeframes") or {}).values()),
+        support_zones=zones.get("support") or [],
+        resistance_zones=zones.get("resistance") or [],
+        inside_zones=zones.get("inside") or [],
+        structure=technical.get("structure"),
     )
 
 

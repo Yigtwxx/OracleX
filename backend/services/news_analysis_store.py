@@ -34,7 +34,7 @@ _VERSIONED_PROMPTS = (
 
 # Bumped by hand when the pipeline's *code* changes in a way the prompt hashes
 # would not catch (a new stage, a different parser).
-PIPELINE_REVISION = "1"
+PIPELINE_REVISION = "2"
 
 _lock = threading.Lock()
 _entries: Optional[Dict[str, Dict[str, Any]]] = None

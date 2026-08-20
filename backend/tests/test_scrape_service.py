@@ -375,3 +375,53 @@ async def test_a_successful_scrape_is_cached(scrapling, monkeypatch):
 async def _passes(_url):
     """Stand-in for `url_guard.assert_public` that accepts everything."""
     return None
+
+
+# ── the browser allowlist, after finance hosts were added as extractors ──────
+
+
+def test_tradingview_is_on_the_browser_allowlist():
+    """
+    It renders entirely client-side, so the data rung can only read the JSON-LD
+    the server emits. This is a deliberate widening of the set of addresses an
+    unguarded browser will ever visit — see the comment on JS_SHELL_HOSTS.
+    """
+    assert scrape_service.is_js_shell_host("https://www.tradingview.com/symbols/BTCUSD/")
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://coinmarketcap.com/currencies/bitcoin/",
+        "https://finviz.com/quote.ashx?t=NVDA",
+        "https://uk.investing.com/indices/us-30",
+        "https://finance.yahoo.com/quote/NVDA",
+    ],
+)
+def test_a_finance_host_with_an_extractor_is_not_automatically_allowlisted(url):
+    """
+    Having an extractor and needing a browser are different things. These four
+    ship usable static HTML, so adding them to the allowlist would widen the
+    unguarded surface for nothing.
+    """
+    from services import finance_extractors
+
+    assert finance_extractors.has_extractor(url)
+    assert not scrape_service.is_js_shell_host(url)
+
+
+def test_the_allowlist_did_not_grow_by_accident():
+    """
+    A canary. Every entry here is an address an unguarded browser may navigate
+    to; the set should change only when someone means it to.
+    """
+    assert scrape_service.JS_SHELL_HOSTS == frozenset(
+        {
+            "reddit.com",
+            "x.com",
+            "twitter.com",
+            "stocktwits.com",
+            "threads.net",
+            "tradingview.com",
+        }
+    )
