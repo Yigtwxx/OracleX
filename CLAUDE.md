@@ -98,6 +98,25 @@ answer 404 when a symbol cannot be resolved instead of emitting a placeholder.
 Preserve that. A plausible wrong number in a trading terminal is worse than an
 error.
 
+**Polymarket has no trader geography, and its arrays are strings.** Two facts
+about the prediction-market surface that look like bugs if you assume otherwise.
+The exchange settles on Polygon and identifies a counterparty only by
+`proxyWallet`, so no public endpoint anywhere carries a bettor's location — a
+"bets by country" view cannot be built, and the map instead draws three layers
+that each say what they are (`services/polymarket/map_service.py`). And Gamma
+returns `outcomes`, `outcomePrices` and `clobTokenIds` as JSON-encoded *strings*,
+so `market["outcomePrices"][0]` is the character `[`. Nothing raises; the board
+just fills with plausible nonsense. Everything crossing that boundary goes
+through `gamma._maybe_json`.
+
+**The bet analysis is allowed to refuse.** `services/polymarket/sufficiency.py`
+decides whether the model is asked for a verdict at all, and below its floors the
+endpoint answers with `insufficient_evidence` and names every search that came
+back empty. A refusal is a successful run, not an error — do not "fix" it by
+lowering the bar or by letting a thin evidence base through. The facts and
+microstructure are computed without a model and are served either way, which is
+what keeps a refusal from reading as a broken page.
+
 **Symbols carry their venue.** Crypto is `BTCUSDT` or `BINANCE:ETHUSDT`,
 equities are the plain ticker. An unprefixed ticker forced down the crypto path
 once read AAPL off a tokenised-equity market; the resolution logic is deliberate
@@ -125,7 +144,7 @@ adding or renaming a route in the allowlist (`ENDPOINT_GROUPS` in
 `scripts/build_agent_skill.py`) means regenerating it — CI fails otherwise.
 `oracle-x-dev/` documents these conventions for agents working on the code.
 
-`mcp-server/` exposes the same instance as 26 MCP tools. It talks HTTP to a
+`mcp-server/` exposes the same instance as 30 MCP tools. It talks HTTP to a
 running backend and imports nothing from it, so it needs no backend changes —
 but a route it calls that changes shape breaks it silently, since its tests
 never touch the network. Its own gates are `ruff` and `pytest` from
