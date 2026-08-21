@@ -645,100 +645,94 @@ body {
   animation: nav-fx-spin-top 980ms cubic-bezier(0.15, 0.6, 0.25, 1);
 }
 
-/* Live — the transmitter builds itself. The gesture is strictly sequential, and
- * the order is the whole reading: the icon empties completely, the dot appears
- * out of nothing, and only then do the rings arrive around it one after the
- * other, inner then outer.
+/* Live — the transmitter builds itself, one ring at a time. The order is the
+ * whole reading: the icon empties completely, the dot appears out of nothing,
+ * and only then do the rings arrive around it, inner first and outer last.
  *
  *   0ms    the icon is empty — dot and both rings absent
- *   0-280  the dot springs in from nothing and settles
- *   300    the inner ring arrives, expanding out of the dot
- *   450    the outer ring follows it
- *   800    the icon is whole again
+ *   0-190  the dot fades up in place and settles
+ *   210    the inner ring arrives, carried outward from the dot
+ *   410    the outer ring follows it along the same path
+ *   610    the icon is whole again
  *
- * The dot emerges rather than pulsing. A blink starts at full size, so the icon
- * was never actually empty and the dot read as reacting to something already
- * there; starting it from `scale(0)` is what makes the three parts read as one
- * thing assembling in order rather than as a flash followed by movement.
+ * The rings do not scale, and that is the whole fix for what this replaced.
+ * Growing each ring from scale(0.3) to scale(1) about the dot's centre had all
+ * four arcs expanding at once, and with the two rings overlapping for more than
+ * half their runtime the eye read a single mass inflating rather than two rings
+ * leaving in turn. Size is a ring's identity here — the inner one is inner
+ * *because* it is small — so animating it is exactly what destroyed the order.
+ * Each ring now holds its own size for the whole gesture and only travels: it
+ * enters displaced toward the dot and slides out to where it belongs, which is
+ * what a wavefront does.
  *
- * The dot is the one part nothing overlaps: the 20ms of air after it settles is
- * small, but with the dot still moving while the arcs did, the eye read one
- * blurry expansion instead of a sequence.
+ * Nothing overlaps any more. Each part's delay is its predecessor's finish,
+ * because the sequence *is* the gesture and 190ms is short enough that pulling
+ * them apart costs no perceived speed.
  *
- * The two rings *do* overlap each other, and should — the outer leaves at 450ms
- * while the inner is still travelling until 650ms. That 150ms stagger is what
- * makes them read as one wave moving outward. Waiting for the inner to finish
- * first would separate them into two unrelated pops.
+ * A ring is a pair of arcs, not one, and the pair fires together. lucide's
+ * Radio is five children in the order the wave travels — outer left, inner
+ * left, dot, inner right, outer right — so children 2 and 4 are the inner ring
+ * and 1 and 5 the outer. Firing the four arcs separately would read as a
+ * stutter: a wave leaves in every direction at once.
  *
- * Each ring is a pair, not a single arc. lucide's Radio is five children in the
- * order the wave travels — outer left, inner left, dot, inner right, outer
- * right — so children 2 and 4 are one ring and 1 and 5 are the next. Firing the
- * four arcs individually would read as a stutter: a radio wave leaves in every
- * direction at once, and a left side that departed before the right one would
- * look broken rather than staggered.
+ * `--nav-fx-out` is which way "outward" points for that side, and it is the
+ * only thing separating the left arcs from the right. The left pair sits at
+ * x≈5 and x≈8 against a dot at 12, so outward is -x and the arc must start
+ * displaced at +x; the right pair is the mirror. One keyframe reads the sign
+ * out of the property rather than the file carrying two identical copies of it.
+ * The dot sets it to 0: it is the source, so it has nowhere to travel from, and
+ * a shared keyframe is still cheaper than a second one that only drops a term.
  *
- * Every part shares `transform-origin: 12px 12px`, the dot's own centre in
- * lucide's canvas. That single origin is what makes it one wave instead of four
- * arcs each growing about themselves — scale about the default per-element
- * centre and each arc merely fattens in place.
+ * The displacement is in viewBox units, not rendered pixels — `transform-box:
+ * view-box` above puts every child in lucide's own 24×24 coordinates. 2.2 is
+ * about two thirds of the gap between the two rings: far enough to read as
+ * travel, near enough that an arc never lands on its neighbour's resting place.
  *
- * The envelope is free here: the rings start collapsed and settle at scale(1),
- * which is the icon's own resting size, so nothing ever reaches past the bounds
- * the bar already clips at. That is also why a ripple ends opaque rather than
- * fading out — the finished frame *is* the rest state, so the gesture resolves
- * into the icon instead of having to snap back to it.
- *
- * `backwards` fill is doing real work on every part, and it is what makes the
- * empty first frame exist at all: it holds each element's 0% frame through its
- * delay, and that frame is `opacity: 0`. Without it the rings would sit at full
- * size while the dot appeared and then jump inward to start expanding — the
- * wave arriving before it left. With it they are simply absent until their
- * turn. The dot carries it too, so that even its own 0ms is empty. */
-@keyframes nav-fx-emerge {
+ * `backwards` fill is what makes the empty first frame exist at all: it holds
+ * each part's 0% frame — `opacity: 0` — through its delay. Without it the rings
+ * would sit fully drawn until their turn and then jump inward to start
+ * travelling, the wave arriving before it left. The dot carries it too, so that
+ * even its own 0ms is empty. */
+@keyframes nav-fx-emit {
   0% {
     opacity: 0;
-    transform: scale(0);
+    transform: translateX(calc(var(--nav-fx-out) * 2.2px));
   }
-  60% {
-    opacity: 1;
-    transform: scale(1.35);
-  }
+
   100% {
     opacity: 1;
-    transform: scale(1);
+    transform: translateX(0);
   }
-}
-
-@keyframes nav-fx-ripple {
-  0% {
-    opacity: 0;
-    transform: scale(0.3);
-  }
-  35% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.nav-tab[data-nav='live']:hover svg :is(path, circle) {
-  transform-origin: 12px 12px;
 }
 
 .nav-tab[data-nav='live']:hover svg circle:nth-child(3) {
-  animation: nav-fx-emerge 280ms cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
+  --nav-fx-out: 0;
+
+  animation: nav-fx-emit 190ms ease-out backwards;
 }
 
-.nav-tab[data-nav='live']:hover svg path:nth-child(2),
+.nav-tab[data-nav='live']:hover svg path:nth-child(2) {
+  --nav-fx-out: 1;
+
+  animation: nav-fx-emit 200ms 210ms ease-out backwards;
+}
+
 .nav-tab[data-nav='live']:hover svg path:nth-child(4) {
-  animation: nav-fx-ripple 350ms 300ms cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+  --nav-fx-out: -1;
+
+  animation: nav-fx-emit 200ms 210ms ease-out backwards;
 }
 
-.nav-tab[data-nav='live']:hover svg path:nth-child(1),
+.nav-tab[data-nav='live']:hover svg path:nth-child(1) {
+  --nav-fx-out: 1;
+
+  animation: nav-fx-emit 200ms 410ms ease-out backwards;
+}
+
 .nav-tab[data-nav='live']:hover svg path:nth-child(5) {
-  animation: nav-fx-ripple 350ms 450ms cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+  --nav-fx-out: -1;
+
+  animation: nav-fx-emit 200ms 410ms ease-out backwards;
 }
 
 /* Chains — the chain draws itself, and only once it is whole does the next
