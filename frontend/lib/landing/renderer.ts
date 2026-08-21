@@ -161,26 +161,40 @@ function drawCandle(
   const highY = layout.yOf(Math.max(candle.o, growing) + (candle.h - finalTop) * wickT);
   const lowY = layout.yOf(Math.min(candle.o, growing) - (finalBottom - candle.l) * wickT);
 
+  const half = layout.bodyWidth / 2;
+  const bodyTop = Math.round(top);
+  const bodyHeight = Math.max(Math.round(Math.max(bottom - top, 1)), 1);
+  const bodyBottom = bodyTop + bodyHeight;
+
+  // The wick is drawn as two segments that stop at the body rather than as one
+  // line running behind it. A single line showed through as a thin stripe down
+  // the middle of every candle, which reads as a rendering artefact.
   const cx = Math.round(x) + 0.5;
   ctx.strokeStyle = withAlpha(color, alpha * (0.7 + emphasis * 0.3));
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(cx, highY);
-  ctx.lineTo(cx, lowY);
+  if (highY < bodyTop) {
+    ctx.moveTo(cx, highY);
+    ctx.lineTo(cx, bodyTop);
+  }
+  if (lowY > bodyBottom) {
+    ctx.moveTo(cx, bodyBottom);
+    ctx.lineTo(cx, lowY);
+  }
   ctx.stroke();
 
-  const half = layout.bodyWidth / 2;
-  const height = Math.max(bottom - top, 1);
-  ctx.fillStyle = withAlpha(color, alpha * (0.62 + emphasis * 0.38));
-  ctx.fillRect(Math.round(x - half), Math.round(top), Math.round(half * 2), Math.round(height));
+  // Bodies stay fully opaque: the transparency that once softened them let the
+  // grid and the wick bleed through, which cost the candles their weight.
+  ctx.fillStyle = withAlpha(color, alpha);
+  ctx.fillRect(Math.round(x - half), bodyTop, Math.round(half * 2), bodyHeight);
 
   if (emphasis > 0.01 && layout.bodyWidth > 3) {
     ctx.strokeStyle = withAlpha(color, alpha * emphasis);
     ctx.strokeRect(
       Math.round(x - half) + 0.5,
-      Math.round(top) + 0.5,
+      bodyTop + 0.5,
       Math.round(half * 2) - 1,
-      Math.round(height) - 1
+      bodyHeight - 1
     );
   }
 }
