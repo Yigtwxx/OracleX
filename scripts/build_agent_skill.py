@@ -108,6 +108,7 @@ ENDPOINT_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
             ("GET", "/api/macro/board"),
             ("GET", "/api/macro/regime"),
             ("GET", "/api/macro/pizza-index"),
+            ("GET", "/api/macro/neh-index"),
         ],
     ),
     (

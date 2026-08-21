@@ -18,6 +18,7 @@ from fastapi import APIRouter, HTTPException
 from services.home_service import UpstreamUnavailable
 from services.macro_board_service import fetch_macro_board
 from services.macro_regime import build_regime, regime_note
+from services.neh_index_service import fetch_neh_index
 from services.pentagon_pizza_service import fetch_pizza_index
 
 router = APIRouter()
@@ -74,3 +75,15 @@ async def get_pizza_index():
     instead, which the panel renders as its own state.
     """
     return await fetch_pizza_index()
+
+
+@router.get("/api/macro/neh-index")
+async def get_neh_index():
+    """
+    The Nothing Ever Happens Index.
+
+    Cannot fail, for the reason the pizza endpoint cannot: the two share one
+    panel, and a failure of either has to arrive as a reading that says so
+    rather than as an error the panel has no shape for.
+    """
+    return await fetch_neh_index()

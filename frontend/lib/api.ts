@@ -800,6 +800,47 @@ export async function fetchPizzaIndex(): Promise<PizzaIndex> {
   return apiFetch<PizzaIndex>('/api/macro/pizza-index', { anonymous: true });
 }
 
+/**
+ * The band the reading fell in. `unavailable` is the source having failed, and
+ * is a status rather than a null index for the same reason the pizza gauge's is:
+ * the panel needs a state to render, not an absence to explain.
+ */
+export type NehIndexStatus = 'calm' | 'watch' | 'happening' | 'happened' | 'unavailable';
+
+/** The single tracked market currently setting the index. */
+export interface NehTopMarket {
+  slug: string | null;
+  label: string | null;
+  region: string | null;
+  /** Polymarket's price for the Yes share, 0–1. */
+  probability: number;
+}
+
+/**
+ * The Nothing Ever Happens Index.
+ *
+ * `index` is the highest tracked probability in percent, not an average of the
+ * basket — see `services/neh_index_service.py` for why the maximum is the
+ * reading and the mean would be a permanently flat number.
+ */
+export interface NehIndex {
+  index: number | null;
+  status: NehIndexStatus;
+  label: string;
+  top: NehTopMarket | null;
+  markets_tracked: number;
+  as_of: string;
+  /** True when replayed from cache after the source could not be reached. */
+  stale: boolean;
+  source: string;
+  source_url: string;
+}
+
+/** Never answers 503, for the reason `fetchPizzaIndex` does not. */
+export async function fetchNehIndex(): Promise<NehIndex> {
+  return apiFetch<NehIndex>('/api/macro/neh-index', { anonymous: true });
+}
+
 // ==========================================
 // LIQUIDATION MAP
 // ==========================================

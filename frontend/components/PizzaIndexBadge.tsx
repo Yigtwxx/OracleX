@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import { Pizza } from 'lucide-react';
+import { Pizza, Siren } from 'lucide-react';
 import type { PizzaIndexHour, PizzaVenue } from '@/lib/api';
-import { usePizzaIndex } from '@/hooks/queries';
+import { useNehIndex, usePizzaIndex } from '@/hooks/queries';
 import {
   UNKNOWN,
   dialPosition,
@@ -14,6 +14,7 @@ import {
   statusColor,
   statusTone,
 } from '@/lib/pizza-index';
+import * as neh from '@/lib/neh-index';
 
 /**
  * The Pentagon Pizza Index, as a header badge.
@@ -160,6 +161,8 @@ function PanelBody({ data }: { data: NonNullable<ReturnType<typeof usePizzaIndex
         )}
       </div>
 
+      <NehStrip />
+
       <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-t border-line text-2xs text-fg-subtle">
         <span>
           An OSINT novelty ·{' '}
@@ -282,6 +285,96 @@ function VenueRow({ venue }: { venue: PizzaVenue }) {
           {venue.is_closed ? 'Closed' : (venue.excluded_reason ?? 'n/a')}
         </span>
       )}
+    </div>
+  );
+}
+
+/**
+ * The Nothing Ever Happens Index, as the last strip of the panel.
+ *
+ * It sits here rather than in a badge of its own because it is the same kind of
+ * claim from the same publisher: an OSINT novelty about how close something is
+ * to happening. Two novelty badges in the chrome would be twice the furniture
+ * for no more information, and the header is the surface this app is most
+ * careful about spending.
+ *
+ * Compact on purpose — a reading, the band it fell in, and the one market that
+ * set it. The full basket is a page on the source, and this is a link to it,
+ * not a reimplementation of it.
+ *
+ * Rendered inside the open panel, which is what keeps `useNehIndex` from
+ * polling prediction markets for readers who never hover.
+ */
+function NehStrip() {
+  const { data, isLoading } = useNehIndex();
+
+  const readable = data ? neh.hasReading(data.status) : false;
+  const position = readable ? neh.bandPosition(data!.index) : null;
+  const tone = data ? neh.statusTone(data.status) : 'text-fg-subtle';
+
+  return (
+    <div className="px-3 py-2 border-t border-line">
+      <div className="flex items-center gap-2">
+        <Siren className="w-3 h-3 shrink-0 text-fg-subtle" />
+        {/* The strip is a summary of a page, so the title is the way to that
+            page. The panel footer's link goes to the pizza source instead, and
+            sending both readings to one URL would strand this one. */}
+        {data ? (
+          <a
+            href={data.source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="label truncate hover:text-fg-muted transition-colors"
+          >
+            Nothing Ever Happens
+          </a>
+        ) : (
+          <span className="label truncate">Nothing Ever Happens</span>
+        )}
+        <span className={`ml-auto text-xs font-mono tabnum shrink-0 ${tone}`}>
+          {isLoading ? '···' : readable ? neh.formatIndex(data!.index) : neh.UNKNOWN}
+        </span>
+      </div>
+
+      {/* One quarter of the track per band, with the marker on it. Each segment
+          carries its own colour at full strength once the reading has reached
+          it, so the track reads as a filled gauge and not as four buttons. */}
+      <div className="relative mt-1.5 flex items-center gap-px">
+        {neh.BANDS.map((band, i) => {
+          const reached = position !== null && position >= i * 25;
+          return (
+            <div
+              key={band.status}
+              title={band.label}
+              className="h-1 flex-1 first:rounded-l-sm last:rounded-r-sm"
+              style={{
+                background: neh.statusColor(band.status),
+                opacity: reached ? 0.9 : 0.2,
+              }}
+            />
+          );
+        })}
+        {position !== null && (
+          <div
+            className="absolute top-1/2 h-2.5 w-0.5 rounded-full bg-fg pointer-events-none"
+            style={{ left: `${position}%`, transform: 'translate(-50%, -50%)' }}
+          />
+        )}
+      </div>
+
+      <p className="mt-1.5 text-2xs text-fg-subtle truncate">
+        {isLoading ? (
+          'Reading the basket…'
+        ) : data && readable && data.top ? (
+          <>
+            <span className={tone}>{data.label}</span>
+            {' · '}
+            {data.top.label} {neh.formatProbability(data.top.probability)}
+          </>
+        ) : (
+          'Prediction markets could not be read'
+        )}
+      </p>
     </div>
   );
 }

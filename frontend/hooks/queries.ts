@@ -13,6 +13,7 @@ import {
   fetchMacroCalendar,
   fetchMacroBoard,
   fetchMacroRegime,
+  fetchNehIndex,
   fetchPizzaIndex,
   fetchLiveEvents,
   fetchLiveStreams,
@@ -69,6 +70,7 @@ export const queryKeys = {
   // a user writes on a report, and the two must not read as the same thing.
   macroRegime: ['macroRegime'] as const,
   pizzaIndex: ['pizzaIndex'] as const,
+  nehIndex: ['nehIndex'] as const,
   liveEvents: ['liveEvents'] as const,
   liveStreams: ['liveStreams'] as const,
   liveStreamers: ['liveStreamers'] as const,
@@ -269,6 +271,28 @@ export function usePizzaIndex() {
     queryFn: fetchPizzaIndex,
     staleTime: 5 * 60 * 1000,
     refetchInterval: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * The Nothing Ever Happens Index, fetched only while its panel is open.
+ *
+ * The difference from the pizza hook beside it is where it is mounted. That one
+ * feeds a reading rendered in the header on every page, so it has to be in
+ * flight whether or not anyone looks; this one is called only from inside the
+ * panel body, which exists only while the panel is open. Polling prediction
+ * markets on every page load for a strip nobody has opened would be a
+ * background request with no reader.
+ *
+ * Two minutes matches the server's cache, so a panel left open re-reads roughly
+ * when there is something new to read.
+ */
+export function useNehIndex() {
+  return useQuery({
+    queryKey: queryKeys.nehIndex,
+    queryFn: fetchNehIndex,
+    staleTime: 2 * 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
   });
 }
 

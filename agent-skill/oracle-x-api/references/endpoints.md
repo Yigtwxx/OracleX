@@ -468,6 +468,19 @@ instead, which the panel renders as its own state.
 
 Response shape is not declared on the route — inspect one call.
 
+### `GET /api/macro/neh-index`
+
+Get Neh Index
+
+The Nothing Ever Happens Index.
+
+Cannot fail, for the reason the pizza endpoint cannot: the two share one
+panel, and a failure of either has to arrive as a reading that says so
+rather than as an error the panel has no shape for.
+
+
+Response shape is not declared on the route — inspect one call.
+
 ## Chains
 
 Per-chain metrics and anomalies measured against each chain's baseline.
