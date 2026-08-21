@@ -295,6 +295,44 @@ class Settings(BaseSettings):
     # market-cap ranking, so a newly launched token appears on its own.
     HEATMAP_COIN_COUNT: int = 50
 
+    # ── Polymarket (prediction markets) ─────────────────────────────────────
+    # All three hosts are public and unauthenticated for reads, so there is no
+    # key here — only addresses, and only so a deployment behind a mirror or a
+    # proxy can redirect them without a code change.
+    POLYMARKET_ENABLED: bool = True
+    POLYMARKET_GAMMA_URL: str = "https://gamma-api.polymarket.com"
+    POLYMARKET_CLOB_URL: str = "https://clob.polymarket.com"
+    POLYMARKET_DATA_URL: str = "https://data-api.polymarket.com"
+
+    # How many markets the board resolves, by 24h volume.
+    POLYMARKET_BOARD_LIMIT: int = 60
+
+    # Evidence floors for the bet analysis. Below these no verdict is written
+    # and the endpoint refuses in as many words, so they decide how often the
+    # feature declines to answer. They are settings rather than constants
+    # because that balance is the thing most likely to need calibrating against
+    # real markets, and re-deploying to move a threshold by one is a poor way to
+    # learn where it belongs.
+    #
+    # Distinct *domains* rather than sources is the one that does the work: four
+    # articles from a single outlet are four accounts of one newsroom's reading,
+    # and nothing in them can contradict the others.
+    POLYMARKET_MIN_SOURCES: int = 4
+    POLYMARKET_MIN_DOMAINS: int = 3
+    POLYMARKET_MIN_BODY_CHARS: int = 1200
+    POLYMARKET_MIN_QUERIES_ANSWERED: int = 2
+
+    # The degraded tier: enough to say something with a stated confidence
+    # ceiling, not enough to say it plainly.
+    POLYMARKET_DEGRADED_MIN_SOURCES: int = 3
+    POLYMARKET_DEGRADED_MIN_DOMAINS: int = 2
+    POLYMARKET_DEGRADED_MIN_BODY_CHARS: int = 600
+
+    # Confidence a degraded verdict may not exceed, clamped after parsing. A
+    # model handed a thin evidence base still returns round confident numbers;
+    # the clamp is what stops the reader seeing one.
+    POLYMARKET_DEGRADED_MAX_CONFIDENCE: float = 0.45
+
     # ── Embedding runtime ───────────────────────────────────────────────────
     # Ceiling on the cores torch may use for embedding work on the CPU
     # fallback; 0 means half of them. Only reached when neither CUDA nor MPS is
