@@ -48,6 +48,7 @@ from routers import (
     community,
     social,
     ownership,
+    polymarket,
     system,
 )
 
@@ -410,6 +411,7 @@ def create_app() -> FastAPI:
     app.include_router(macro.router)  # /api/macro/board
     app.include_router(live.router)  # /api/live/events, /api/live/streams, /api/live/tape
     app.include_router(chains.router)  # /api/chains/board
+    app.include_router(polymarket.router)  # /api/polymarket/board, /api/polymarket/markets/*
     app.include_router(
         analysis.router
     )  # /api/analysis/reports, /api/analysis/jobs, /api/analysis/notes
