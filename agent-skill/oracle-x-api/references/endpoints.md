@@ -748,6 +748,79 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
+## Prediction markets
+
+What people are betting happens next, and a sourced read on why.
+
+The analysis endpoint may answer with a refusal instead of a verdict. That is a successful run, not an error: the pipeline declines when the evidence it could gather does not support a judgement, and the payload names every search it ran and every one that came back empty. A refusal still carries the market's odds, movement and holder concentration, all of which are measured rather than modelled.
+
+### `GET /api/polymarket/board`
+
+Get Polymarket Board
+
+Active prediction markets by 24-hour volume.
+
+Carries its own `stale` flag and age so the UI can say how old the odds are
+instead of implying they are live.
+
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/polymarket/markets/{slug}`
+
+Get Polymarket Market
+
+One market's facts and microstructure. No model is consulted.
+
+404 when the slug resolves to nothing — never a placeholder market.
+
+Parameters:
+- `slug` (path, string, required)
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/polymarket/map`
+
+Get Polymarket Map
+
+Three geographic layers, each labelled with what it actually is.
+
+None of them is "where the money came from" — that cannot be built from
+Polymarket's data and the payload says so per layer rather than leaving the
+reader to assume. See `services/polymarket/map_service`.
+
+
+Response shape is not declared on the route — inspect one call.
+
+### `POST /api/polymarket/markets/{slug}/analysis/jobs` · **auth**
+
+Start Polymarket Analysis
+
+Start the bet analysis for one market, or re-attach to the running one.
+
+202 for a fresh run, 200 when an identical job is already in flight — a
+double-clicked Analysis button must not pay for two pipelines.
+
+The job may well end in a refusal rather than a verdict, and that is a
+successful run: the pipeline declines when the evidence it could gather does
+not support a judgement, and says which searches came back empty.
+
+Parameters:
+- `slug` (path, string, required)
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/polymarket/analysis/jobs/{job_id}`
+
+Get Polymarket Analysis Job
+
+Poll a running analysis. 404 once the job has aged out of retention.
+
+Parameters:
+- `job_id` (path, string, required)
+
+Response shape is not declared on the route — inspect one call.
+
 ## Watchlist (authenticated)
 
 The caller's own tracked symbols.
