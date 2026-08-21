@@ -585,7 +585,6 @@ frontend/
 │   ├── ClientShell.tsx         # QueryClientProvider + Navigation + GlobalTicker + Toasts
 │   ├── HydrationBeacon.tsx     # proof of life for the chunk-recovery watchdog
 │   ├── BootGate.tsx / BootSplash.tsx   # holds first paint until the backend is ready
-│   ├── ErrorBoundary.tsx
 │   ├── landing/                # ScrollCanvas, TypedPoints, StageFigure, hero and sections
 │   ├── ui/                     # Panel, Modal, Logo, AssetTag, ShinyText, AiNote primitives
 │   ├── chains/                 # ChainCard, BlockStream, FeeRacer, EconomicsPanel,
