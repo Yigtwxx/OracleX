@@ -77,6 +77,8 @@ in `references/endpoints.md`, call it.
 | A market-wide written report | `GET /api/analysis/report/{timeframe}` | The stored daily/weekly report. Reading never triggers generation. |
 | Macro backdrop | `GET /api/macro/board` | Indices, metals, commodities, ratios. |
 | "What kind of market is this?" | `GET /api/macro/regime` | A computed label and score, plus a written note. The label is always present; the note may not be. |
+| The odds on an event happening | `GET /api/polymarket/board` | Live prediction markets by volume. A price here is what traders believe, not evidence about the world. |
+| Why a market moved, or why it exists | `POST /api/polymarket/markets/{slug}/analysis/jobs` | Traces sharp price moves to dated news and weighs both sides. May refuse; a refusal names what it searched. |
 | Chain activity, fees, congestion | `GET /api/chains/board` | Per-chain metrics under one adapter contract. |
 | Something unusual on-chain | `GET /api/chains/anomalies` | Measured against each chain's own baseline, not a global threshold. |
 | Liquidations | `GET /api/home/liquidations`, `GET /api/liquidations/map/{symbol}` | Aggregate first, then the per-symbol map. `/levels/` is a histogram of what already happened and needs `price_min` and `price_max`; `/map/` is the forward-looking estimate and needs neither. |
