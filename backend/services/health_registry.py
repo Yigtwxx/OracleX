@@ -89,9 +89,21 @@ CATEGORIES: tuple[Category, ...] = (
         "macro",
         "Macro & Sentiment",
         False,
-        ("Federal Reserve", "CNN Fear & Greed", "PizzINT"),
+        ("Federal Reserve", "CNN Fear & Greed", "TradingView Calendar", "ForexFactory", "PizzINT"),
     ),
     Category("ai", "AI / LLM", False, ("Local LLM chain",), stale_after_s=None),
+    # Prediction markets get their own category rather than folding into macro,
+    # which is the opposite call to the one made for PizzINT a few lines up and
+    # for the same reason. Losing PizzINT costs one gauge on a board that still
+    # works; losing these three hosts costs the Polymarket tab entirely — the
+    # board, the map and the bet analysis all read from them. A category is
+    # meant to name what a user would lose, and here that is a whole surface.
+    Category(
+        "prediction",
+        "Prediction Markets",
+        False,
+        ("Polymarket Gamma", "Polymarket CLOB", "Polymarket Data"),
+    ),
 )
 
 _BY_KEY = {c.key: c for c in CATEGORIES}
@@ -141,6 +153,7 @@ _HOST_MAP: dict[str, str] = {
     # Macro & sentiment
     "federalreserve.gov": "macro",
     "dataviz.cnn.io": "macro",
+    "economic-calendar.tradingview.com": "macro",
     "faireconomy.media": "macro",
     # The Pentagon Pizza Index's upstream. Grouped with macro & sentiment rather
     # than given a category of its own: losing it costs one novelty gauge on the
@@ -159,6 +172,15 @@ _HOST_MAP: dict[str, str] = {
     "dowjones.io": "news",
     "koinbulteni.com": "news",
     "uzmancoin.com": "news",
+    # Prediction markets. Three hosts with one owner but genuinely separate
+    # roles — discovery, pricing and trade history — so all three are listed
+    # rather than mapped off the registrable domain: a CLOB outage with Gamma
+    # healthy is a board that renders without live odds, and the badge should
+    # be able to say so.
+    "gamma-api.polymarket.com": "prediction",
+    "clob.polymarket.com": "prediction",
+    "data-api.polymarket.com": "prediction",
+    "polymarket.com": "prediction",
 }
 
 # Consecutive failures before a category is reported as down rather than merely
