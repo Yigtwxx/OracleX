@@ -13,6 +13,7 @@ from services.asset_registry import GLOBAL_INDICES
 from services.cache import market_cache
 from services.http_client import get_json_impersonated
 from services.series import downsample
+from services.yahoo_chart import previous_close
 
 logger = logging.getLogger(__name__)
 
@@ -289,7 +290,10 @@ async def fetch_single_stock(client: httpx.AsyncClient, symbol: str) -> Optional
         # signature because every caller passes a shared session.
         data = await get_json_impersonated(
             f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}",
-            params={"interval": "1d", "range": "2d"},
+            # Five sessions rather than the two a daily change needs: the
+            # reference close comes from the bars, and a holiday inside a
+            # two-day window can leave only one of them.
+            params={"interval": "1d", "range": "5d"},
             timeout=15.0,
         )
 
@@ -301,9 +305,7 @@ async def fetch_single_stock(client: httpx.AsyncClient, symbol: str) -> Optional
                 meta = results[0].get("meta", {})
 
                 price = meta.get("regularMarketPrice", 0) or 0
-                prev_close = (
-                    meta.get("chartPreviousClose", 0) or meta.get("previousClose", 0) or price
-                )
+                prev_close = previous_close(data) or price
                 change = ((price - prev_close) / prev_close * 100) if prev_close and price else 0
                 volume = meta.get("regularMarketVolume", 0) or 0
                 high = meta.get("regularMarketDayHigh", 0) or 0
