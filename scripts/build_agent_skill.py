@@ -160,6 +160,23 @@ ENDPOINT_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
         ],
     ),
     (
+        "Prediction markets",
+        "What people are betting happens next, and a sourced read on why.\n\n"
+        "The analysis endpoint may answer with a refusal instead of a verdict. "
+        "That is a successful run, not an error: the pipeline declines when the "
+        "evidence it could gather does not support a judgement, and the payload "
+        "names every search it ran and every one that came back empty. A refusal "
+        "still carries the market's odds, movement and holder concentration, all "
+        "of which are measured rather than modelled.",
+        [
+            ("GET", "/api/polymarket/board"),
+            ("GET", "/api/polymarket/markets/{slug}"),
+            ("GET", "/api/polymarket/map"),
+            ("POST", "/api/polymarket/markets/{slug}/analysis/jobs"),
+            ("GET", "/api/polymarket/analysis/jobs/{job_id}"),
+        ],
+    ),
+    (
         "Watchlist (authenticated)",
         "The caller's own tracked symbols.",
         [

@@ -630,6 +630,104 @@ async def get_watchlist() -> dict[str, Any]:
     return {"ok": True, "watchlists": payload}
 
 
+# ── Prediction markets ──────────────────────────────────────────────────────
+#
+# Three tools rather than one per route. The tool list is context every turn
+# pays for, and these are the three questions a person actually asks: what are
+# the odds, what does this one market look like, and why.
+
+
+@server.tool()
+async def get_prediction_markets(category: str = "") -> dict[str, Any]:
+    """Live prediction markets, busiest first.
+
+    What people are betting happens next, priced by real money. Use it when the
+    question is about the *probability* of an event rather than the price of an
+    asset — an election, a ceasefire, a rate decision, a match.
+
+    `category` filters to one of politics, geopolitics, macro, crypto, sports.
+    Leave it empty for everything.
+
+    A price here is what traders believe. It is evidence about the crowd, not
+    about the world, and it should never be cited as a reason the event will
+    happen.
+    """
+    try:
+        payload = await client.get("/api/polymarket/board")
+    except OracleXError as error:
+        return _fail(error)
+
+    markets = payload.get("markets", [])
+    if category:
+        markets = [m for m in markets if m.get("category") == category]
+    return {
+        "ok": True,
+        "markets": markets,
+        "stale": payload.get("stale", False),
+        "age_seconds": payload.get("age_seconds", 0),
+    }
+
+
+@server.tool()
+async def get_prediction_market(slug: str) -> dict[str, Any]:
+    """One market's odds, movement and holder concentration.
+
+    Everything here is measured — no model is consulted, so this is cheap and
+    always available. It includes the windows in which the price moved sharply,
+    which is what `analyse_prediction_market` searches news inside.
+
+    `top_holder_share` is the reading worth looking at: the same price set by
+    four hundred wallets and by one whale are different facts.
+    """
+    try:
+        payload = await client.get(f"/api/polymarket/markets/{slug}")
+    except NotFound:
+        return {"ok": False, "reason": f"No market matches {slug!r}."}
+    except OracleXError as error:
+        return _fail(error)
+    return {"ok": True, **payload}
+
+
+@server.tool()
+async def analyse_prediction_market(slug: str) -> dict[str, Any]:
+    """Start a sourced analysis of one market, and return the job to poll.
+
+    Searches the news, reads what it finds, traces the market's sharp price
+    moves to dated stories, and weighs both sides. It takes a couple of minutes,
+    so this returns a job — poll `get_analysis_job` with the returned id.
+
+    **It may refuse, and a refusal is a result, not a failure.** When the
+    evidence gathered does not clear the bar for a judgement, the verdict comes
+    back with `status: "insufficient_evidence"` and an explanation naming every
+    search that was run and every one that came back empty. Report that as the
+    answer rather than retrying or filling the gap yourself — the market's odds
+    and movement are still in the payload and are still measured.
+    """
+    try:
+        payload = await client.post(f"/api/polymarket/markets/{slug}/analysis/jobs", {})
+    except NotFound:
+        return {"ok": False, "reason": f"No market matches {slug!r}."}
+    except OracleXError as error:
+        return _fail(error)
+    return {"ok": True, "job_id": payload.get("job_id"), "status": payload.get("status")}
+
+
+@server.tool()
+async def get_prediction_analysis_job(job_id: str) -> dict[str, Any]:
+    """Poll a running prediction-market analysis.
+
+    `status` is queued, running, done or error. When it is done, `result` holds
+    either a verdict or a refusal — check `result.status` before reading further.
+    """
+    try:
+        payload = await client.get(f"/api/polymarket/analysis/jobs/{job_id}")
+    except NotFound:
+        return {"ok": False, "reason": "That analysis job has expired."}
+    except OracleXError as error:
+        return _fail(error)
+    return {"ok": True, **payload}
+
+
 def main() -> None:
     """Run over stdio, which is how MCP clients launch a local server."""
     server.run()
