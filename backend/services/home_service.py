@@ -1,7 +1,8 @@
 """
 Home Page Service
 Fetches Funding Rates (OKX), Liquidations (background WS service), On-Chain Data
-(Coin Metrics / mempool.space / public ETH RPC) and the US macro calendar.
+(Coin Metrics / mempool.space / public ETH RPC) and the US macro calendar
+(TradingView, with ForexFactory's week feed behind it).
 
 Every upstream here is free and keyless. Binance, Blockchair and blockchain.info
 were the previous sources but are unreachable from some networks (TLS handshakes
@@ -19,6 +20,7 @@ import httpx
 from config import settings
 from services import asset_registry
 from services.cache import home_cache
+from services.http_client import get_json
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +72,15 @@ TTL_MACRO = 3600
 # Short negative TTL so a rate-limited macro feed isn't hammered once per request.
 TTL_MACRO_BACKOFF = 300
 
+# How far ahead the calendar looks. A month is the horizon a macro desk plans
+# against — the next CPI, the next FOMC — and it is also roughly where the
+# upstream stops scheduling, so asking for more returns the same rows.
+MACRO_HORIZON_DAYS = 31
+# TradingView rates its entries -1 low / 0 medium / 1 high. Low is the wire that
+# carries API crude stocks and regional Fed speeches; a month of it would bury
+# the releases that move a book.
+MACRO_MIN_IMPORTANCE = 0
+
 # How old a stale fallback may be before we stop serving it. Past these bounds
 # the data is no longer a reasonable stand-in for "now", so the endpoint reports
 # an outage instead of quietly handing back yesterday's numbers.
@@ -109,11 +120,11 @@ def _event_datetime(event: Dict) -> Optional[datetime]:
     """
     Scheduled UTC datetime of a calendar entry, or None if it cannot be read.
 
-    The feed publishes `date` as MM-DD-YYYY and `time` as e.g. "2:00pm", already in
-    UTC — confirmed against known release times, where the 8:30am ET Non-Farm
-    Payrolls print arrives as "12:30pm". Entries marked "All Day" or "Tentative"
-    carry no usable time, so they resolve to the end of their day and stay listed
-    until that day is over.
+    Both sources are normalised to `date` as MM-DD-YYYY and `time` as e.g.
+    "2:00pm", already in UTC — confirmed against known release times, where the
+    8:30am ET Non-Farm Payrolls print arrives as "12:30pm". Entries marked
+    "All Day" or "Tentative" carry no usable time, so they resolve to the end of
+    their day and stay listed until that day is over.
     """
     date_str = (event.get("date") or "").strip()
     if not date_str:
@@ -137,95 +148,217 @@ def _upcoming(events: List[Dict]) -> List[Dict]:
     """
     Drop entries whose scheduled time has already passed.
 
-    The feed covers the whole calendar week, so by midweek most of it describes
-    releases that have already printed. An entry we cannot place in time is kept —
-    better to show it than to silently discard an event we failed to parse.
+    The upstream window starts at "today", so its first day is always partly
+    spent. An entry we cannot place in time is kept — better to show it than to
+    silently discard an event we failed to parse.
     """
     now = datetime.now(UTC)
     return [event for event in events if (dt := _event_datetime(event)) is None or dt >= now]
 
 
+def _format_release_value(raw: Any, unit: str, scale: str) -> str:
+    """
+    Render a forecast/previous reading the way a calendar row reads it.
+
+    The month feed splits a value across three fields — 0.1 / "%" / None, or
+    -99 / "$" / "B" — where the week feed it replaces published one pre-rendered
+    string. Reassembling them here keeps the two sources interchangeable to the
+    frontend, which prints whatever it is handed.
+    """
+    if raw is None:
+        return ""
+
+    if isinstance(raw, float) and raw.is_integer():
+        number = str(int(raw))
+    else:
+        number = str(raw)
+
+    suffix = f"{scale}{'%' if unit == '%' else ''}"
+    if unit == "$":
+        # "-$99B" rather than "$-99B": the sign belongs to the quantity.
+        sign, number = ("-", number[1:]) if number.startswith("-") else ("", number)
+        return f"{sign}${number}{suffix}"
+    return f"{number}{suffix}"
+
+
 async def fetch_macro_calendar() -> List[Dict]:
     """
-    Fetch Real-time US Economic Calendar from ForexFactory XML Feed.
-    Source: https://nfs.faireconomy.media/ff_calendar_thisweek.xml
-    Returns: Upcoming high/medium impact USD events.
+    Fetch the upcoming US economic calendar, roughly a month ahead.
+    Returns: Upcoming medium/high impact USD events, chronological.
 
     Filtering happens per request rather than at fetch time, so the list stays
     accurate as events pass during the cache's lifetime.
     """
-    return _upcoming(await _load_macro_week())
+    return _upcoming(await _load_macro_events())
 
 
-async def _load_macro_week() -> List[Dict]:
-    """The full current-week feed, cached. See `fetch_macro_calendar`."""
-    # Cache for 1 hour (data is weekly/daily)
+async def _load_macro_events() -> List[Dict]:
+    """
+    The calendar window, cached, from whichever source answers.
+
+    TradingView is asked first because it is the only free source here that
+    schedules further than the current week — and a calendar that empties out by
+    Friday afternoon is not a calendar. ForexFactory stays behind it as the
+    fallback: its feed covers one week and no more, so a fallback run is a
+    genuinely shorter list rather than a degraded one. The frontend reads the
+    horizon back off the rows instead of being told, which is why the shrink
+    does not need to be announced in the payload.
+    """
     cached = home_cache.get("macro")
     if cached is not None:
         return cached
 
-    # A recent failure is remembered under its own key. Parking an empty list in
-    # the data cache would have been indistinguishable from "no events this week".
-    if home_cache.is_valid("macro_backoff"):
-        stale = home_cache.get_with_fallback("macro", max_age=MAX_STALE_MACRO)
-        if stale:
-            return stale
-        raise UpstreamUnavailable("macro calendar unavailable (backing off)")
-
-    url = "https://nfs.faireconomy.media/ff_calendar_thisweek.xml"
-    events: List[Dict] = []
-
-    try:
-        async with httpx.AsyncClient(headers=_BROWSER_HEADERS) as client:
-            response = await client.get(url, timeout=10.0)
-
-        content_type = response.headers.get("content-type", "")
-        if response.status_code != 200 or "xml" not in content_type:
-            # 429 responses arrive as text/html and would blow up the parser.
-            logger.warning(
-                "Macro calendar unavailable: HTTP %s (%s)", response.status_code, content_type
-            )
-            raise ValueError("unexpected macro calendar response")
-
-        root = ET.fromstring(response.content)
-
-        for event in root.findall("event"):
-            # Filter for USD events only
-            if _child_text(event, "country") != "USD":
-                continue
-
-            # Filter for Medium/High impact to reduce noise
-            impact = _child_text(event, "impact")
-            if impact not in ("Medium", "High"):
-                continue
-
-            events.append(
-                {
-                    "title": _child_text(event, "title"),
-                    "country": "USD",
-                    "date": _child_text(event, "date"),  # Format: MM-DD-YYYY
-                    "time": _child_text(event, "time"),  # Format: 1:30pm
-                    "impact": impact,
-                    "forecast": _child_text(event, "forecast"),
-                    "previous": _child_text(event, "previous"),
-                }
-            )
-
-        # Source order is already chronological.
+    for source, backoff_key, load in (
+        ("month", "macro_month_backoff", _load_macro_month),
+        ("week", "macro_week_backoff", _load_macro_week),
+    ):
+        # A recent failure is remembered under its own key. Parking an empty list
+        # in the data cache would have been indistinguishable from "no events".
+        if home_cache.is_valid(backoff_key):
+            continue
+        try:
+            events = await load()
+        except Exception as e:
+            logger.warning("Macro calendar (%s) unavailable: %s", source, e)
+            # Back off briefly so a rate-limited feed isn't retried on every
+            # request.
+            home_cache.set(backoff_key, True, TTL_MACRO_BACKOFF)
+            continue
         home_cache.set("macro", events, TTL_MACRO)
         return events
 
-    except Exception as e:
-        logger.error("Error fetching macro calendar: %s", e)
-        # Return stale data if it is still recent enough to be meaningful.
-        stale = home_cache.get_with_fallback("macro", max_age=MAX_STALE_MACRO)
-        if stale:
-            return stale
-        # Back off briefly so a rate-limited feed isn't retried on every request,
-        # but surface the outage — an empty calendar is a claim about the week,
-        # not an absence of information.
-        home_cache.set("macro_backoff", True, TTL_MACRO_BACKOFF)
-        raise UpstreamUnavailable("macro calendar unavailable") from e
+    # Return stale data if it is still recent enough to be meaningful. A calendar
+    # is scheduled well in advance, so yesterday's copy is very nearly today's.
+    stale = home_cache.get_with_fallback("macro", max_age=MAX_STALE_MACRO)
+    if stale:
+        return stale
+    # Surface the outage — an empty calendar is a claim about the month, not an
+    # absence of information.
+    raise UpstreamUnavailable("macro calendar unavailable")
+
+
+async def _load_macro_month() -> List[Dict]:
+    """
+    The next `MACRO_HORIZON_DAYS` of US releases, from TradingView's calendar.
+
+    The endpoint is the one behind TradingView's own calendar widget and needs no
+    key, but it checks `Origin` rather than `User-Agent`: a browser fingerprint
+    alone still earns a 403, and the widget's own origin earns a 200.
+    """
+    now = datetime.now(UTC)
+    payload = await get_json(
+        "https://economic-calendar.tradingview.com/events",
+        params={
+            "from": _tv_timestamp(now),
+            "to": _tv_timestamp(now + timedelta(days=MACRO_HORIZON_DAYS)),
+            "countries": "US",
+        },
+        headers={"Origin": "https://www.tradingview.com"},
+    )
+
+    if not isinstance(payload, dict) or payload.get("status") != "ok":
+        raise ValueError("unexpected macro calendar response")
+
+    events: List[Dict] = []
+    for entry in payload.get("result") or []:
+        importance = entry.get("importance")
+        if not isinstance(importance, int) or importance < MACRO_MIN_IMPORTANCE:
+            continue
+
+        scheduled = _parse_tv_datetime(entry.get("date"))
+        if scheduled is None:
+            continue
+
+        events.append(
+            {
+                "title": entry.get("title") or "",
+                "country": "USD",
+                "date": scheduled.strftime("%m-%d-%Y"),
+                # Midnight UTC is how the feed marks a fixture with no release
+                # time — a summit, a bank holiday — not an 8pm ET print.
+                "time": (
+                    "All Day"
+                    if (scheduled.hour, scheduled.minute) == (0, 0)
+                    else scheduled.strftime("%-I:%M%p").lower()
+                ),
+                "impact": "High" if importance >= 1 else "Medium",
+                "forecast": _format_release_value(
+                    entry.get("forecast"), entry.get("unit") or "", entry.get("scale") or ""
+                ),
+                "previous": _format_release_value(
+                    entry.get("previous"), entry.get("unit") or "", entry.get("scale") or ""
+                ),
+            }
+        )
+
+    if not events:
+        # The window always contains jobless claims. An empty result means the
+        # shape changed under us, not a quiet month.
+        raise ValueError("macro calendar returned no usable events")
+
+    events.sort(key=lambda event: _event_datetime(event) or datetime.max.replace(tzinfo=UTC))
+    return events
+
+
+def _tv_timestamp(moment: datetime) -> str:
+    """The millisecond-precision UTC stamp the calendar endpoint expects."""
+    return moment.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+
+def _parse_tv_datetime(value: Any) -> Optional[datetime]:
+    """Parse the feed's `2026-08-26T12:30:00.000Z` into an aware UTC datetime."""
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC)
+    except ValueError:
+        return None
+
+
+async def _load_macro_week() -> List[Dict]:
+    """
+    The current calendar week from ForexFactory's XML feed.
+
+    Only `ff_calendar_thisweek.xml` exists — the nextweek and thismonth URLs
+    answer 404 — which is why this is the fallback and not the source.
+    """
+    url = "https://nfs.faireconomy.media/ff_calendar_thisweek.xml"
+    events: List[Dict] = []
+
+    async with httpx.AsyncClient(headers=_BROWSER_HEADERS) as client:
+        response = await client.get(url, timeout=10.0)
+
+    content_type = response.headers.get("content-type", "")
+    if response.status_code != 200 or "xml" not in content_type:
+        # 429 responses arrive as text/html and would blow up the parser.
+        raise ValueError(f"unexpected macro calendar response: HTTP {response.status_code}")
+
+    root = ET.fromstring(response.content)
+
+    for event in root.findall("event"):
+        # Filter for USD events only
+        if _child_text(event, "country") != "USD":
+            continue
+
+        # Filter for Medium/High impact to reduce noise
+        impact = _child_text(event, "impact")
+        if impact not in ("Medium", "High"):
+            continue
+
+        events.append(
+            {
+                "title": _child_text(event, "title"),
+                "country": "USD",
+                "date": _child_text(event, "date"),  # Format: MM-DD-YYYY
+                "time": _child_text(event, "time"),  # Format: 1:30pm
+                "impact": impact,
+                "forecast": _child_text(event, "forecast"),
+                "previous": _child_text(event, "previous"),
+            }
+        )
+
+    # Source order is already chronological.
+    return events
 
 
 # ==========================================
