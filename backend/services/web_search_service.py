@@ -30,8 +30,34 @@ CACHE_TTL = 300  # 5 minutes
 SEARCH_TIMEOUT = float(os.environ.get("WEB_SEARCH_TIMEOUT", "15"))
 
 
+# Recency windows the search backends agree on.
+#
+# Validated rather than passed through, because two of the engines behind
+# `backend="auto"` index a dict by this value directly — brave.py maps
+# d/w/m/y to pd/pw/pm/py, bing.py to 1/2/3 — so an unrecognised string
+# raises KeyError inside the engine and takes the whole search down instead
+# of merely failing to narrow it. DuckDuckGo's own `df` parameter does accept
+# a "YYYY-MM-DD..YYYY-MM-DD" range, but only that one engine does, so a custom
+# range is not safe to offer here. Callers that need a specific window should
+# search wide and filter on `published_at` from `search_news` instead.
+_TIMELIMITS = frozenset({"d", "w", "m", "y"})
+
+
+def _clean_timelimit(timelimit: Optional[str]) -> Optional[str]:
+    """Return `timelimit` if a backend can act on it, else None."""
+    if timelimit is None:
+        return None
+    if timelimit in _TIMELIMITS:
+        return timelimit
+    logger.warning("Ignoring unsupported search timelimit %r", timelimit)
+    return None
+
+
 async def search_web(
-    query: str, max_results: int = 5, timeout: Optional[float] = None
+    query: str,
+    max_results: int = 5,
+    timeout: Optional[float] = None,
+    timelimit: Optional[str] = None,
 ) -> List[Dict]:
     """
     Search the web using DuckDuckGo.
@@ -40,14 +66,19 @@ async def search_web(
         query: Search query string
         max_results: Maximum number of results to return
         timeout: Per-request budget in seconds; defaults to SEARCH_TIMEOUT
+        timelimit: Recency window, one of "d", "w", "m", "y". Anything else is
+            dropped with a warning rather than raised — a search that comes
+            back unnarrowed is worth more than no search at all.
 
     Returns:
         List of search results with title, snippet, and url
     """
     budget = SEARCH_TIMEOUT if timeout is None else timeout
+    window = _clean_timelimit(timelimit)
 
-    # Check cache first
-    cache_key = f"{query}:{max_results}"
+    # Check cache first. The window is part of the key: the same query asked
+    # about this week and about this year are different questions.
+    cache_key = f"{query}:{max_results}:{window or 'all'}"
     if cache_key in _search_cache:
         cached_time, cached_results = _search_cache[cache_key]
         if (datetime.now() - cached_time).total_seconds() < CACHE_TTL:
@@ -60,7 +91,7 @@ async def search_web(
         def do_search():
             try:
                 ddgs = DDGS(timeout=budget)
-                results = ddgs.text(query, max_results=max_results)
+                results = ddgs.text(query, max_results=max_results, timelimit=window)
                 return [
                     {
                         "title": r.get("title", ""),
@@ -85,6 +116,72 @@ async def search_web(
 
     except Exception as e:
         logger.error(f"Web search error for '{query}': {e}")
+        return []
+
+
+async def search_news(
+    query: str,
+    max_results: int = 6,
+    timeout: Optional[float] = None,
+    timelimit: Optional[str] = None,
+) -> List[Dict]:
+    """
+    Search news wires, carrying each item's publication date through.
+
+    The date is the whole point of this function existing beside `search_web`.
+    The text index answers "what is written about this", which cannot place an
+    event in time; a caller trying to work out *when* something happened — or
+    which story broke in the window a price moved — needs the timestamp, and
+    the text results do not carry one.
+
+    `published_at` is an ISO-8601 string when the backend supplied one and None
+    when it did not. It is deliberately not defaulted to "now": a story of
+    unknown age that gets stamped with today's date is indistinguishable from
+    breaking news, which is exactly the mistake a date is being fetched to
+    prevent. Callers must treat None as unknown, not as recent.
+
+    Returns:
+        List of results with title, snippet, url, published_at and source
+    """
+    budget = SEARCH_TIMEOUT if timeout is None else timeout
+    window = _clean_timelimit(timelimit)
+
+    cache_key = f"news:{query}:{max_results}:{window or 'all'}"
+    if cache_key in _search_cache:
+        cached_time, cached_results = _search_cache[cache_key]
+        if (datetime.now() - cached_time).total_seconds() < CACHE_TTL:
+            return cached_results
+
+    try:
+        from ddgs import DDGS
+
+        def do_search():
+            try:
+                ddgs = DDGS(timeout=budget)
+                results = ddgs.news(query, max_results=max_results, timelimit=window)
+                return [
+                    {
+                        "title": r.get("title", ""),
+                        "snippet": r.get("body", ""),
+                        "url": r.get("url", "") or r.get("href", ""),
+                        "published_at": r.get("date") or None,
+                        "source": r.get("source", ""),
+                    }
+                    for r in results
+                ]
+            except Exception as e:
+                logger.error(f"DDGS news search failed after {budget:.0f}s budget: {e}")
+                return []
+
+        results = await asyncio.to_thread(do_search)
+
+        if results:
+            _search_cache[cache_key] = (datetime.now(), results)
+
+        return results
+
+    except Exception as e:
+        logger.error(f"News search error for '{query}': {e}")
         return []
 
 
