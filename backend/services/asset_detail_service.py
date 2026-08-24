@@ -13,6 +13,7 @@ from typing import Optional, Dict, Any
 from services import asset_registry
 from services.cache import home_cache
 from services.http_client import get_json_impersonated, get_json_yahoo
+from services.yahoo_chart import previous_close
 
 logger = logging.getLogger(__name__)
 
@@ -217,7 +218,7 @@ async def fetch_stock_detail(symbol: str) -> Optional[Dict[str, Any]]:
             meta = results[0].get("meta", {})
 
         price = meta.get("regularMarketPrice", 0) or 0
-        prev_close = meta.get("chartPreviousClose", 0) or meta.get("previousClose", 0) or price
+        prev_close = previous_close(chart_data) or price
         change_24h = ((price - prev_close) / prev_close * 100) if prev_close and price else 0
 
         # Populated below from quoteSummary, which may be unavailable.
