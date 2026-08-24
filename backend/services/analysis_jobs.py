@@ -35,6 +35,7 @@ KIND_REPORT = "report"
 KIND_NEWS = "news"
 KIND_CHAT = "chat"
 KIND_NOTE = "note"
+KIND_POLYMARKET = "polymarket"
 
 # A report is worth re-reading half an hour later; a chat answer is collected by
 # the poll that is already running and is dead weight after that. Holding
