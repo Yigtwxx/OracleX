@@ -36,6 +36,7 @@ from services.cache import market_cache
 from services.home_service import UpstreamUnavailable
 from services.http_client import get_json_impersonated
 from services.stock_market_service import fetch_stock_sparklines
+from services.yahoo_chart import previous_close
 
 logger = logging.getLogger(__name__)
 
@@ -150,10 +151,10 @@ def _quote_from_chart(payload: Any) -> Optional[dict[str, Any]]:
     if price is None:
         return None
 
-    previous = meta.get("chartPreviousClose") or meta.get("previousClose")
+    previous = previous_close(payload)
     change_24h = None
     if previous:
-        change_24h = round((float(price) - float(previous)) / float(previous) * 100, 2)
+        change_24h = round((float(price) - previous) / previous * 100, 2)
 
     high_52w = meta.get("fiftyTwoWeekHigh")
     low_52w = meta.get("fiftyTwoWeekLow")
@@ -173,7 +174,10 @@ async def _yahoo_quote(symbol: str) -> Optional[dict[str, Any]]:
     try:
         payload = await get_json_impersonated(
             f"{YAHOO_CHART_API}/{symbol}",
-            params={"interval": "1d", "range": "2d"},
+            # Five sessions rather than the two a daily change needs: the
+            # reference close is read from the bars, and a holiday inside a
+            # two-day window can leave only one of them.
+            params={"interval": "1d", "range": "5d"},
             timeout=YAHOO_TIMEOUT,
         )
     except Exception as exc:  # noqa: BLE001 — one symbol failing is not the board failing
