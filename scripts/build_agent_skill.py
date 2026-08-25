@@ -106,6 +106,7 @@ ENDPOINT_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
         "Cross-asset state: indices, metals, the regime label and its evidence.",
         [
             ("GET", "/api/macro/board"),
+            ("GET", "/api/macro/elections"),
             ("GET", "/api/macro/regime"),
             ("GET", "/api/macro/pizza-index"),
             ("GET", "/api/macro/neh-index"),
@@ -167,13 +168,21 @@ ENDPOINT_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
         "evidence it could gather does not support a judgement, and the payload "
         "names every search it ran and every one that came back empty. A refusal "
         "still carries the market's odds, movement and holder concentration, all "
-        "of which are measured rather than modelled.",
+        "of which are measured rather than modelled.\n\n"
+        "Why a market was opened is a separate job with its own endpoints. It is "
+        "the one surface here allowed to answer without a source: when no dated "
+        "reporting explains an opening, it returns `status: conjectured` and a "
+        "`conjecture` naming the kind of event that usually opens a market like "
+        "this one. Treat that field as a hypothesis, never as a finding — it "
+        "carries no source id and is never used to write a verdict.",
         [
             ("GET", "/api/polymarket/board"),
             ("GET", "/api/polymarket/markets/{slug}"),
             ("GET", "/api/polymarket/map"),
             ("POST", "/api/polymarket/markets/{slug}/analysis/jobs"),
             ("GET", "/api/polymarket/analysis/jobs/{job_id}"),
+            ("POST", "/api/polymarket/markets/{slug}/origin/jobs"),
+            ("GET", "/api/polymarket/origin/jobs/{job_id}"),
         ],
     ),
     (
