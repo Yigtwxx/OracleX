@@ -143,6 +143,14 @@ _TAIL_DEADLINE = re.compile(
     re.IGNORECASE,
 )
 
+# The expletive that survives the interrogative. "Will there be a ceasefire?"
+# loses its "Will" above and is left starting "there be a ceasefire", which is
+# not a phrase anybody has written and which search engines answer with the
+# words rather than the subject. Measured on a live Fed market: the query
+# "there be no change in Fed interest rates after the September 2026 meeting"
+# returned six results, none of them about the meeting.
+_LEAD_EXPLETIVE = re.compile(r"^there\s+(be|is|are|was|were|will be|has been)\b\s*", re.IGNORECASE)
+
 _WHITESPACE = re.compile(r"\s+")
 
 
@@ -161,6 +169,7 @@ def market_subject(question: str) -> str:
         return ""
 
     text = _LEAD.sub("", text, count=1)
+    text = _LEAD_EXPLETIVE.sub("", text, count=1)
     # Twice: "…by the end of Q3 2026" leaves "…by the end of" behind on a
     # single pass, and a dangling preposition is worse than the date was.
     for _ in range(2):
