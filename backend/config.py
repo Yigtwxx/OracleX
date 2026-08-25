@@ -300,6 +300,24 @@ class Settings(BaseSettings):
     # key here — only addresses, and only so a deployment behind a mirror or a
     # proxy can redirect them without a code change.
     POLYMARKET_ENABLED: bool = True
+    # ── Elections board ─────────────────────────────────────────────────────
+    # A daily rebuild, not an interval: the upstream is a Wikipedia article that
+    # is edited when a date is announced or moved, so asking hourly learns
+    # nothing. 05:00 UTC is a literal quiet hour rather than a claim about a
+    # place, which is why this one has no timezone setting beside it the way the
+    # ownership rebuild does.
+    ELECTIONS_REFRESH_HOUR: int = 5
+    # How many election events to price. Gamma's listing is ordered by 24-hour
+    # volume, so this is a coverage cap rather than a filter — and the payload
+    # is roughly 4MB at thirty events, because each one embeds every nested
+    # market in full. The number travels out in the response so the panel can
+    # say what it asked for instead of implying nothing is covered.
+    ELECTIONS_ODDS_LIMIT: int = 40
+    # Calendar pages to read: the current year plus the next two. Current+next
+    # alone covers sixteen months in January and four in September; the third
+    # page is nearly empty and nearly free, and it keeps the horizon steady.
+    ELECTIONS_CALENDAR_YEARS: int = 3
+
     POLYMARKET_GAMMA_URL: str = "https://gamma-api.polymarket.com"
     POLYMARKET_CLOB_URL: str = "https://clob.polymarket.com"
     POLYMARKET_DATA_URL: str = "https://data-api.polymarket.com"
