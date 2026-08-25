@@ -237,12 +237,19 @@ def _window_for(published: datetime | None) -> str | None:
     return "y"
 
 
+#: Move dates turned into queries. Two, because the third-largest move on a
+#: market is usually the same story as the second and the searches are the
+#: slowest thing in the sweep.
+MAX_MOVE_QUERIES = 2
+
+
 async def run_sweep(
     subject: str,
     strategy: CategoryStrategy,
     *,
     year: str,
     rag_query: str | None = None,
+    move_dates: list[datetime] | None = None,
     budget: float = SWEEP_BUDGET_SECONDS,
 ) -> Sweep:
     """
@@ -250,6 +257,11 @@ async def run_sweep(
 
     Returns a `Sweep` whose `finish()` produces the ledger and the coverage the
     sufficiency rule is applied to.
+
+    `move_dates` are the days this market re-priced on. They are searched by
+    calendar date because the category's own query templates return the same
+    broad coverage every time, and the day the crowd changed its mind is the one
+    day a story about this question is most likely to exist.
     """
     from services.web_search_service import search_news, search_web
 
@@ -304,6 +316,8 @@ async def run_sweep(
         query = template.format(subject=subject, year=year).strip()
         tasks.append(asyncio.create_task(run_search(query, "news")))
     tasks.append(asyncio.create_task(run_search(f"{subject} {year}".strip(), "search")))
+    for when in (move_dates or [])[:MAX_MOVE_QUERIES]:
+        tasks.append(asyncio.create_task(run_search(f"{subject} {when:%B %-d %Y}", "news")))
     for name, url in strategy.feeds:
         tasks.append(asyncio.create_task(run_feed(name, url)))
     if strategy.rag_enabled:
