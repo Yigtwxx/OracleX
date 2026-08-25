@@ -595,6 +595,7 @@ frontend/
 │   ├── home/                   # FundingRates, LiquidationFeed, OnChainStats, Watchlist, ...
 │   ├── macro/ live/ ownership/ social/ admin/ chat/ charts/
 │   ├── PizzaIndexBadge.tsx     # the novelty gauge, in the nav chrome
+│   ├── alarms/                 # AlarmBell in the nav chrome + the Alarm Centre dialog
 │   ├── profile/AIProviderSettings.tsx   # BYO provider/model/API key UI
 │   ├── community/              # PostCard, PostMedia, CreatePostModal
 │   └── NewsFeed.tsx / ChartPanel.tsx / OraclePanel.tsx / ChatSidebar.tsx / ...
@@ -603,7 +604,7 @@ frontend/
 │   ├── queries.ts              # React Query keys + typed hooks (optimistic mutations)
 │   ├── useReadiness.ts         # /api/system/readiness poller for the boot gate
 │   ├── useWebSocketPrices.ts   # /ws/prices client, reconnect + flash animation
-│   └── usePriceAlerts.ts       # global price alert watcher
+│   └── useAlarmEngine.ts       # global alarm watcher — one tick, twelve sources
 ├── lib/
 │   ├── api.ts                  # fetch wrapper, ApiError, typed endpoint fetchers
 │   ├── queryClient.ts          # QueryClient + global error → toast wiring
@@ -612,6 +613,7 @@ frontend/
 │   ├── technical-format.ts     # a band is rendered as a band, never averaged (tested)
 │   ├── ai-note.ts              # the shared envelope every generated note arrives in (tested)
 │   ├── pizza-index.ts          # one set of thresholds for all three surfaces (tested)
+│   ├── alarms/                 # what can be watched, and when it fires (tested)
 │   └── landing/                # scroll canvas engine — stages, series, renderer (tested)
 ├── assets/og/                  # subset JetBrains Mono faces for the OG image renderer
 ├── public/landing/             # stage imagery + CREDITS.md
