@@ -202,11 +202,32 @@ class Trigger(BaseModel):
 
 
 class Origin(BaseModel):
-    """Why this market exists, and what moved it since."""
+    """
+    Why this market exists, and what moved it since.
 
-    status: Literal["traced", "undetermined"] = "undetermined"
+    Three statuses rather than two, because "we found the story" and "we can
+    only say what kind of thing usually opens a market like this" are different
+    answers and a reader who cannot tell them apart is worse off than one who
+    got nothing. `traced` rests on dated reporting cited by id; `conjectured`
+    rests on the category's mechanism and the market's own dates and carries no
+    source at all.
+
+    `conjecture` is the one field in this package that is not evidence, and it
+    is fenced accordingly: it is populated only when `triggers` and
+    `opening_rationale` are both empty, it never enters the synthesis prompt,
+    and it is never merged into a source ledger. A verdict standing on a
+    hypothesis would be the exact failure the refusal machinery exists to
+    prevent.
+    """
+
+    status: Literal["traced", "conjectured", "undetermined"] = "undetermined"
     opening_rationale: str | None = None
     triggers: list[Trigger] = Field(default_factory=list)
+    #: A possible reason, phrased as one. Never a claim that something happened.
+    conjecture: str | None = None
+    #: What the hypothesis was built from — the category's mechanism, the
+    #: opening date, the resolution criteria. Shown so a reader can weigh it.
+    conjecture_basis: list[str] = Field(default_factory=list)
 
 
 class SweepAttempt(BaseModel):
@@ -258,7 +279,6 @@ class PolymarketAnalysis(BaseModel):
     category: MarketCategory
     facts: MarketFacts
     microstructure: Microstructure
-    origin: Origin
     #: 0..1. Hard-clamped in Python for a degraded run — a thin evidence base
     #: cannot license a confident number no matter what the model returned.
     confidence: float
@@ -293,6 +313,37 @@ class PolymarketRefusal(BaseModel):
     explanation: str
     facts: MarketFacts | None = None
     microstructure: Microstructure | None = None
-    origin: Origin | None = None
     coverage: EvidenceCoverage
+    generated_at: datetime
+
+
+class OriginReport(BaseModel):
+    """
+    The answer to "why was this bet opened", served on its own.
+
+    Self-contained on purpose. This runs as a separate job from the verdict and
+    can land before or after it, so it carries its own identity, its own record
+    of what was searched and its own source list rather than borrowing the
+    analysis payload's. Nothing here is read by the analysis pipeline.
+
+    `attempted` is present for the same reason `EvidenceCoverage` carries it: a
+    search that returned nothing is the difference between "nobody wrote about
+    this" and "we could not reach anything", and only one of those is worth
+    retrying.
+    """
+
+    market_id: str
+    slug: str
+    question: str
+    category: MarketCategory
+    status: Literal["traced", "conjectured", "undetermined"]
+    opening_rationale: str | None = None
+    triggers: list[Trigger] = Field(default_factory=list)
+    conjecture: str | None = None
+    conjecture_basis: list[str] = Field(default_factory=list)
+    #: The windows that were searched — the market's opening and its sharp moves.
+    moves: list[SharpMove] = Field(default_factory=list)
+    #: The candidate stories, keyed by the id a trigger cites.
+    sources: list[SourceRef] = Field(default_factory=list)
+    attempted: list[SweepAttempt] = Field(default_factory=list)
     generated_at: datetime
