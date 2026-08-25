@@ -14,10 +14,6 @@ Closes: {{end_date}}
 
 {{microstructure}}
 
-## Why this market exists
-
-{{origin}}
-
 ## The case on both sides
 
 {{arguments}}
