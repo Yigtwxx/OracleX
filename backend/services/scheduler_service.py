@@ -187,6 +187,41 @@ def start_scheduler():
             misfire_grace_time=3600,
         )
 
+        # Elections board. Daily, for the ownership board's reason and one of
+        # its own: the calendar upstream is a Wikipedia article edited when a
+        # date is announced, so an interval would re-read the same page all day.
+        #
+        # The odds half is cached for fifteen minutes and would refresh itself
+        # on demand, but it is warmed here anyway — the Gamma events payload is
+        # about 4MB, and a user should never be the one waiting for it.
+        #
+        # Unlike the ownership job above, the timezone is a literal: 05:00 is
+        # chosen as a quiet hour, not as a business hour somewhere, so there is
+        # nothing here to localise.
+        async def elections_refresh_job():
+            try:
+                from services.elections.service import fetch_elections
+
+                board = await fetch_elections()
+                log_success(
+                    f"Elections refresh: {len(board['elections'])} scheduled, "
+                    f"odds {'available' if board['odds_available'] else 'unavailable'}"
+                )
+            except Exception as e:
+                log_error(f"Elections refresh error: {e}")
+
+        scheduler.add_job(
+            elections_refresh_job,
+            trigger=CronTrigger(hour=settings.ELECTIONS_REFRESH_HOUR, minute=0, timezone="UTC"),
+            id="elections_refresh_job",
+            name="Refresh Elections Board",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+            # A restart inside the hour must not skip the day.
+            misfire_grace_time=3600,
+        )
+
         # The live half of the board, on an interval. Only the sources that
         # change between two daily runs are asked; everything else is carried
         # forward from the last full build, so this costs three coin-table
@@ -199,9 +234,10 @@ def start_scheduler():
 
                     report = await refresh_ownership(only_kinds=LIVE_KINDS)
                     log_step(
+                        "🔄",
                         "Ownership live refresh: "
                         f"{report.entities_ok}/{report.entities_total} entities, "
-                        f"{report.moves_new} new moves"
+                        f"{report.moves_new} new moves",
                     )
                 except Exception as e:
                     log_error(f"Ownership live refresh error: {e}")
