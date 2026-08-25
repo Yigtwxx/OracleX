@@ -89,7 +89,14 @@ CATEGORIES: tuple[Category, ...] = (
         "macro",
         "Macro & Sentiment",
         False,
-        ("Federal Reserve", "CNN Fear & Greed", "TradingView Calendar", "ForexFactory", "PizzINT"),
+        (
+            "Federal Reserve",
+            "CNN Fear & Greed",
+            "TradingView Calendar",
+            "ForexFactory",
+            "PizzINT",
+            "Wikipedia",
+        ),
     ),
     Category("ai", "AI / LLM", False, ("Local LLM chain",), stale_after_s=None),
     # Prediction markets get their own category rather than folding into macro,
@@ -122,6 +129,10 @@ _HOST_MAP: dict[str, str] = {
     "coinbase.com": "prices_crypto",
     "api.coingecko.com": "prices_crypto",
     "pro-api.coingecko.com": "prices_crypto",
+    # Macro. The specific subdomain rather than wikipedia.org, following the
+    # Polymarket hosts below: the API is the only Wikimedia surface this app
+    # touches, and a wildcard would silently adopt any future one.
+    "en.wikipedia.org": "macro",
     # Stocks
     "finance.yahoo.com": "stocks",
     "query1.finance.yahoo.com": "stocks",
