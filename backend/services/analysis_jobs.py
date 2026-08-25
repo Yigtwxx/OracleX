@@ -36,6 +36,11 @@ KIND_NEWS = "news"
 KIND_CHAT = "chat"
 KIND_NOTE = "note"
 KIND_POLYMARKET = "polymarket"
+# The verdict and the "why was this opened" answer are two runs over the same
+# market, started by the same click and keyed by the same slug. Without a
+# distinct kind the single-flight lock would dedup one into the other and the
+# second click would re-attach to a job answering a different question.
+KIND_POLYMARKET_ORIGIN = "polymarket_origin"
 
 # A report is worth re-reading half an hour later; a chat answer is collected by
 # the poll that is already running and is dead weight after that. Holding
