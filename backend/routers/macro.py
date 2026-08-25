@@ -15,6 +15,7 @@ it, so a second failure here would only make the page report one outage twice.
 
 from fastapi import APIRouter, HTTPException
 
+from services.elections.service import fetch_elections
 from services.home_service import UpstreamUnavailable
 from services.macro_board_service import fetch_macro_board
 from services.macro_regime import build_regime, regime_note
@@ -33,6 +34,23 @@ async def get_macro_board():
     """Commodities, global indices and macro ratios in one cached payload."""
     try:
         return await fetch_macro_board()
+    except UpstreamUnavailable as error:
+        raise _unavailable(error) from error
+
+
+@router.get("/api/macro/elections")
+async def get_elections():
+    """
+    Upcoming national elections, priced where a market can be matched to one.
+
+    503s with the board rather than with the regime, and for the board's reason:
+    an empty list here would assert that no election is scheduled anywhere on
+    Earth. A missing *odds* layer is different and does not 503 — the payload
+    reports `odds_available: false` and the panel names the outage, because
+    dates with no prices still say something true.
+    """
+    try:
+        return await fetch_elections()
     except UpstreamUnavailable as error:
         raise _unavailable(error) from error
 
