@@ -1,6 +1,7 @@
 """
 Polymarket Router
-Serves the prediction-market board, one market's facts, and the bet analysis.
+Serves the prediction-market board, one market's facts, the bet analysis, and
+the separate trace of why a market was opened.
 
 Two conventions from the rest of the API are load-bearing here.
 
@@ -157,4 +158,57 @@ async def get_polymarket_analysis_job(job_id: str):
     job = await get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Analysis job not found or expired")
+    return job.to_dict()
+
+
+@router.post(
+    "/api/polymarket/markets/{slug}/origin/jobs",
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def start_polymarket_origin(
+    slug: str,
+    response: Response,
+    user: Optional[AuthUser] = Depends(get_optional_user),
+):
+    """
+    Start the "why was this bet opened" trace, or re-attach to the running one.
+
+    A separate job from the verdict on purpose. The two are started by the same
+    click and answer different questions at different speeds, and holding the
+    origin answer back until the sweep and two synthesis calls have finished
+    would hide a result that was ready in thirty seconds. Neither waits for the
+    other and neither reads the other's output.
+
+    Like the analysis, this may decline: with no dated reporting inside any
+    window it answers with a labelled hypothesis, and with nothing at all it
+    answers `undetermined`. Both are successful runs.
+    """
+    _require_ai()
+    key = _validated(slug)
+
+    from services.polymarket.origin import start_origin_job
+
+    try:
+        resolved = await get_market_facts(key, include_trades=False)
+    except MarketUnavailable as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+    if resolved is None:
+        raise HTTPException(status_code=404, detail=f"No market matches {slug!r}")
+
+    _facts, _micro, raw = resolved
+    job = await start_origin_job(raw, user_id=user.id if user else None)
+    if not job.is_active:
+        response.status_code = status.HTTP_200_OK
+    return job.to_dict()
+
+
+@router.get("/api/polymarket/origin/jobs/{job_id}")
+async def get_polymarket_origin_job(job_id: str):
+    """Poll a running origin trace. 404 once the job has aged out of retention."""
+    from services.analysis_jobs import get_job
+
+    job = await get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Origin job not found or expired")
     return job.to_dict()
