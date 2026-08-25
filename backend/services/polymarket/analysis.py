@@ -1,17 +1,24 @@
 """
 One market, analysed end to end — or explicitly not.
 
-The pipeline is six stages, and the third one is a gate. Facts and
-microstructure are computed without a model and are always returned; the origin
-trace and the evidence sweep run next; and only if the sweep clears the floors in
-`sufficiency` is the model asked for a verdict at all. Below them the endpoint
-answers with a refusal that names every query it ran and every one that came
-back empty.
+The pipeline is five stages, and the third one is a gate. Facts and
+microstructure are computed without a model and are always returned; the evidence
+sweep runs next; and only if the sweep clears the floors in `sufficiency` is the
+model asked for a verdict at all. Below them the endpoint answers with a refusal
+that names every query it ran and every one that came back empty.
 
 That ordering is the design. A refusal here is not an error page — the reader
 still gets the odds, the drift, the holder concentration and the timeline of when
 the market moved, because all of that was true before any search was run. What is
 withheld is the judgement, and only the judgement.
+
+**"Why was this market opened" is not answered here.** It runs as its own job
+(`services/polymarket/origin.py`), started by the same click and returning on its
+own schedule. The reason is not tidiness: that stage is allowed to end in a
+labelled hypothesis when the reporting runs out, and a hypothesis that reached
+this file would end up inside the synthesis prompt, where it would be
+indistinguishable from evidence by the time a verdict was written. The two
+surfaces share a market and nothing else.
 
 Everything the model returns is checked before it is served: source ids against
 the ledger, figures in market-sourced claims against the rendered facts, and the
@@ -31,7 +38,6 @@ from models.polymarket import (
     EvidenceCoverage,
     MarketFacts,
     Microstructure,
-    Origin,
     PolymarketAnalysis,
     PolymarketRefusal,
     SourceRef,
@@ -39,7 +45,6 @@ from models.polymarket import (
 from services.polymarket import evidence as evidence_stage
 from services.polymarket import facts as facts_stage
 from services.polymarket import microstructure as micro_stage
-from services.polymarket import origin as origin_stage
 from services.polymarket import sufficiency, synthesis
 from services.polymarket.attribution import (
     MIN_KEPT_CLAIMS,
@@ -53,7 +58,6 @@ logger = logging.getLogger(__name__)
 
 STAGES = [
     {"key": "facts", "label": "Resolving market"},
-    {"key": "origin", "label": "Tracing why this market opened"},
     {"key": "sweep", "label": "Gathering evidence"},
     {"key": "microstructure", "label": "Reading the order book"},
     {"key": "arguments", "label": "Building both sides"},
@@ -64,7 +68,6 @@ STAGES = [
 def _refusal(
     facts: MarketFacts | None,
     micro: Microstructure | None,
-    origin: Origin | None,
     coverage: EvidenceCoverage,
     reason: str,
     explanation: str,
@@ -83,7 +86,6 @@ def _refusal(
         explanation=explanation,
         facts=facts,
         microstructure=micro,
-        origin=origin,
         coverage=coverage,
         generated_at=datetime.now(UTC),
     )
@@ -125,36 +127,25 @@ async def analyse_market(
         return _refusal(
             market_facts,
             micro,
-            None,
             EvidenceCoverage(),
             "ai_disabled",
             "AI features are switched off on this instance, so no analysis was attempted.",
             **identity,
         )
 
-    stage("origin")
-    origin, origin_candidates = await origin_stage.trace_origin(
-        market_facts, subject, strategy, user_id=user_id
-    )
-
     stage("sweep")
-    sweep = await evidence_stage.run_sweep(subject, strategy, year=year)
-    # The origin stage already paid for these searches; folding them in rather
-    # than re-fetching is free corroboration, and a story that explained a price
-    # move is evidence about the question by construction.
-    sweep._absorb(
-        [
-            {
-                "url": hit.get("url", ""),
-                "title": hit.get("title", ""),
-                "snippet": hit.get("snippet", ""),
-                "published_at": (
-                    hit["published_at"].isoformat() if hit.get("published_at") else None
-                ),
-            }
-            for hit in origin_candidates.values()
-        ],
-        "news",
+    # The dates the market re-priced on are handed to the sweep as queries. The
+    # origin stage used to donate its windowed searches to this ledger, and
+    # splitting it out would have quietly shrunk every evidence base by however
+    # many sources that was — pushing markets under the sufficiency floor and
+    # producing refusals that looked like an editorial decision. Asking for the
+    # same days directly costs two searches and puts the stories in as real
+    # sources with ids a claim can cite, rather than as a paraphrase.
+    sweep = await evidence_stage.run_sweep(
+        subject,
+        strategy,
+        year=year,
+        move_dates=[move.started_at for move in market_facts.moves],
     )
     ledger, coverage = sweep.finish()
 
@@ -165,7 +156,6 @@ async def analyse_market(
         return _refusal(
             market_facts,
             micro,
-            origin,
             coverage,
             verdict.reason_code or "thin_evidence",
             sufficiency.describe_failure(coverage, verdict),
@@ -176,7 +166,7 @@ async def analyse_market(
 
     stage("arguments")
     claims_for, claims_against, dropped = await synthesis.build_arguments(
-        market_facts, facts_block, origin, sweep, ledger, strategy, user_id=user_id
+        market_facts, facts_block, sweep, ledger, strategy, user_id=user_id
     )
     coverage.dropped.extend(dropped)
 
@@ -185,7 +175,6 @@ async def analyse_market(
         market_facts,
         facts_block,
         micro,
-        origin,
         (claims_for, claims_against),
         sweep,
         ledger,
@@ -200,7 +189,6 @@ async def analyse_market(
         return _refusal(
             market_facts,
             micro,
-            origin,
             coverage,
             "model_unavailable",
             "Evidence was gathered, but no model in the chain could write the verdict. "
@@ -218,7 +206,6 @@ async def analyse_market(
         return _refusal(
             market_facts,
             micro,
-            origin,
             coverage,
             "unsourced_output",
             "A verdict was written but did not survive the source check: only "
@@ -245,7 +232,6 @@ async def analyse_market(
         status="degraded" if degraded else "ok",
         facts=market_facts,
         microstructure=micro,
-        origin=origin,
         confidence=confidence,
         leaning=leaning,
         bottom_line=bottom_line,
