@@ -1,0 +1,419 @@
+{
+  "_readme": [
+    "Keyed by the country string Wikipedia's electoral calendar uses, because that",
+    "is the only name the calendar rows actually carry. Do not rekey to ISO or to",
+    "the map's country names — a third spelling is a third thing to keep in sync.",
+    "",
+    "`iso2` and `flag` are identity and are required on every row. They exist",
+    "because services/polymarket/geography.py cannot supply them: its patterns read",
+    "'South Sudan' as Sudan, 'Equatorial Guinea' as Guinea, and skip Georgia, Jordan",
+    "and Chad entirely. A country with no row here still appears on the board, under",
+    "a white flag and with no tickers.",
+    "",
+    "`tier`, `tickers`, `note` and `aliases` are market relevance and are optional.",
+    "Fill them only where the claim is defensible: an empty Watch cell is correct,",
+    "a guessed ticker is not. `reviewed` dates that claim so a mapping that rotted",
+    "is visible rather than silently wrong.",
+    "",
+    "`aliases` is the only route to a Polymarket match for a country geography.py",
+    "cannot name. They must be phrases that mean the country and nothing else --",
+    "never the bare name, which is why 'Georgia' is absent and 'georgian dream' is",
+    "not. The loader rejects anything under four characters."
+  ],
+
+  "Algeria": { "iso2": "DZ", "flag": "🇩🇿" },
+  "Andorra": { "iso2": "AD", "flag": "🇦🇩" },
+  "Angola": { "iso2": "AO", "flag": "🇦🇴" },
+  "Antigua and Barbuda": { "iso2": "AG", "flag": "🇦🇬" },
+  "Argentina": {
+    "iso2": "AR", "flag": "🇦🇷", "tier": "major",
+    "tickers": ["ARS=X", "ARGT"],
+    "aliases": ["argentine", "argentinian", "buenos aires"],
+    "note": "Peso regime and the reform mandate; the midterm sets what is passable.",
+    "reviewed": "2026-08-24"
+  },
+  "Armenia": { "iso2": "AM", "flag": "🇦🇲" },
+  "Bahamas": { "iso2": "BS", "flag": "🇧🇸" },
+  "Bangladesh": { "iso2": "BD", "flag": "🇧🇩" },
+  "Barbados": { "iso2": "BB", "flag": "🇧🇧" },
+  "Benin": { "iso2": "BJ", "flag": "🇧🇯" },
+  "Bosnia and Herzegovina": { "iso2": "BA", "flag": "🇧🇦" },
+  "Brazil": {
+    "iso2": "BR", "flag": "🇧🇷", "tier": "major",
+    "tickers": ["BRL=X", "EWZ", "^BVSP"],
+    "aliases": ["brazilian", "brasilia"],
+    "note": "Fiscal anchor and the BCB's terminal rate.",
+    "reviewed": "2026-08-24"
+  },
+  "Bulgaria": { "iso2": "BG", "flag": "🇧🇬" },
+  "Burundi": { "iso2": "BI", "flag": "🇧🇮" },
+  "Cape Verde": { "iso2": "CV", "flag": "🇨🇻" },
+  "Colombia": {
+    "iso2": "CO", "flag": "🇨🇴", "tier": "watch",
+    "tickers": ["COP=X", "GXG"],
+    "aliases": ["colombian", "bogota"],
+    "note": "Oil-linked fiscal path; Ecopetrol policy is the transmission.",
+    "reviewed": "2026-08-24"
+  },
+  "Cook Islands": { "iso2": "CK", "flag": "🇨🇰" },
+  "Costa Rica": { "iso2": "CR", "flag": "🇨🇷" },
+  "Cyprus": { "iso2": "CY", "flag": "🇨🇾" },
+  "Czech Republic": {
+    "iso2": "CZ", "flag": "🇨🇿", "tier": "watch",
+    "tickers": ["CZK=X"],
+    "aliases": ["czechia", "czech", "prague"],
+    "note": "CNB independence and the euro-adoption question.",
+    "reviewed": "2026-08-24"
+  },
+  "Denmark": {
+    "iso2": "DK", "flag": "🇩🇰", "tier": "watch",
+    "tickers": ["DKK=X", "EDEN"],
+    "aliases": ["danish", "copenhagen"],
+    "reviewed": "2026-08-24"
+  },
+  "Djibouti": { "iso2": "DJ", "flag": "🇩🇯" },
+  "El Salvador": { "iso2": "SV", "flag": "🇸🇻" },
+  "Estonia": { "iso2": "EE", "flag": "🇪🇪" },
+  "Ethiopia": { "iso2": "ET", "flag": "🇪🇹" },
+  "Faroe Islands": { "iso2": "FO", "flag": "🇫🇴" },
+  "Finland": {
+    "iso2": "FI", "flag": "🇫🇮", "tier": "watch",
+    "tickers": ["EFNL", "EUR=X"],
+    "aliases": ["finnish", "helsinki"],
+    "reviewed": "2026-08-24"
+  },
+  "France": {
+    "iso2": "FR", "flag": "🇫🇷", "tier": "major",
+    "tickers": ["EWQ", "^FCHI", "EUR=X"],
+    "aliases": ["french", "paris"],
+    "note": "OAT-Bund spread is where a French result is priced first.",
+    "reviewed": "2026-08-24"
+  },
+  "Gambia": { "iso2": "GM", "flag": "🇬🇲" },
+  "Greece": {
+    "iso2": "GR", "flag": "🇬🇷", "tier": "watch",
+    "tickers": ["GREK", "EUR=X"],
+    "aliases": ["greek", "athens"],
+    "reviewed": "2026-08-24"
+  },
+  "Guatemala": { "iso2": "GT", "flag": "🇬🇹" },
+  "Guinea": { "iso2": "GN", "flag": "🇬🇳" },
+  "Guinea-Bissau": { "iso2": "GW", "flag": "🇬🇼" },
+  "Haiti": { "iso2": "HT", "flag": "🇭🇹" },
+  "Hungary": {
+    "iso2": "HU", "flag": "🇭🇺", "tier": "watch",
+    "tickers": ["HUF=X"],
+    "aliases": ["hungarian", "budapest", "fidesz"],
+    "note": "EU funds release is conditional on the government.",
+    "reviewed": "2026-08-24"
+  },
+  "Iceland": { "iso2": "IS", "flag": "🇮🇸" },
+  "Isle of Man": { "iso2": "IM", "flag": "🇮🇲" },
+  "Israel": {
+    "iso2": "IL", "flag": "🇮🇱", "tier": "major",
+    "tickers": ["ILS=X", "EIS"],
+    "aliases": ["israeli", "knesset", "tel aviv"],
+    "note": "Regional risk premium; the shekel carries it before equities do.",
+    "reviewed": "2026-08-24"
+  },
+  "Italy": {
+    "iso2": "IT", "flag": "🇮🇹", "tier": "major",
+    "tickers": ["EWI", "EUR=X"],
+    "aliases": ["italian", "rome"],
+    "note": "BTP-Bund spread.",
+    "reviewed": "2026-08-24"
+  },
+  "Japan": {
+    "iso2": "JP", "flag": "🇯🇵", "tier": "major",
+    "tickers": ["JPY=X", "EWJ", "^N225"],
+    "aliases": ["japanese", "tokyo", "diet election"],
+    "note": "BoJ normalisation pace and the fiscal package behind it.",
+    "reviewed": "2026-08-24"
+  },
+  "Jersey": { "iso2": "JE", "flag": "🇯🇪" },
+  "Kazakhstan": {
+    "iso2": "KZ", "flag": "🇰🇿", "tier": "watch",
+    "tickers": ["KZT=X"],
+    "aliases": ["kazakh", "astana", "kurultai"],
+    "reviewed": "2026-08-24"
+  },
+  "Kenya": {
+    "iso2": "KE", "flag": "🇰🇪", "tier": "watch",
+    "tickers": ["KES=X"],
+    "aliases": ["kenyan", "nairobi"],
+    "reviewed": "2026-08-24"
+  },
+  "Kosovo": { "iso2": "XK", "flag": "🇽🇰" },
+  "Kyrgyzstan": { "iso2": "KG", "flag": "🇰🇬" },
+  "Laos": { "iso2": "LA", "flag": "🇱🇦" },
+  "Latvia": { "iso2": "LV", "flag": "🇱🇻" },
+  "Maldives": { "iso2": "MV", "flag": "🇲🇻" },
+  "Malta": { "iso2": "MT", "flag": "🇲🇹" },
+  "Marshall Islands": { "iso2": "MH", "flag": "🇲🇭" },
+  "Mexico": {
+    "iso2": "MX", "flag": "🇲🇽", "tier": "major",
+    "tickers": ["MXN=X", "EWW", "^MXX"],
+    "aliases": ["mexican", "morena party"],
+    "note": "USMCA review and the judicial reform's read-across to the peso.",
+    "reviewed": "2026-08-24"
+  },
+  "Micronesia": { "iso2": "FM", "flag": "🇫🇲" },
+  "Mongolia": { "iso2": "MN", "flag": "🇲🇳" },
+  "Morocco": { "iso2": "MA", "flag": "🇲🇦" },
+  "Myanmar": { "iso2": "MM", "flag": "🇲🇲" },
+  "Nepal": { "iso2": "NP", "flag": "🇳🇵" },
+  "New Caledonia": { "iso2": "NC", "flag": "🇳🇨" },
+  "New Zealand": {
+    "iso2": "NZ", "flag": "🇳🇿", "tier": "watch",
+    "tickers": ["NZD=X", "ENZL"],
+    "aliases": ["new zealander", "wellington"],
+    "reviewed": "2026-08-24"
+  },
+  "Nigeria": {
+    "iso2": "NG", "flag": "🇳🇬", "tier": "watch",
+    "tickers": ["NGN=X"],
+    "aliases": ["nigerian", "abuja"],
+    "note": "Fuel subsidy and the naira float are the same question.",
+    "reviewed": "2026-08-24"
+  },
+  "Niue": { "iso2": "NU", "flag": "🇳🇺" },
+  "North Korea": { "iso2": "KP", "flag": "🇰🇵" },
+  "Oman": { "iso2": "OM", "flag": "🇴🇲" },
+  "Palestine": { "iso2": "PS", "flag": "🇵🇸" },
+  "Peru": {
+    "iso2": "PE", "flag": "🇵🇪", "tier": "watch",
+    "tickers": ["PEN=X", "EPU"],
+    "aliases": ["peruvian", "lima"],
+    "note": "Copper supply politics.",
+    "reviewed": "2026-08-24"
+  },
+  "Portugal": {
+    "iso2": "PT", "flag": "🇵🇹", "tier": "watch",
+    "tickers": ["EUR=X"],
+    "aliases": ["portuguese", "lisbon"],
+    "reviewed": "2026-08-24"
+  },
+  "Republic of the Congo": { "iso2": "CG", "flag": "🇨🇬" },
+  "Russia": {
+    "iso2": "RU", "flag": "🇷🇺", "tier": "major",
+    "aliases": ["russian", "kremlin", "duma", "united russia"],
+    "note": "No investable expression under sanctions; read it through Brent and European gas.",
+    "reviewed": "2026-08-24"
+  },
+  "Slovakia": { "iso2": "SK", "flag": "🇸🇰" },
+  "Slovenia": { "iso2": "SI", "flag": "🇸🇮" },
+  "Somaliland": { "iso2": null, "flag": "🏳️" },
+  "South Ossetia": { "iso2": null, "flag": "🏳️" },
+  "South Sudan": { "iso2": "SS", "flag": "🇸🇸" },
+  "São Tomé and Príncipe": { "iso2": "ST", "flag": "🇸🇹" },
+  "Sweden": {
+    "iso2": "SE", "flag": "🇸🇪", "tier": "watch",
+    "tickers": ["SEK=X", "EWD", "^OMX"],
+    "aliases": ["swedish", "stockholm", "riksdag"],
+    "reviewed": "2026-08-24"
+  },
+  "Switzerland": {
+    "iso2": "CH", "flag": "🇨🇭", "tier": "watch",
+    "tickers": ["CHF=X", "EWL", "^SSMI"],
+    "aliases": ["swiss", "bern"],
+    "reviewed": "2026-08-24"
+  },
+  "Thailand": {
+    "iso2": "TH", "flag": "🇹🇭", "tier": "watch",
+    "tickers": ["THB=X", "THD"],
+    "aliases": ["thai", "bangkok"],
+    "reviewed": "2026-08-24"
+  },
+  "Tokelau": { "iso2": "TK", "flag": "🇹🇰" },
+  "Transnistria": { "iso2": null, "flag": "🏳️" },
+  "Uganda": { "iso2": "UG", "flag": "🇺🇬" },
+  "United States": {
+    "iso2": "US", "flag": "🇺🇸", "tier": "major",
+    "tickers": ["DX-Y.NYB", "^GSPC", "^TNX"],
+    "aliases": ["american", "washington", "midterms"],
+    "note": "Divided government is a rates story before it is an equity one.",
+    "reviewed": "2026-08-24"
+  },
+  "Vietnam": {
+    "iso2": "VN", "flag": "🇻🇳", "tier": "watch",
+    "tickers": ["VND=X", "VNM"],
+    "aliases": ["vietnamese", "hanoi"],
+    "reviewed": "2026-08-24"
+  },
+  "Zambia": { "iso2": "ZM", "flag": "🇿🇲" },
+
+  "Germany": {
+    "iso2": "DE", "flag": "🇩🇪", "tier": "major",
+    "tickers": ["EWG", "^GDAXI", "EUR=X"],
+    "aliases": ["german", "berlin", "bundestag"],
+    "note": "The debt brake, and therefore the euro area's fiscal stance.",
+    "reviewed": "2026-08-24"
+  },
+  "United Kingdom": {
+    "iso2": "GB", "flag": "🇬🇧", "tier": "major",
+    "tickers": ["GBP=X", "EWU", "^FTSE"],
+    "aliases": ["british", "westminster", "downing street"],
+    "note": "Gilt term premium.",
+    "reviewed": "2026-08-24"
+  },
+  "India": {
+    "iso2": "IN", "flag": "🇮🇳", "tier": "major",
+    "tickers": ["INR=X", "INDA", "^NSEI"],
+    "aliases": ["indian", "new delhi", "lok sabha"],
+    "reviewed": "2026-08-24"
+  },
+  "Turkey": {
+    "iso2": "TR", "flag": "🇹🇷", "tier": "major",
+    "tickers": ["TRY=X", "TUR", "XU100.IS"],
+    "aliases": ["turkish", "türkiye", "ankara", "istanbul"],
+    "note": "CBRT orthodoxy is the whole trade.",
+    "reviewed": "2026-08-24"
+  },
+  "Canada": {
+    "iso2": "CA", "flag": "🇨🇦", "tier": "watch",
+    "tickers": ["CAD=X", "EWC"],
+    "aliases": ["canadian", "ottawa"],
+    "reviewed": "2026-08-24"
+  },
+  "Australia": {
+    "iso2": "AU", "flag": "🇦🇺", "tier": "watch",
+    "tickers": ["AUD=X", "EWA", "^AXJO"],
+    "aliases": ["australian", "canberra"],
+    "reviewed": "2026-08-24"
+  },
+  "Poland": {
+    "iso2": "PL", "flag": "🇵🇱", "tier": "watch",
+    "tickers": ["PLN=X", "EPOL"],
+    "aliases": ["polish", "warsaw", "sejm"],
+    "reviewed": "2026-08-24"
+  },
+  "Spain": {
+    "iso2": "ES", "flag": "🇪🇸", "tier": "watch",
+    "tickers": ["EWP", "EUR=X"],
+    "aliases": ["spanish", "madrid"],
+    "reviewed": "2026-08-24"
+  },
+  "Netherlands": { "iso2": "NL", "flag": "🇳🇱" },
+  "South Korea": {
+    "iso2": "KR", "flag": "🇰🇷", "tier": "watch",
+    "tickers": ["KRW=X", "EWY", "^KS11"],
+    "aliases": ["korean", "seoul"],
+    "reviewed": "2026-08-24"
+  },
+  "Indonesia": { "iso2": "ID", "flag": "🇮🇩" },
+  "Philippines": { "iso2": "PH", "flag": "🇵🇭" },
+  "South Africa": {
+    "iso2": "ZA", "flag": "🇿🇦", "tier": "watch",
+    "tickers": ["ZAR=X", "EZA"],
+    "aliases": ["south african", "pretoria", "johannesburg"],
+    "reviewed": "2026-08-24"
+  },
+  "Chile": { "iso2": "CL", "flag": "🇨🇱" },
+  "Ukraine": { "iso2": "UA", "flag": "🇺🇦" },
+  "Egypt": { "iso2": "EG", "flag": "🇪🇬" },
+  "Ireland": { "iso2": "IE", "flag": "🇮🇪" },
+  "Norway": { "iso2": "NO", "flag": "🇳🇴" },
+  "Austria": { "iso2": "AT", "flag": "🇦🇹" },
+  "Belgium": { "iso2": "BE", "flag": "🇧🇪" },
+  "Romania": { "iso2": "RO", "flag": "🇷🇴" },
+  "Serbia": { "iso2": "RS", "flag": "🇷🇸" },
+  "Moldova": { "iso2": "MD", "flag": "🇲🇩" },
+  "Georgia": {
+    "iso2": "GE", "flag": "🇬🇪",
+    "aliases": ["georgian dream", "tbilisi"],
+    "note": "geography.py cannot name Georgia — it is in AMBIGUOUS with no aliases — so these phrases are the only route to a market match.",
+    "reviewed": "2026-08-24"
+  },
+  "Jordan": {
+    "iso2": "JO", "flag": "🇯🇴",
+    "aliases": ["jordanian", "amman"],
+    "reviewed": "2026-08-24"
+  },
+  "Chad": {
+    "iso2": "TD", "flag": "🇹🇩",
+    "aliases": ["chadian", "n'djamena"],
+    "reviewed": "2026-08-24"
+  },
+  "Iraq": { "iso2": "IQ", "flag": "🇮🇶" },
+  "Venezuela": { "iso2": "VE", "flag": "🇻🇪" },
+  "Ecuador": { "iso2": "EC", "flag": "🇪🇨" },
+  "Bolivia": { "iso2": "BO", "flag": "🇧🇴" },
+  "Ivory Coast": { "iso2": "CI", "flag": "🇨🇮" },
+  "Ghana": { "iso2": "GH", "flag": "🇬🇭" },
+  "Tanzania": { "iso2": "TZ", "flag": "🇹🇿" },
+  "Senegal": { "iso2": "SN", "flag": "🇸🇳" },
+  "Cameroon": { "iso2": "CM", "flag": "🇨🇲" },
+  "DR Congo": { "iso2": "CD", "flag": "🇨🇩" },
+  "Sudan": { "iso2": "SD", "flag": "🇸🇩" },
+  "Pakistan": { "iso2": "PK", "flag": "🇵🇰" },
+  "Sri Lanka": { "iso2": "LK", "flag": "🇱🇰" },
+  "Malaysia": { "iso2": "MY", "flag": "🇲🇾" },
+  "Singapore": { "iso2": "SG", "flag": "🇸🇬" },
+  "Taiwan": { "iso2": "TW", "flag": "🇹🇼" },
+  "Papua New Guinea": { "iso2": "PG", "flag": "🇵🇬" },
+  "Equatorial Guinea": { "iso2": "GQ", "flag": "🇬🇶" },
+  "Central African Republic": { "iso2": "CF", "flag": "🇨🇫" },
+  "Dominican Republic": { "iso2": "DO", "flag": "🇩🇴" },
+  "East Timor": { "iso2": "TL", "flag": "🇹🇱" },
+  "Solomon Islands": { "iso2": "SB", "flag": "🇸🇧" },
+  "Eswatini": { "iso2": "SZ", "flag": "🇸🇿" },
+  "Uruguay": { "iso2": "UY", "flag": "🇺🇾" },
+  "Paraguay": { "iso2": "PY", "flag": "🇵🇾" },
+  "Panama": { "iso2": "PA", "flag": "🇵🇦" },
+  "Honduras": { "iso2": "HN", "flag": "🇭🇳" },
+  "Nicaragua": { "iso2": "NI", "flag": "🇳🇮" },
+  "Jamaica": { "iso2": "JM", "flag": "🇯🇲" },
+  "Trinidad and Tobago": { "iso2": "TT", "flag": "🇹🇹" },
+  "Lithuania": { "iso2": "LT", "flag": "🇱🇹" },
+  "Croatia": { "iso2": "HR", "flag": "🇭🇷" },
+  "Albania": { "iso2": "AL", "flag": "🇦🇱" },
+  "North Macedonia": { "iso2": "MK", "flag": "🇲🇰" },
+  "Montenegro": { "iso2": "ME", "flag": "🇲🇪" },
+  "Belarus": { "iso2": "BY", "flag": "🇧🇾" },
+  "Azerbaijan": { "iso2": "AZ", "flag": "🇦🇿" },
+  "Uzbekistan": { "iso2": "UZ", "flag": "🇺🇿" },
+  "Turkmenistan": { "iso2": "TM", "flag": "🇹🇲" },
+  "Tajikistan": { "iso2": "TJ", "flag": "🇹🇯" },
+  "Afghanistan": { "iso2": "AF", "flag": "🇦🇫" },
+  "Iran": { "iso2": "IR", "flag": "🇮🇷" },
+  "Lebanon": { "iso2": "LB", "flag": "🇱🇧" },
+  "Syria": { "iso2": "SY", "flag": "🇸🇾" },
+  "Yemen": { "iso2": "YE", "flag": "🇾🇪" },
+  "Libya": { "iso2": "LY", "flag": "🇱🇾" },
+  "Tunisia": { "iso2": "TN", "flag": "🇹🇳" },
+  "Mali": { "iso2": "ML", "flag": "🇲🇱" },
+  "Burkina Faso": { "iso2": "BF", "flag": "🇧🇫" },
+  "Niger": { "iso2": "NE", "flag": "🇳🇪" },
+  "Somalia": { "iso2": "SO", "flag": "🇸🇴" },
+  "Rwanda": { "iso2": "RW", "flag": "🇷🇼" },
+  "Zimbabwe": { "iso2": "ZW", "flag": "🇿🇼" },
+  "Mozambique": { "iso2": "MZ", "flag": "🇲🇿" },
+  "Botswana": { "iso2": "BW", "flag": "🇧🇼" },
+  "Namibia": { "iso2": "NA", "flag": "🇳🇦" },
+  "Malawi": { "iso2": "MW", "flag": "🇲🇼" },
+  "Madagascar": { "iso2": "MG", "flag": "🇲🇬" },
+  "Mauritius": { "iso2": "MU", "flag": "🇲🇺" },
+  "Fiji": { "iso2": "FJ", "flag": "🇫🇯" },
+  "Samoa": { "iso2": "WS", "flag": "🇼🇸" },
+  "Tonga": { "iso2": "TO", "flag": "🇹🇴" },
+  "Vanuatu": { "iso2": "VU", "flag": "🇻🇺" },
+  "Nauru": { "iso2": "NR", "flag": "🇳🇷" },
+  "Tuvalu": { "iso2": "TV", "flag": "🇹🇻" },
+  "Kiribati": { "iso2": "KI", "flag": "🇰🇮" },
+  "Palau": { "iso2": "PW", "flag": "🇵🇼" },
+  "Grenada": { "iso2": "GD", "flag": "🇬🇩" },
+  "Saint Lucia": { "iso2": "LC", "flag": "🇱🇨" },
+  "Belize": { "iso2": "BZ", "flag": "🇧🇿" },
+  "Guyana": { "iso2": "GY", "flag": "🇬🇾" },
+  "Suriname": { "iso2": "SR", "flag": "🇸🇷" },
+  "Bhutan": { "iso2": "BT", "flag": "🇧🇹" },
+  "Cambodia": { "iso2": "KH", "flag": "🇰🇭" },
+  "Greenland": { "iso2": "GL", "flag": "🇬🇱" },
+  "Gibraltar": { "iso2": "GI", "flag": "🇬🇮" },
+  "Bermuda": { "iso2": "BM", "flag": "🇧🇲" },
+  "Guernsey": { "iso2": "GG", "flag": "🇬🇬" },
+  "Aruba": { "iso2": "AW", "flag": "🇦🇼" },
+  "Curaçao": { "iso2": "CW", "flag": "🇨🇼" },
+  "French Polynesia": { "iso2": "PF", "flag": "🇵🇫" },
+  "Puerto Rico": { "iso2": "PR", "flag": "🇵🇷" }
+}
