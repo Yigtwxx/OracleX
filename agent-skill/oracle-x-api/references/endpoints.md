@@ -434,6 +434,21 @@ Commodities, global indices and macro ratios in one cached payload.
 
 Response shape is not declared on the route — inspect one call.
 
+### `GET /api/macro/elections`
+
+Get Elections
+
+Upcoming national elections, priced where a market can be matched to one.
+
+503s with the board rather than with the regime, and for the board's reason:
+an empty list here would assert that no election is scheduled anywhere on
+Earth. A missing *odds* layer is different and does not 503 — the payload
+reports `odds_available: false` and the panel names the outage, because
+dates with no prices still say something true.
+
+
+Response shape is not declared on the route — inspect one call.
+
 ### `GET /api/macro/regime`
 
 Get Macro Regime
@@ -754,6 +769,8 @@ What people are betting happens next, and a sourced read on why.
 
 The analysis endpoint may answer with a refusal instead of a verdict. That is a successful run, not an error: the pipeline declines when the evidence it could gather does not support a judgement, and the payload names every search it ran and every one that came back empty. A refusal still carries the market's odds, movement and holder concentration, all of which are measured rather than modelled.
 
+Why a market was opened is a separate job with its own endpoints. It is the one surface here allowed to answer without a source: when no dated reporting explains an opening, it returns `status: conjectured` and a `conjecture` naming the kind of event that usually opens a market like this one. Treat that field as a hypothesis, never as a finding — it carries no source id and is never used to write a verdict.
+
 ### `GET /api/polymarket/board`
 
 Get Polymarket Board
@@ -815,6 +832,38 @@ Response shape is not declared on the route — inspect one call.
 Get Polymarket Analysis Job
 
 Poll a running analysis. 404 once the job has aged out of retention.
+
+Parameters:
+- `job_id` (path, string, required)
+
+Response shape is not declared on the route — inspect one call.
+
+### `POST /api/polymarket/markets/{slug}/origin/jobs` · **auth**
+
+Start Polymarket Origin
+
+Start the "why was this bet opened" trace, or re-attach to the running one.
+
+A separate job from the verdict on purpose. The two are started by the same
+click and answer different questions at different speeds, and holding the
+origin answer back until the sweep and two synthesis calls have finished
+would hide a result that was ready in thirty seconds. Neither waits for the
+other and neither reads the other's output.
+
+Like the analysis, this may decline: with no dated reporting inside any
+window it answers with a labelled hypothesis, and with nothing at all it
+answers `undetermined`. Both are successful runs.
+
+Parameters:
+- `slug` (path, string, required)
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/polymarket/origin/jobs/{job_id}`
+
+Get Polymarket Origin Job
+
+Poll a running origin trace. 404 once the job has aged out of retention.
 
 Parameters:
 - `job_id` (path, string, required)
