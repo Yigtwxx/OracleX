@@ -23,16 +23,31 @@ from services.cache import market_cache
 ALL_SYMBOLS = list(MACRO_COMMODITIES) + list(GLOBAL_INDICES)
 
 
+# An arbitrary but fixed session open, so the stub payloads carry the same
+# bar/quote timing relationship a live one does.
+SESSION_OPEN = 1_787_260_000
+
+
 def _chart(price, *, previous=None, high=None, low=None, currency="USD"):
-    """A minimal Yahoo v8 chart payload."""
+    """
+    A minimal Yahoo v8 chart payload.
+
+    `previous` becomes the prior daily bar rather than `chartPreviousClose`:
+    that field describes the requested range window, not the previous session,
+    and `services/yahoo_chart` refuses it for that reason.
+    """
     meta = {"regularMarketPrice": price, "currency": currency}
-    if previous is not None:
-        meta["chartPreviousClose"] = previous
     if high is not None:
         meta["fiftyTwoWeekHigh"] = high
     if low is not None:
         meta["fiftyTwoWeekLow"] = low
-    return {"chart": {"result": [{"meta": meta}]}}
+
+    result = {"meta": meta}
+    if previous is not None:
+        meta["regularMarketTime"] = SESSION_OPEN + 3600
+        result["timestamp"] = [SESSION_OPEN - 86_400, SESSION_OPEN]
+        result["indicators"] = {"quote": [{"close": [previous, price]}]}
+    return {"chart": {"result": [result]}}
 
 
 @pytest.fixture(autouse=True)
