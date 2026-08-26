@@ -62,10 +62,10 @@ environment variable switches it to Groq, Gemini, Anthropic, OpenAI or any other
 supported provider, behind an ordered fallback chain so one provider's outage or
 rate limit is not the terminal's outage.
 
-**Routes.** `/` is the public landing page. The terminal itself lives under
-`/home`, `/overview`, `/dashboard`, `/analysis`, `/chat`, `/heatmap`, `/live`,
-`/chains`, `/macro`, `/ownership`, `/social`, `/community`, `/profile` and
-`/admin`.
+**Routes.** `/`, `/developers` and `/faq` are the public site. The terminal
+itself lives under `/home`, `/overview`, `/dashboard`, `/analysis`, `/chat`,
+`/heatmap`, `/live`, `/chains`, `/macro`, `/polymarket`, `/ownership`,
+`/social`, `/community`, `/profile` and `/admin`.
 
 ---
 
@@ -89,6 +89,15 @@ integrations.
 * **Asset detail modal:** 30+ data points per asset in one view — an equity's
   debt-to-equity ratio or a protocol's trailing four-week GitHub commit volume,
   without leaving the chart.
+* **Market internals:** three panels below the overview table answer what an
+  aggregate stats bar cannot — advancing versus declining counts and the A/D
+  ratio, median against mean against cap-weighted change, volume concentration,
+  a fixed-bucket histogram of 24h moves that doubles as a click-to-filter
+  control on the table above it, and a divergence board of liquid assets whose
+  day contradicts their week. All of it is derived in `lib/market-breadth.ts`
+  from the payload the table already holds, so the panels cost no extra request.
+  The histogram edges never rescale: an axis that redraws itself cannot be
+  compared to the chart you saw a minute ago, and an empty tail is information.
 * **Multi-timeframe technical read:** every asset is analysed on three horizons
   at once — 4h/1d/1w for crypto, 1h/1d/1w for equities — each keeping its own
   RSI, ATR, trend and swing structure. Support and resistance are returned as
@@ -285,7 +294,55 @@ live, on one board, priced in the coin their fees are actually paid in.
   tier answers 403 for the rest — the strip names its own limit rather than
   showing six zeros.
 
-### 8. Alternative Data
+### 8. Prediction Markets
+
+`/polymarket` reads the highest-volume open markets on Polymarket and treats a
+crowd-priced probability as evidence to be examined, not as an answer.
+
+* **Facts before any model.** A market's dialog opens on figures computed
+  without an LLM: outcome prices, 24h and 7d drift, volume, liquidity, spread,
+  top-holder concentration, and the dated windows in which the price actually
+  re-priced. `moves.py` measures those in **absolute probability points**, never
+  percentages — 0.02 → 0.04 is +100% and means nothing, while 0.45 → 0.62 is 17
+  points and had a cause. A move must clear both a floor and three times that
+  market's own median move before it is called sharp.
+* **The analysis is allowed to refuse.** `sufficiency.py` decides whether the
+  model is asked for a verdict at all, and it is a floor test rather than a
+  weighted score — a score lets a pile of weak amplification outvote real
+  corroboration. Distinct *domains* is the load-bearing floor, and the app's own
+  RAG output deliberately does not count as a tier-1 source, because prior
+  output cannot corroborate itself. Below the floors the endpoint answers
+  `insufficient_evidence` and names every search that came back empty, in a
+  paragraph written in Python: a model asked to explain its own thinness writes
+  prose indistinguishable from the analysis it just withheld. The facts and
+  microstructure are served either way, which is what keeps a refusal from
+  reading as a broken page.
+* **Claims are pruned mechanically.** The model returns `{text, sources}`
+  objects rather than prose, so dropping an unsupported claim is a lookup and
+  not a judgement. Invented source ids are deleted whole; a claim may cite the
+  market's own price, but only if every figure in it appears verbatim in the
+  rendered facts. Fewer than three survivors discards the synthesis rather than
+  showing it thin, and the panel says how many claims were dropped.
+* **Two jobs, never chained.** "Why was this bet opened" runs as its own trace,
+  matching dated reporting against the measured move windows, and is allowed to
+  end in a labelled conjecture. It is kept out of the verdict prompt on purpose:
+  by the time a verdict is written, a conjecture is indistinguishable from
+  evidence.
+* **Trader geography does not exist, so the map says so.** The exchange settles
+  on Polygon and identifies a counterparty only by `proxyWallet`, so no public
+  endpoint anywhere carries a bettor's location and a bets-by-country choropleth
+  cannot honestly be drawn. The map instead ships three layers that each name
+  their own provenance and refuse to be merged: where it can legally be traded
+  (transcribed from the geoblock list), what the questions are *about* (volume
+  attributed to the country a question names, split rather than duplicated
+  across multi-country questions), and when the money moves (traded value by
+  hour of UTC day, drawn as bands rather than country shading).
+* **Gamma's arrays are strings.** `outcomes`, `outcomePrices` and `clobTokenIds`
+  arrive JSON-encoded, so `market["outcomePrices"][0]` is the character `[`.
+  Nothing raises; the board simply fills with plausible nonsense. Everything
+  crossing that boundary goes through `gamma._maybe_json`.
+
+### 9. Alternative Data
 
 * **Fear & Greed index** synchronized across the UI.
 * **Macro regime read:** `macro_regime.py` scores equity breadth, the dollar and
@@ -297,6 +354,27 @@ live, on one board, priced in the coin their fees are actually paid in.
   is growth or margin squeeze depending on the cause), and the components the
   board does not carry — rates, credit spreads, equity volatility — are named in
   the note rather than papered over.
+* **Nothing Ever Happens index:** a companion novelty from the same publisher,
+  reading a curated basket of high-impact geopolitical prediction markets rather
+  than pizza queues. The reading is recomputed here from the source's own raw
+  probabilities instead of copied from its gauge, so a change in how the source
+  renders itself cannot silently redefine what the panel claims. It is the
+  **highest** probability in the basket, never the mean — 27 mostly dormant
+  markets average to a number that never moves, and the point of the gauge is
+  the one market that is moving — and thin markets are excluded, because a 2%
+  print with no depth behind it is a quote, not a probability.
+* **Elections board:** upcoming national elections worldwide on `/macro`, with
+  the calendar parsed from Wikipedia's yearly electoral-calendar articles and
+  live odds joined in from Polymarket where a market can be matched to a row
+  with confidence. The match is gated in two tiers: a structured country signal
+  *and* a plausible resolution date renders a price, and anything weaker renders
+  only a link. Thin markets are demoted to link-only on volume and liquidity
+  floors. The two halves fail independently — losing the calendar is a 503,
+  because an empty board would assert that no election is scheduled anywhere on
+  Earth, while losing the odds is a 200 with a badge saying so. The payload also
+  carries its own coverage cap, since Polymarket's listing is volume-ordered and
+  most calendar rows genuinely having no market is not the same claim as
+  "Polymarket covers nothing".
 * **Pentagon Pizza Index:** an OSINT novelty gauge derived from late-evening
   activity at the pizza restaurants around the Pentagon, computed here from each
   venue's own baseline curve rather than copied from the source's own verdict.
@@ -312,7 +390,7 @@ live, on one board, priced in the coin their fees are actually paid in.
 * **Developer velocity and social graph:** GitHub commit/issue velocity and
   community growth surfaced in the asset detail modal.
 
-### 9. Grounded Notes
+### 10. Grounded Notes
 
 Three boards — macro, chains and ownership — render deterministic figures and
 used to leave the reader to work out what they meant. `services/ai_notes.py`
@@ -329,7 +407,7 @@ closes that gap without moving any arithmetic into the model.
   are always present, so a page with no note is still complete. `lib/ai-note.ts`
   holds that branch on the frontend, where it is tested.
 
-### 10. Accounts, Community and Bring-Your-Own-Key
+### 11. Accounts, Community and Bring-Your-Own-Key
 
 * Supabase Auth (email/password and Google OAuth). **Authorization is enforced
   in the application layer** (`dependencies/auth.py`): the backend holds the
@@ -345,7 +423,43 @@ closes that gap without moving any arithmetic into the model.
   encrypted with Fernet before they reach Supabase (`services/secret_box.py`)
   and are returned to the UI only as a hint, never in plaintext.
 
-### 11. Boot Gate
+### 12. Alarm Centre
+
+The bell in the nav chrome opens a workspace for watching twelve sources —
+price, 24h change, BTC dominance, funding, liquidations, Fear & Greed, the
+Nothing Ever Happens index, chain anomalies, the Pentagon Pizza Index, news
+keywords, macro events and prediction markets — under four kinds of condition: a
+threshold, a server-computed state, a keyword match, or a countdown to an event.
+
+* **Evaluation is entirely client-side.** `useAlarmEngine` ticks once every 15
+  seconds and reads through the React Query cache using each source's own
+  interval as `staleTime`, so an alarm piggybacks on requests the terminal was
+  making anyway instead of opening its own. The decision itself is a pure
+  function in `lib/alarms/evaluate.ts` returning trigger / rearm / none, which
+  is where it is tested; the hook makes no decisions.
+* **Nothing fires twice for one move.** A latched hysteresis band, sized as a
+  *fraction* of the threshold so the same constant works for a 0.0001 funding
+  rate and a six-figure BTC price, plus a bounded dedupe ring for event-shaped
+  readings and a per-alarm cooldown. A stale reading never re-triggers, and a
+  source reporting `unavailable` counts as no reading rather than as zero.
+* **Mail is the only part the backend touches.** `routers/alarms.py` exists
+  because a browser cannot speak SMTP. An address confirms itself with a code
+  first; the browser then holds an HMAC bound to that address, compared in
+  constant time; and the message body is composed server-side from a Jinja
+  template. A stolen token therefore buys nothing but alarm-shaped mail to its
+  own inbox. Delivery stays off until `SMTP_HOST` is set — an admin can set it
+  from the panel or from the environment — and the UI hides the panel rather
+  than offering a button that cannot work.
+* **The other three channels need no configuration at all.** A toast, a Web
+  Audio beep and an OS notification fire locally; mail is a fourth, sent
+  fire-and-forget so a slow relay never delays the alarm itself.
+* **Alarms live in the browser, not the database.** No migration, no table:
+  definitions, history and the confirmed address persist to `localStorage`. The
+  store carries a versioned migration that folds the old single-symbol price
+  alerts into the new model and deletes the dead key, because `persist` shallow-
+  merges and would otherwise resurrect it forever.
+
+### 13. Boot Gate
 
 A cold start touches a dozen upstreams. Rather than assembling itself panel by
 panel over half a minute, the terminal holds its first paint on
@@ -355,15 +469,33 @@ optional ones only mark the session degraded. The endpoint is pure in-memory
 state — it is polled twice a second — and nothing in the startup path blocks the
 socket from binding.
 
-### 12. Landing Page
+### 14. Public Site
 
-`/` is a scroll-driven marketing page rendered on a single `position: fixed` 2D
-canvas. `lib/landing/stages.ts` is the one source of truth: each stage's height
-in `svh` sizes both the DOM section and the canvas window it maps to, so the
-copy and the chart it annotates cannot drift apart. The candle series is
-generated from a seed rather than `Math.random`, so the page draws identically
-on every mount. It shares fonts and design tokens with the terminal and nothing
-else — no navigation chrome, no query client, no boot gate.
+Three pages sit outside the terminal, in a route group with no navigation
+chrome, no query client and no boot gate — they share fonts and design tokens
+with the terminal and nothing else, and they render with the backend down.
+
+* **`/` — the tour.** A scroll-driven page rendered on a single
+  `position: fixed` 2D canvas. `lib/landing/stages.ts` is the one source of
+  truth: each stage's height in `svh` sizes both the DOM section and the canvas
+  window it maps to, so the copy and the chart it annotates cannot drift apart.
+  The candle series is generated from a seed rather than `Math.random`, so the
+  page draws identically on every mount.
+* **`/developers` — building against it.** Eight documented sections, each with
+  a generated margin figure: the provider chain, the health categories, the MCP
+  tool surface, the test suites.
+* **`/faq` — what it will not claim.** Eighteen deep-linkable entries on the
+  limits, the data handling and the coverage, which is the part of a financial
+  tool most worth writing down.
+* **Every number on these pages is generated.** `lib/marketing/` holds the prose
+  and is tested for one rule beyond correctness: it carries no digits. Figures
+  come from `lib/generated/repo-facts.ts`, measured by the collectors described
+  under [Quality Gates](#quality-gates), so a claim that stops being true fails
+  CI instead of quietly ageing.
+* **The tab underline lives in the layout, not the page.** A per-page header
+  remounted the bar already at its destination and the transition never ran; its
+  position is measured from the active tab's own box through a `ResizeObserver`,
+  because the font swap changes tab widths after first paint.
 
 ---
 
@@ -375,15 +507,16 @@ upstream, and the API never renders.
 ```mermaid
 graph TD;
     subgraph Client [Frontend - Next.js 14 App Router]
-    Landing["(marketing) - scroll canvas"]
+    Landing["(marketing) - tour, developers, FAQ"]
     Gate[BootGate + readiness poll] --> UI[React Interface]
+    UI --> Alarms[Alarm engine - client-side, 15s tick]
     UI --> RQ(React Query - server state)
     UI --> Zustand(Zustand - client state)
     UI --> Auth[Supabase Auth Context]
     end
 
     subgraph API [FastAPI Gateway - Python]
-    Router[21 API Routers] --> Manager[Service Layer]
+    Router[23 API Routers] --> Manager[Service Layer]
     Manager --> LLM[LLM provider chain]
     Manager --> RAG[(ChromaDB - RAG v1/v2)]
     Manager --> Cache[(TTL Cache + stale fallback)]
@@ -410,11 +543,15 @@ graph TD;
     DDG[DuckDuckGo Search]
     RPC[8 chain RPC / REST endpoints]
     CM[Coin Metrics Community]
+    PM[Polymarket Gamma / CLOB / Data]
+    WIKI[Wikipedia electoral calendars]
+    SMTP[SMTP relay]
     end
 
     UI ===|REST JSON| Router
     Gate ===|/api/system/readiness| Router
     UI ===|WebSocket /ws/prices| WSS
+    Alarms ===|POST /api/alarms/email/notify| Router
     Auth === SB
     Manager === SB
     Manager === External
@@ -453,16 +590,22 @@ backend/
 │   ├── macro/regime.md         # the sentence behind the risk-on/off label
 │   ├── notes/rules.md          # shared grounding rules for every generated note
 │   ├── ownership/flow.md       # last quarter's institutional moves, in prose
+│   ├── polymarket/             # forecaster system, rules, arguments, synthesis,
+│   │                           # synthesis_degraded, origin + six category overlays
 │   └── news/ detection/ generic/
-├── routers/                    # 21 modules — full paths inline, no prefixes
+├── templates/email/            # Jinja alarm + verification mail (table layout, escaped)
+├── routers/                    # 23 modules — full paths inline, no prefixes
 │   ├── news.py                 # /api/news, /api/analyze, /api/symbols, /api/technical
 │   ├── llm.py                  # /api/llm/status
 │   ├── system.py               # /api/system/readiness
 │   ├── market.py               # /api/fear-greed, /api/market-overview, /api/heatmap/data
 │   ├── liquidation.py          # /api/liquidations/*, /api/market/candles
 │   ├── home.py                 # /api/home/* (funding, onchain, macro calendar)
-│   ├── macro.py                # /api/macro/* (board, regime, pizza-index)
+│   ├── macro.py                # /api/macro/* (board, regime, pizza-index, neh-index,
+│   │                           # elections)
 │   ├── chains.py               # /api/chains/board, /api/chains/anomalies
+│   ├── polymarket.py           # /api/polymarket/* (board, map, market, analysis, origin)
+│   ├── alarms.py               # /api/alarms/email/* — the mail relay a browser cannot be
 │   ├── watchlist.py            # /api/home/watchlist CRUD
 │   ├── analysis.py             # /api/analysis/reports, /api/analysis/jobs, notes
 │   ├── rag.py                  # /api/rag/* (initialize, query, insights, scenario, brief)
@@ -476,8 +619,9 @@ backend/
 │   ├── admin.py                # /api/admin/* (moderation, audit log)
 │   ├── exchanges.py            # /api/exchanges, /api/multi-exchange, /api/arbitrage
 │   └── websocket.py            # /ws/prices, /api/websocket/status
-├── services/                   # business logic — 75 modules plus admin/, chains/,
-│   │                           # community/, llm/, ownership/ and social/ packages
+├── services/                   # business logic — 81 modules plus admin/, chains/,
+│   │                           # community/, elections/, llm/, ownership/,
+│   │                           # polymarket/ and social/ packages
 │   ├── llm/                    # provider abstraction
 │   │   ├── presets.py          # 14 provider rows (adapter, base_url, default model, key env)
 │   │   ├── providers.py        # openai_compat / anthropic / ollama adapters
@@ -522,6 +666,20 @@ backend/
 │   │   ├── history.py          # rolling baseline, diurnally corrected
 │   │   ├── anomaly.py          # what is not normal, found in Python
 │   │   └── flows.py            # Coin Metrics daily exchange flow (BTC/ETH)
+│   ├── polymarket/             # prediction markets
+│   │   ├── gamma.py / clob.py / data_api.py   # three public APIs, two id spaces
+│   │   ├── registry.py         # category tags, prompts and per-category thresholds
+│   │   ├── facts.py / moves.py # model-free figures; sharp moves in probability points
+│   │   ├── sufficiency.py      # the floors below which no verdict is asked for
+│   │   ├── evidence.py / feeds.py / synthesis.py / attribution.py
+│   │   ├── origin.py           # why this bet was opened — its own job, never chained
+│   │   └── map_service.py / jurisdictions.py / geography.py   # three labelled layers
+│   ├── elections/              # wikipedia.py, odds.py, registry.py, join.py
+│   ├── neh_index_service.py    # Nothing Ever Happens — recomputed, not copied
+│   ├── alarm_email_service.py  # confirmation codes, HMAC tokens, per-address caps
+│   ├── email_delivery.py       # smtplib in a thread; SPF/DKIM-aligned headers
+│   ├── mail_settings_service.py    # admin-set SMTP, Fernet-encrypted, 0600 on disk
+│   ├── email_guard.py          # MX check + disposable-domain blocklist
 │   ├── ownership/flow_note.py  # last quarter's 13F moves, aggregated not recomputed
 │   ├── okx_market.py           # single client for prices, candles, trades
 │   ├── price_service.py        # server-side single-symbol price resolution
@@ -534,7 +692,7 @@ backend/
 │   ├── fear_greed_service.py / onchain_service.py / technical_analysis_service.py
 │   ├── web_search_service.py   # DuckDuckGo search for the chat agent
 │   ├── supabase_service.py / profile_service.py / watchlist_service.py
-│   ├── scheduler_service.py    # APScheduler: news fetch + RAG re-index jobs
+│   ├── scheduler_service.py    # APScheduler: news fetch, RAG re-index, elections warm
 │   ├── http_client.py          # shared async httpx client (+ impersonated transport)
 │   └── cache.py                # ServiceCache (TTLCache) with stale-data fallback
 ├── evals/
@@ -542,7 +700,7 @@ backend/
 │   ├── eval_planner.py         # tool-selection recall and precision
 │   └── eval_refusal.py         # how often the chat declines a question it could answer
 ├── scripts/verify_migrations.py     # are the migrations in the repo actually live?
-├── tests/                      # 76 pytest modules — run in CI
+├── tests/                      # 93 pytest modules — run in CI
 └── data/                       # local JSON state + ChromaDB stores (gitignored)
 ```
 
@@ -560,9 +718,12 @@ frontend/
 │   ├── layout.tsx              # fonts, tokens, metadataBase, AuthProvider, HydrationBeacon
 │   ├── opengraph-image.tsx     # the link-preview card, rendered from the landing palette
 │   ├── globals.css             # token definitions + terminal and landing styles
-│   ├── (marketing)/            # the public landing page at /
-│   │   ├── layout.tsx          # sets .landing, scopes the marketing CSS
-│   │   └── page.tsx
+│   ├── (marketing)/            # the public site — renders with the backend down
+│   │   ├── layout.tsx          # MarketingShell: header + tabs, so the underline persists
+│   │   ├── page.tsx            # / — the scroll-canvas tour
+│   │   ├── developers/         # /developers — eight doc sections with generated figures
+│   │   ├── faq/                # /faq — eighteen deep-linkable entries
+│   │   └── error.tsx           # its own boundary; (app)'s uses h-full, which is 0 here
 │   └── (app)/                  # the terminal — route group, absent from the URL
 │       ├── layout.tsx          # ClientShell composition
 │       ├── home/               # home dashboard (/home)
@@ -573,7 +734,8 @@ frontend/
 │       ├── heatmap/            # multi-metric heatmap
 │       ├── live/               # live streams and events
 │       ├── chains/             # eight-chain telemetry board
-│       ├── macro/              # macro calendar, regime read and dashboard
+│       ├── macro/              # macro calendar, regime read, elections and dashboard
+│       ├── polymarket/         # prediction-market board, map and bet analysis
 │       ├── ownership/          # institutional holdings
 │       ├── social/             # sentiment and public profiles
 │       ├── community/          # social feed and post detail
@@ -585,17 +747,22 @@ frontend/
 │   ├── ClientShell.tsx         # QueryClientProvider + Navigation + GlobalTicker + Toasts
 │   ├── HydrationBeacon.tsx     # proof of life for the chunk-recovery watchdog
 │   ├── BootGate.tsx / BootSplash.tsx   # holds first paint until the backend is ready
-│   ├── landing/                # ScrollCanvas, TypedPoints, StageFigure, hero and sections
+│   ├── landing/                # ScrollCanvas, TypedPoints, StageFigure, hero and sections,
+│   │                           # plus the doc shell (DocPage, DocRail, FaqList, figures/)
 │   ├── ui/                     # Panel, Modal, Logo, AssetTag, ShinyText, AiNote primitives
 │   ├── chains/                 # ChainCard, BlockStream, FeeRacer, EconomicsPanel,
 │   │                           # FlowStrip, AnomalyBanner, DeviationBanner
 │   ├── analysis/               # ReportView, AnalysisProgress, StageChecklist, NotesPanel,
 │   │                           # TechnicalPanel, ZoneLadder, TimeframeGrid, RangeStrip
-│   ├── overview/               # AdvancedHeatmap, AssetDetailModal, AssetTable, ...
+│   ├── polymarket/             # MarketCard, MarketDetail, AnalysisPanel, OriginPanel,
+│   │                           # WorldMap (ECharts, dynamic — 370KB stays off first paint)
+│   ├── overview/               # AdvancedHeatmap, AssetDetailModal, AssetTable,
+│   │                           # MarketBreadthStrip, ChangeDistribution, DivergenceBoard
 │   ├── home/                   # FundingRates, LiquidationFeed, OnChainStats, Watchlist, ...
 │   ├── macro/ live/ ownership/ social/ admin/ chat/ charts/
 │   ├── PizzaIndexBadge.tsx     # the novelty gauge, in the nav chrome
-│   ├── alarms/                 # AlarmBell in the nav chrome + the Alarm Centre dialog
+│   ├── alarms/                 # AlarmBell in the nav chrome + the Alarm Centre dialog;
+│   │                           # entirely modal, there is no /alarms route
 │   ├── profile/AIProviderSettings.tsx   # BYO provider/model/API key UI
 │   ├── community/              # PostCard, PostMedia, CreatePostModal
 │   └── NewsFeed.tsx / ChartPanel.tsx / OraclePanel.tsx / ChatSidebar.tsx / ...
@@ -614,6 +781,11 @@ frontend/
 │   ├── ai-note.ts              # the shared envelope every generated note arrives in (tested)
 │   ├── pizza-index.ts          # one set of thresholds for all three surfaces (tested)
 │   ├── alarms/                 # what can be watched, and when it fires (tested)
+│   ├── market-breadth.ts       # advance/decline, histogram, divergence (tested)
+│   ├── polymarket-format.ts    # probabilities, points, provenance labels (tested)
+│   ├── elections.ts            # UTC-anchored countdowns, both sides (tested)
+│   ├── marketing/              # the marketing prose — tested to carry no digits
+│   ├── generated/repo-facts.ts # every number the public pages state (generated)
 │   └── landing/                # scroll canvas engine — stages, series, renderer (tested)
 ├── assets/og/                  # subset JetBrains Mono faces for the OG image renderer
 ├── public/landing/             # stage imagery + CREDITS.md
@@ -632,15 +804,18 @@ frontend/
 │   ├── oracle-x-api/           # reading a running instance
 │   ├── oracle-x-dev/           # extending this codebase
 │   └── *.zip                   # generated, for direct download
-├── mcp-server/                 # the same API as 26 MCP tools
+├── mcp-server/                 # the same API as 30 MCP tools
 │   └── oracle_x_mcp/           # stdio server; talks HTTP to a live instance
 ├── scripts/
 │   ├── build_agent_skill.py         # regenerates the skill's endpoint reference
+│   ├── build_repo_facts.py          # regenerates the numbers the public pages state
+│   ├── _openapi.py                  # builds the app in-process for both of the above
 │   ├── calibrate_rag_relevance.py   # measures the RAG relevance floor against your store
 │   ├── fetch_landing_imagery.sh     # rebuilds the landing imagery set from Wikimedia
 │   └── generate_brand_assets.py
 ├── .github/workflows/
 │   ├── ci.yml                  # ruff + compileall + pytest | lint, typecheck, test, build
+│   │                           # | generated files | mcp-server
 │   └── publish-packages.yml    # builds + pushes both images to ghcr.io
 └── .pre-commit-config.yaml     # ruff (backend) + prettier (frontend) + hygiene hooks
 ```
@@ -1009,6 +1184,64 @@ SCRAPLING_ALLOW_BROWSER=true
 CHAT_MAX_SCRAPES_PER_TURN=3
 CHAT_MAX_BROWSER_PER_TURN=1
 
+# ── Alarm mail notifications ─────────────────────────────────────────────────
+# Off by default. Leave SMTP_HOST empty and the whole panel stays hidden in the
+# Alarm Centre — the toast, the sound and the OS notification all still fire.
+# Any SMTP server works; Gmail needs an *app password*, not the account one.
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASSWORD=
+# Implicit TLS from the first byte (port 465). Leave false for 587 + STARTTLS.
+SMTP_SSL=false
+SMTP_STARTTLS=true
+SMTP_TIMEOUT=20
+
+# Leave SMTP_FROM empty to send as SMTP_USER. That is almost always right, and
+# it is what keeps mail out of the spam folder: SPF and DKIM authenticate the
+# From domain, and Gmail's relay rewrites a From that is not the authenticated
+# account or a verified alias.
+SMTP_FROM=
+SMTP_FROM_NAME=Oracle-X
+SMTP_REPLY_TO=
+
+# Signs the token a browser gets after confirming its address, and which
+# POST /api/alarms/email/notify requires — without it that endpoint would be an
+# open relay. One is generated and persisted if you leave this empty, so an
+# admin can turn the whole feature on from the panel.
+#   python -c "import secrets; print(secrets.token_urlsafe(48))"
+ALARM_EMAIL_SECRET=
+
+ALARM_EMAIL_CODE_TTL_SECONDS=600
+ALARM_EMAIL_CODE_MAX_ATTEMPTS=5
+# Ceiling on notifications one confirmed address receives per hour. The failure
+# this bounds is a too-loose alarm on a busy feed mailing someone until their
+# provider stops trusting the sender.
+ALARM_EMAIL_HOURLY_LIMIT=30
+
+# Where the "open the terminal" button in an alarm mail points. Empty falls back
+# to the first entry in CORS_ORIGINS.
+APP_PUBLIC_URL=
+
+# ── Prediction markets ───────────────────────────────────────────────────────
+# No key: all three Polymarket hosts are public for reads. The URLs exist only
+# so a deployment behind a mirror can redirect them.
+POLYMARKET_GAMMA_URL=https://gamma-api.polymarket.com
+POLYMARKET_CLOB_URL=https://clob.polymarket.com
+POLYMARKET_DATA_URL=https://data-api.polymarket.com
+POLYMARKET_BOARD_LIMIT=60
+# The floors below which a bet analysis refuses rather than guessing, and the
+# lower tier that still answers but caps its own confidence. Raising these makes
+# the terminal quieter and more honest; lowering them does the reverse.
+POLYMARKET_MIN_SOURCES=4
+POLYMARKET_MIN_DOMAINS=3
+POLYMARKET_MIN_BODY_CHARS=1200
+POLYMARKET_MIN_QUERIES_ANSWERED=2
+POLYMARKET_DEGRADED_MIN_SOURCES=3
+POLYMARKET_DEGRADED_MIN_DOMAINS=2
+POLYMARKET_DEGRADED_MIN_BODY_CHARS=600
+POLYMARKET_DEGRADED_MAX_CONFIDENCE=0.45
+
 # ── CORS (comma-separated allowed frontend origins) ──────────────────────────
 CORS_ORIGINS=http://localhost:3100,http://127.0.0.1:3100
 
@@ -1074,6 +1307,10 @@ project. Exit code 1 means a table is missing.
 | No browser for Scrapling | Client-rendered pages (TradingView) are unreadable; the ladder names the gap and startup records a degraded health entry. Every other host is unaffected. |
 | A chain RPC endpoint down | That one row on `/chains` reports `error`; the other seven report normally and the board does not 503. |
 | Coin Metrics unreachable | The exchange-flow strip empties and anomaly detection falls back to its own rolling baseline. |
+| `SMTP_HOST` unset | Alarm mail is off and the Alarm Centre hides its email panel. The toast, the sound and the OS notification are unaffected — mail is the fourth channel, not the only one. |
+| Polymarket unreachable | `/polymarket` answers 503 rather than an empty board, and the elections panel drops its odds column and says so. |
+| Thin evidence for a bet analysis | A named `insufficient_evidence` refusal listing the searches that came back empty. This is a successful run: the measured facts and microstructure above it are unaffected. |
+| Wikipedia unreachable | The elections board serves its cached calendar for up to a week, then 503s — an empty board would claim no election is scheduled anywhere. |
 | Upstream market API down | Last good cached payload is served (stale fallback) instead of an error. |
 
 ---
@@ -1146,11 +1383,36 @@ use the FastAPI endpoints directly without opening the UI. All payloads return
 | `/api/macro/board` | `GET` | Indices, commodities, currencies and the macro calendar in one payload. |
 | `/api/macro/regime` | `GET` | The risk-on / risk-off / neutral label, its three component votes, and the model's sentence explaining them. |
 | `/api/macro/pizza-index` | `GET` | Pentagon Pizza Index reading, its per-venue baselines, and the source's own figures for cross-checking. |
+| `/api/macro/neh-index` | `GET` | Nothing Ever Happens index — the highest probability in a basket of tracked geopolitical markets, recomputed here from the source's raw figures. |
+| `/api/macro/elections` | `GET` | Upcoming national elections with Polymarket odds joined where a market matches confidently. Carries `odds_available` and `odds_cap` so missing odds read as coverage, not as absence. |
 | `/api/chains/board` | `GET` | All eight chains: height, cadence, load, priced fees, economics and recent blocks, plus the daily exchange-flow strip. A chain that could not be read carries `error` on its own row. |
 | `/api/chains/anomalies` | `GET` | What on the board is not normal, each flag with a Python-written sentence, plus an hourly model note explaining why they co-occur. |
 | `/api/exchanges` | `GET` | CCXT-supported exchange registry. |
 | `/api/arbitrage/{base}/{quote}` | `GET` | Cross-exchange spread for a pair; `/api/arbitrage/scan` sweeps the board. |
 | `/ws/prices` | `WS` | Live price stream — `snapshot` on connect, then `price_update` frames. |
+
+### Prediction markets
+
+| Endpoint | Method | Response payload and logic |
+|----------|--------|-----------------|
+| `/api/polymarket/board` | `GET` | The highest-volume open markets with prices, drift, volume and category. 503 rather than an empty board when the upstream is unreachable. |
+| `/api/polymarket/map` | `GET` | The three geographic layers, each carrying its own provenance. They are never merged, because only one of them is measured. |
+| `/api/polymarket/markets/{slug}` | `GET` | Model-free facts for one market: outcome prices, drift, liquidity, spread, holder concentration, microstructure notes, and the dated windows in which it re-priced. 404 for an unresolvable slug. |
+| `/api/polymarket/markets/{slug}/analysis/jobs` | `POST` | Starts the bet analysis; joins an in-flight run for the same market. `GET /api/polymarket/analysis/jobs/{job_id}` polls it. May finish as an explicit `insufficient_evidence` refusal. |
+| `/api/polymarket/markets/{slug}/origin/jobs` | `POST` | Starts the origin trace — why the bet was opened — as a separate job that never feeds the analysis. `GET /api/polymarket/origin/jobs/{job_id}` polls it. |
+
+### Alarms
+
+Alarms themselves live in the browser; these routes exist only because a browser
+cannot send mail.
+
+| Endpoint | Method | Response payload and logic |
+|----------|--------|-----------------|
+| `/api/alarms/email/status` | `GET` | Whether outbound alarm mail is configured at all. |
+| `/api/alarms/email/request-code` | `POST` | Sends a confirmation code, after an MX and disposable-domain check. Rate-limited. |
+| `/api/alarms/email/confirm` | `POST` | Exchanges the code for an HMAC token bound to that address. |
+| `/api/alarms/email/notify` | `POST` | Sends one alarm mail. Requires the token, dedupes by address and event, and caps deliveries per address per hour. 403 tells the browser to forget the address. |
+| `/api/alarms/email/smtp` | `GET/PUT/DELETE` | Admin-scoped relay settings, stored encrypted outside the environment. The password is never returned — only whether one is set. `POST /api/alarms/email/smtp/test` sends a probe and passes the relay's real error through. |
 
 ### User, social and system
 
@@ -1214,7 +1476,7 @@ python scripts/build_agent_skill.py --check
 
 ### MCP server
 
-[`mcp-server/`](mcp-server/) exposes the same instance to any MCP client as 26
+[`mcp-server/`](mcp-server/) exposes the same instance to any MCP client as 30
 tools. Both exist on purpose. A skill has to be *consulted*, and measurement
 showed the API skill triggering on almost nothing — a model asked "what is BTC
 doing" answers from its own knowledge rather than going to look for a skill.
@@ -1242,32 +1504,50 @@ in four jobs:
 |-----|-------|
 | **Backend** (Python 3.11) | `ruff check .` → `python -m compileall` → `pytest` |
 | **Frontend** (Node 20) | `npm ci` → `npm run lint` → `npm run typecheck` → `npm test` → `npm run build` |
-| **Agent skill** | `python scripts/build_agent_skill.py --check` |
+| **Generated files** | `python scripts/build_agent_skill.py --check` → `python scripts/build_repo_facts.py --check` |
 | **MCP server** | `ruff check .` → `ruff format --check .` → `pytest` |
 
-The backend suite is **76 pytest modules, 1,634 tests** covering the LLM chain
-and rate-limit behaviour, per-user settings and key encryption, auth
+The backend suite is **93 pytest modules, roughly 1,950 tests** covering the LLM
+chain and rate-limit behaviour, per-user settings and key encryption, auth
 enforcement, prompt rendering, RAG scoring and outcomes, symbol detection, news
 attribution, the analysis pipelines, chat intent/focus/memory/budget, the chain
-adapters and their anomaly detection, and the technical zone builder.
+adapters and their anomaly detection, the technical zone builder, the Polymarket
+boundary and its sufficiency gate, the elections registry, and alarm mail.
 `requirements-dev.txt` deliberately excludes torch and chromadb so CI installs
 only what the tests import.
+
+The counts here are rounded on purpose. Exact figures live in
+`frontend/lib/generated/repo-facts.ts`, measured by the collectors rather than
+counted by eye, and the `--check` gate below fails the build when one stops
+being true — which is how this file came to claim 1,634 backend tests long after
+there were more.
 
 A second workflow (`.github/workflows/publish-packages.yml`) is delivery, not a
 gate: after a push to `main` — or a `v*` tag — it builds both Dockerfiles and
 pushes them to `ghcr.io`. It never blocks a pull request.
 
-The agent-skill job regenerates the endpoint reference from the app's OpenAPI
-schema and fails if it differs from the committed copy. A route rename that
-ships an unchanged skill produces a document describing paths the API no longer
-serves, and an agent reading it cannot tell that apart from missing data.
+The generated-files job rebuilds two artefacts and fails if either differs from
+the committed copy. The first is the agent skill's endpoint reference, taken
+from the app's OpenAPI schema: a route rename that ships an unchanged skill
+produces a document describing paths the API no longer serves, and an agent
+reading it cannot tell that apart from missing data. The second is
+`repo-facts.ts`, the numbers the `/developers` and `/faq` pages state about this
+repository. Hand-maintained they were wrong within a release and stayed wrong —
+three documents claimed 26 MCP tools long after there were 30, and the frontend
+suite was reported 70 tests short because someone had counted `it(` and never
+saw the parametrised tables. They now come from the collectors: `pytest
+--collect-only` and `vitest list` for the suites, an AST walk for the MCP tools,
+the imported `CATEGORIES` and `PRESETS` for health and providers.
 
-The frontend suite is **18 vitest modules, 260 tests**, concentrated on the
-pure logic where a failure would be silent rather than loud — the scroll canvas
-stage schedule, the seeded candle series, the note anchors, and the formatting
-rules shared between panels (`chain-format`, `technical-format`, `ai-note`,
-`pizza-index`). Components are deliberately not tested; anything with a branch
-in it is expected to live in `lib/`.
+The frontend suite is **30 vitest modules, roughly 460 tests**, concentrated on
+the pure logic where a failure would be silent rather than loud — the scroll
+canvas stage schedule, the seeded candle series, the note anchors, the alarm
+predicates, the market-breadth derivations, and the formatting rules shared
+between panels (`chain-format`, `technical-format`, `ai-note`, `pizza-index`,
+`polymarket-format`). Components are deliberately not tested; anything with a
+branch in it is expected to live in `lib/`. `lib/marketing/` is tested for one
+extra rule: the prose carries no digits, so every figure on a marketing page has
+to come from the generated facts.
 
 `.pre-commit-config.yaml` wires the same tools locally:
 
@@ -1328,7 +1608,7 @@ Shipped in **v1.1.0**:
 - [x] Public landing page on a scroll-driven canvas; the terminal moves into an
       `(app)` route group.
 
-Unreleased (on `main`, ahead of the last tag):
+Shipped in **v1.2.0** – **v1.3.0**:
 
 - [x] **Chain telemetry board** — eight networks on `/chains` through four
       adapter families, comparable fees, per-row failure isolation, a
@@ -1349,12 +1629,34 @@ Unreleased (on `main`, ahead of the last tag):
 - [x] Rendered OpenGraph link-preview card, and `scripts/verify_migrations.py`
       for checking that the repo's migrations are actually live.
 
+Unreleased (on `main`, ahead of the last tag):
+
+- [x] **Prediction markets** — the `/polymarket` board, model-free market facts,
+      sharp moves measured in probability points, an origin trace, a three-layer
+      map that refuses to invent trader geography, and a bet analysis gated by
+      evidence floors that is allowed to refuse rather than guess.
+- [x] **Elections board** — a worldwide calendar parsed from Wikipedia, joined
+      to Polymarket odds behind a two-tier confidence gate, with the calendar and
+      the odds failing independently.
+- [x] **Alarm Centre** — twelve watchable sources under four condition kinds,
+      evaluated client-side with hysteresis and dedupe, delivered as a toast, a
+      sound, an OS notification and optionally mail through an SMTP relay that
+      confirms an address before it will send to it.
+- [x] **Market internals** — advance/decline breadth, a fixed-bucket change
+      histogram that filters the table above it, and a divergence board, all
+      derived from the payload the overview already holds.
+- [x] **Nothing Ever Happens index** beside the Pentagon Pizza gauge.
+- [x] **Generated repository facts** — `/developers` and `/faq`, and the numbers
+      on them measured by collectors and gated in CI, so a figure that stops
+      being true fails the build instead of quietly ageing.
+
 Planned:
 
-- [ ] **v1.2 (Hardening):** contract tests over the endpoint matrix, broader
-      component coverage.
-- [ ] **v1.3 (Personalization):** migration of watchlists and notes off JSON
-      onto Supabase, portfolio allocation views, saved dashboard layouts.
+- [ ] **Hardening:** contract tests over the endpoint matrix, broader component
+      coverage.
+- [ ] **Personalization:** migration of watchlists and notes off JSON onto
+      Supabase, portfolio allocation views, saved dashboard layouts, and alarms
+      that survive a change of browser.
 - [ ] **v2.0 (On-chain track record):** Solidity oracles committing AI price
       impact probabilities to the Sepolia testnet for immutable track-record
       tracking.
