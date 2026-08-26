@@ -66,8 +66,9 @@ else is open on a default instance.
 | Flow | `get_liquidation_map`, `get_funding_rates`, `get_whale_flow`, `get_ownership`, `get_ownership_moves` |
 | Memory | `search_memory`, `get_symbol_history`, `compare_assets`, `get_daily_brief` |
 | Oracle | `ask_oracle`, `get_watchlist` |
+| Prediction markets | `get_prediction_markets`, `get_prediction_market`, `analyse_prediction_market`, `get_prediction_analysis_job` |
 
-Twenty-six, not a hundred and twenty. A tool list is context every turn pays
+Thirty, not a hundred and fifty. A tool list is context every turn pays
 for, so the routes that exist for the UI to talk to itself are not here.
 
 ## Two things the tools do that a thin proxy would not
