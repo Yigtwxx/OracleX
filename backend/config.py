@@ -215,6 +215,59 @@ class Settings(BaseSettings):
     # round-trip and the log noise.
     EMAIL_DNS_CHECK_ENABLED: bool = True
 
+    # ── Outbound mail (alarm notifications) ─────────────────────────────────
+    # SMTP rather than a transactional-mail API, because the one thing this
+    # feature must not become is another paid dependency: an app password on an
+    # existing mailbox is enough, and every provider speaks this protocol.
+    #
+    # Empty SMTP_HOST disables outbound mail entirely. That is the default and
+    # it is not a degraded state — `POST /api/alarms/email/*` answers 503 with a
+    # message naming the missing configuration, and the frontend hides the
+    # whole panel rather than offering a button that cannot work.
+    SMTP_HOST: str = ""
+    # 587 is submission-with-STARTTLS, which is what every provider recommends.
+    # Use 465 with SMTP_SSL=true for implicit TLS, or 25 only on a local relay.
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    # Implicit TLS from the first byte (port 465). Mutually exclusive with
+    # STARTTLS, which is the default and upgrades a plaintext connection.
+    SMTP_SSL: bool = False
+    SMTP_STARTTLS: bool = True
+    SMTP_TIMEOUT: float = 20.0
+
+    # The envelope and header sender. Leave empty to use SMTP_USER, which is
+    # almost always what you want and is the *only* thing that survives Gmail:
+    # smtp.gmail.com rewrites a From that is not the authenticated account or
+    # one of its verified aliases. It matters beyond cosmetics — SPF and DKIM
+    # both authenticate against this domain, and a mismatch is the single
+    # largest reason a message that sends fine still lands in spam.
+    SMTP_FROM: str = ""
+    SMTP_FROM_NAME: str = "Oracle-X"
+    # Where a reply goes. Empty means the From address answers replies itself.
+    SMTP_REPLY_TO: str = ""
+
+    # Signs the token the browser gets after confirming an address, and which
+    # `POST /api/alarms/email/notify` requires. Without it that endpoint is an
+    # open relay: anyone could ask this backend to mail an arbitrary address.
+    # Empty means outbound alarm mail stays off even when SMTP is configured.
+    # Generate:
+    #   python -c "import secrets; print(secrets.token_urlsafe(48))"
+    ALARM_EMAIL_SECRET: str = ""
+    # How long a confirmation code stays valid, and how many may be requested
+    # for one address before it has to wait. Deliberately small: the code is
+    # typed from an inbox that is already open.
+    ALARM_EMAIL_CODE_TTL_SECONDS: int = 600
+    ALARM_EMAIL_CODE_MAX_ATTEMPTS: int = 5
+    # Ceiling on alarm notifications one confirmed address receives per hour.
+    # A misconfigured alarm on a busy feed is the realistic failure here, and it
+    # would otherwise mail someone until their provider stops trusting us.
+    ALARM_EMAIL_HOURLY_LIMIT: int = 30
+    # Where the "open the terminal" button in an alarm mail points. Empty falls
+    # back to the first entry in CORS_ORIGINS, which is the frontend by
+    # definition — the two would otherwise have to be kept in sync by hand.
+    APP_PUBLIC_URL: str = ""
+
     # ── Admin ───────────────────────────────────────────────────────────────
     # Comma-separated emails that get the admin panel, matched case-insensitively
     # against the *verified* email on the caller's JWT.
