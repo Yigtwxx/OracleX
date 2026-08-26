@@ -24,22 +24,35 @@ def _clear_detail_cache():
     home_cache.clear()
 
 
+# An arbitrary but fixed session open, so the stub payload carries the same
+# bar/quote timing relationship a live one does.
+SESSION_OPEN = 1_787_260_000
+
+
 def _chart_payload(price=200.0, prev_close=190.0, volume=1_000_000):
-    """Minimal Yahoo v8 chart response — the shape `fetch_stock_detail` reads."""
+    """
+    Minimal Yahoo v8 chart response — the shape `fetch_stock_detail` reads.
+
+    The reference close is the prior daily bar, not `chartPreviousClose`: over
+    the five-session range this endpoint is asked for, that field is five
+    sessions back and once put AAPL's card at +1.98% on a day it fell 1.75%.
+    """
     return {
         "chart": {
             "result": [
                 {
                     "meta": {
                         "regularMarketPrice": price,
-                        "chartPreviousClose": prev_close,
+                        "regularMarketTime": SESSION_OPEN + 3600,
                         "regularMarketVolume": volume,
                         "regularMarketDayHigh": price + 2,
                         "regularMarketDayLow": price - 2,
                         "fiftyTwoWeekHigh": price + 50,
                         "fiftyTwoWeekLow": price - 50,
                         "longName": "Acme Corp",
-                    }
+                    },
+                    "timestamp": [SESSION_OPEN - 86_400, SESSION_OPEN],
+                    "indicators": {"quote": [{"close": [prev_close, price]}]},
                 }
             ]
         }
