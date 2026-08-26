@@ -1,10 +1,16 @@
 """
 Liquidation Router
-Handles liquidation heatmap, history, levels, and market candles.
+Handles liquidation heatmap, history, levels, spans, profile, and market candles.
 """
 
+from typing import Literal
+
 from fastapi import APIRouter, Query
-from services.liquidation_map_service import get_liquidation_map
+from services.liquidation_map_service import (
+    get_liquidation_lines,
+    get_liquidation_map,
+    get_liquidation_profile,
+)
 from services.liquidation_service import liquidation_service
 
 router = APIRouter()
@@ -57,6 +63,47 @@ async def get_liquidation_map_route(
     `services/liquidation_map_service` for the model and its assumptions.
     """
     return await get_liquidation_map(symbol, interval=interval, columns=columns, bins=bins)
+
+
+@router.get("/api/liquidations/lines/{symbol}")
+async def get_liquidation_lines_route(
+    symbol: str,
+    interval: str = "1h",
+    columns: int = Query(160, ge=20, le=280),
+    bins: int = Query(120, ge=20, le=200),
+):
+    """
+    Get the same modelled liquidation map as spans rather than as a grid.
+
+    Each span runs from the column a level was opened at to the column price
+    swept it, and carries the leverage tier that produced it — the two things
+    the heatmap's cells collapse. `/api/liquidations/levels/{symbol}` is a
+    different thing entirely: that one counts liquidations that were observed.
+    """
+    return await get_liquidation_lines(symbol, interval=interval, columns=columns, bins=bins)
+
+
+@router.get("/api/liquidations/profile/{symbol}")
+async def get_liquidation_profile_route(
+    symbol: str,
+    interval: str = "1h",
+    columns: int = Query(160, ge=20, le=280),
+    bins: int = Query(120, ge=20, le=200),
+    venue: Literal["okx", "binance", "bybit", "all"] = "okx",
+):
+    """
+    Get the standing modelled liquidation book as a price profile.
+
+    The same simulation as the heatmap, stopped at the newest candle and kept
+    split by leverage tier: one entry per `[bin, tier_index, side, notional]`.
+    There is no time axis — `price` is the close the two sides divide at.
+
+    `venue` picks whose book: one exchange, or `all` for every one of them
+    re-binned onto a shared grid and summed.
+    """
+    return await get_liquidation_profile(
+        symbol, interval=interval, columns=columns, bins=bins, venue=venue
+    )
 
 
 @router.get("/api/market/candles/{symbol}")
