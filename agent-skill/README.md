@@ -47,7 +47,7 @@ That leaves two ways to install it honestly:
   remembered.
 
 If what you want is the terminal's numbers reaching the model *without being
-asked*, install [`mcp-server/`](../mcp-server/) instead — the same data as 26
+asked*, install [`mcp-server/`](../mcp-server/) instead — the same data as 30
 tools. A tool list is already in the model's context, so the only decision left
 is which one to call. Installing both is the normal case, not a contradiction:
 the skill is for writing code against Oracle-X, the tools are for asking it
