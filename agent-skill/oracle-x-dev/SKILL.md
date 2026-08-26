@@ -34,12 +34,13 @@ Four gates, all of them in CI, all of them cheap enough to run locally:
 ```bash
 cd backend && source venv/bin/activate
 ruff check . && ruff format --check .
-python -m pytest                                  # ~1634 tests, ~2 min
+python -m pytest                                  # ~1900 tests, ~2 min
 
 cd ../frontend
 npm run lint && npm run typecheck && npm test && npm run build
 
 cd .. && python scripts/build_agent_skill.py --check
+python scripts/build_repo_facts.py --check
 ```
 
 The last one exists because the API skill's endpoint reference is generated
