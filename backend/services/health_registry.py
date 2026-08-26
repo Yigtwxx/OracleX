@@ -111,6 +111,12 @@ CATEGORIES: tuple[Category, ...] = (
         False,
         ("Polymarket Gamma", "Polymarket CLOB", "Polymarket Data"),
     ),
+    # Outbound alarm mail. `stale_after_s=None` because nothing polls the relay
+    # — the age of this row measures how long since an alarm actually needed to
+    # send, and a quiet week is not a fault. Not critical: a dead relay costs
+    # one delivery channel while the toast, the sound and the OS notification
+    # all still fire.
+    Category("notifications", "Notifications", False, ("SMTP relay",), stale_after_s=None),
 )
 
 _BY_KEY = {c.key: c for c in CATEGORIES}
