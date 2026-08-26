@@ -29,6 +29,7 @@ from services.liquidation_service import liquidation_service
 # Import all routers
 from routers import (
     admin,
+    alarms,
     auth,
     news,
     llm as llm_router,
@@ -418,6 +419,7 @@ def create_app() -> FastAPI:
     app.include_router(rag.router)  # /api/rag/initialize, /api/rag/stats (v2), /api/rag/query
     app.include_router(chat.router)  # /api/chat, /api/chat/status, /api/chat/history
     app.include_router(auth.router)  # /api/auth/email/precheck
+    app.include_router(alarms.router)  # /api/alarms/email/*
     app.include_router(profile.router)  # /api/profile/*
     app.include_router(exchanges.router)  # /api/exchanges, /api/multi-exchange, /api/arbitrage
     app.include_router(websocket.router)  # /ws/prices, /api/websocket/status
