@@ -67,3 +67,11 @@ supabase>=2.0.0
 cachetools>=5.3.0
 # Encrypts per-user LLM API keys at rest (services/secret_box.py).
 cryptography>=42.0.0
+
+# ── Outbound mail ────────────────────────────────────────────────────────────
+# Renders the alarm notification and confirmation messages from
+# backend/templates/email/. Already arrived transitively (fastapi, chromadb);
+# named here because services/alarm_email_service.py imports it directly and a
+# dependency change upstream must not silently remove it. The SMTP transport
+# itself is stdlib — see services/email_delivery.py for why.
+jinja2>=3.1.0
