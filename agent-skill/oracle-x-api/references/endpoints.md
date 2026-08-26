@@ -590,6 +590,47 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
+### `GET /api/liquidations/lines/{symbol}`
+
+Get Liquidation Lines Route
+
+Get the same modelled liquidation map as spans rather than as a grid.
+
+Each span runs from the column a level was opened at to the column price
+swept it, and carries the leverage tier that produced it — the two things
+the heatmap's cells collapse. `/api/liquidations/levels/{symbol}` is a
+different thing entirely: that one counts liquidations that were observed.
+
+Parameters:
+- `symbol` (path, string, required)
+- `interval` (query, string, optional, default `'1h'`)
+- `columns` (query, integer, optional, default `160`)
+- `bins` (query, integer, optional, default `120`)
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/liquidations/profile/{symbol}`
+
+Get Liquidation Profile Route
+
+Get the standing modelled liquidation book as a price profile.
+
+The same simulation as the heatmap, stopped at the newest candle and kept
+split by leverage tier: one entry per `[bin, tier_index, side, notional]`.
+There is no time axis — `price` is the close the two sides divide at.
+
+`venue` picks whose book: one exchange, or `all` for every one of them
+re-binned onto a shared grid and summed.
+
+Parameters:
+- `symbol` (path, string, required)
+- `interval` (query, string, optional, default `'1h'`)
+- `columns` (query, integer, optional, default `160`)
+- `bins` (query, integer, optional, default `120`)
+- `venue` (query, 'okx' | 'binance' | 'bybit' | 'all', optional, default `'okx'`)
+
+Response shape is not declared on the route — inspect one call.
+
 ### `GET /api/onchain/whales`
 
 Get Whale Trades
