@@ -14,21 +14,28 @@ what a function does, how a component renders — read from the source.
                                 # backend :8000, frontend :3100
 
 cd backend && source venv/bin/activate
-python -m pytest                # 1634 tests, ~2min
+python -m pytest                # ~1900 tests, ~2min
 ruff check . && ruff format --check .
 
 cd frontend
-npm test                        # vitest, 260 tests
+npm test                        # vitest, ~450 tests
 npm run typecheck               # tsc --noEmit
 npm run lint && npm run build
 
 python scripts/build_agent_skill.py --check   # from repo root
+python scripts/build_repo_facts.py --check    # from repo root
 ```
 
-All four gates run in CI (`.github/workflows/ci.yml`) and all four must be
+All of these run in CI (`.github/workflows/ci.yml`) and all of them must be
 clean before a commit. `ruff` is configured in `backend/pyproject.toml` with
 `line-length = 100`; running it from the repo root picks up defaults instead,
 so run it from `backend/`.
+
+The test counts above are rounded on purpose. Exact ones belong in
+`frontend/lib/generated/repo-facts.ts`, which is generated from the collectors
+and checked by `build_repo_facts.py --check` — a precise figure written by hand
+anywhere else is wrong within a release, which is how this file came to claim
+1634 backend and 260 frontend tests long after both had grown.
 
 ## Shape of the code
 
