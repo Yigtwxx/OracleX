@@ -32,8 +32,16 @@ def fake_ddgs(monkeypatch):
             def __init__(self, timeout=5, **kwargs):
                 calls["timeout"] = timeout
 
-            def text(self, query, max_results=5):
+            def text(self, query, max_results=5, timelimit=None):
                 calls["query"] = query
+                calls["timelimit"] = timelimit
+                if raises is not None:
+                    raise raises
+                return list(hits or [])
+
+            def news(self, query, max_results=10, timelimit=None):
+                calls["query"] = query
+                calls["timelimit"] = timelimit
                 if raises is not None:
                     raise raises
                 return list(hits or [])
@@ -101,3 +109,77 @@ def test_chat_outer_bound_clears_the_inner_one():
 
     # Two searches run concurrently, so the inner budget is paid once, not twice.
     assert chat_tools.WEB_TIMEOUT > web_search_service.SEARCH_TIMEOUT
+
+
+def test_a_recency_window_is_handed_to_the_library(fake_ddgs):
+    calls = fake_ddgs.install(hits=[{"title": "t", "body": "b", "href": "u"}])
+
+    asyncio.run(web_search_service.search_web("btc", 3, timelimit="w"))
+
+    assert calls["timelimit"] == "w"
+
+
+def test_an_unsupported_window_is_dropped_rather_than_raised(fake_ddgs):
+    """
+    Two of the engines behind `backend="auto"` index a dict by this value, so
+    passing a custom date range through would raise KeyError inside the engine
+    and lose the whole search. An unnarrowed search is worth more than none.
+    """
+    calls = fake_ddgs.install(hits=[{"title": "t", "body": "b", "href": "u"}])
+
+    results = asyncio.run(
+        web_search_service.search_web("btc", 3, timelimit="2026-01-01..2026-02-01")
+    )
+
+    assert calls["timelimit"] is None
+    assert results == [{"title": "t", "snippet": "b", "url": "u"}]
+
+
+def test_the_window_is_part_of_the_cache_key(fake_ddgs):
+    """The same question asked about this week and about this year differ."""
+    fake_ddgs.install(hits=[{"title": "week", "body": "b", "href": "u"}])
+    asyncio.run(web_search_service.search_web("btc", 3, timelimit="w"))
+
+    fake_ddgs.install(hits=[{"title": "year", "body": "b", "href": "u"}])
+    fresh = asyncio.run(web_search_service.search_web("btc", 3, timelimit="y"))
+
+    assert fresh[0]["title"] == "year"
+
+
+def test_news_carries_the_publication_date_through(fake_ddgs):
+    fake_ddgs.install(
+        hits=[
+            {
+                "title": "t",
+                "body": "b",
+                "url": "u",
+                "date": "2026-03-14T09:00:00+00:00",
+                "source": "Reuters",
+            }
+        ]
+    )
+
+    results = asyncio.run(web_search_service.search_news("ceasefire", 3))
+
+    assert results == [
+        {
+            "title": "t",
+            "snippet": "b",
+            "url": "u",
+            "published_at": "2026-03-14T09:00:00+00:00",
+            "source": "Reuters",
+        }
+    ]
+
+
+def test_an_undated_story_stays_undated(fake_ddgs):
+    """
+    Stamping an unknown age with today's date would make an old story
+    indistinguishable from breaking news — the one mistake fetching a date is
+    meant to prevent. None means unknown, never recent.
+    """
+    fake_ddgs.install(hits=[{"title": "t", "body": "b", "url": "u", "source": "X"}])
+
+    results = asyncio.run(web_search_service.search_news("ceasefire", 3))
+
+    assert results[0]["published_at"] is None
