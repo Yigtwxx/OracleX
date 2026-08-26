@@ -103,6 +103,11 @@ backend/data/registry/stock_quotes.json
 backend/data/registry/stock_universe.json
 backend/data/registry/us_equities.json
 
+# Not a cache: the SMTP relay an admin configured from the Alarm Center. Holds an
+# encrypted mailbox password and the alarm-token signing secret; written
+# 0600 by services/mail_settings_service.py and never tracked.
+backend/data/mail_settings.json
+
 # iCloud Drive sync-conflict copies. The repo lives under an iCloud-synced
 # Desktop, which periodically forks a file as "liquidations 5.json" or
 # "ai 2.jpg". None of them are read by the app.
