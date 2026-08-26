@@ -37,6 +37,14 @@ class TestCategoryForUrl:
         assert category_for_url("https://query1.finance.yahoo.com/v8/chart") == "stocks"
         assert category_for_url("https://api.coingecko.com/api/v3/x") == "prices_crypto"
 
+    def test_the_wikipedia_api_reports_under_macro(self):
+        """
+        The electoral calendar's upstream. Without the host entry the call is
+        invisible to the badge — it succeeds, it fails, and either way nothing
+        on /api/system/health changes.
+        """
+        assert category_for_url("https://en.wikipedia.org/w/api.php") == "macro"
+
     def test_unmapped_hosts_are_not_attributed(self):
         assert category_for_url("https://example.invalid/feed") is None
         assert category_for_url("not a url") is None
