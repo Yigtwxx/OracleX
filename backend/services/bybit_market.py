@@ -36,14 +36,55 @@ KLINE_INTERVALS = {
     "30m": "30",
     "1h": "60",
     "4h": "240",
+    "1d": "D",
+    "1w": "W",
 }
 STAT_INTERVALS = {"5m": "5min", "15m": "15min", "30m": "30min", "1h": "1h", "4h": "4h"}
+
+# Minutes per unit, for reading a candle interval that neither table spells.
+_UNIT_MINUTES = {"m": 1, "h": 60, "d": 1440, "w": 10080}
 
 # The open-interest endpoint caps a page at 200 rows, well under the candle
 # one. Columns older than the last sample fall back to the volume-only path,
 # which the payload already reports through `stats_from_column`.
 MAX_OI_ROWS = 200
 MAX_RATIO_ROWS = 500
+
+
+def _minutes(interval: str) -> int:
+    """Length of a candle interval in minutes, or 0 when it cannot be read."""
+    text = interval.strip().lower()
+    unit = _UNIT_MINUTES.get(text[-1:])
+    if unit is None:
+        return 0
+    try:
+        return int(text[:-1]) * unit
+    except ValueError:
+        return 0
+
+
+def _stat_span(interval: str) -> str:
+    """
+    The span to ask the statistics endpoints for, given a candle interval.
+
+    The two statistics endpoints stop at four hours where the candle endpoint
+    runs to a week, so a daily or weekly candle has no span of its own. It gets
+    the coarsest one that still fits inside it rather than nothing: every caller
+    aligns these samples onto candles with a "last value at or before" rule, so
+    a finer series lands on a coarser candle correctly. It costs reach — the row
+    cap then covers fewer candles — and `stats_from_column` already reports
+    exactly that. Returning an empty list instead would drop Bybit out of the
+    model entirely at the intervals the longest windows are read at.
+    """
+    exact = STAT_INTERVALS.get(interval.lower())
+    if exact is not None:
+        return exact
+
+    wanted = _minutes(interval)
+    fitting = [span for key, span in STAT_INTERVALS.items() if _minutes(key) <= wanted]
+    # Nothing fits only when the candle is finer than the finest sample, and
+    # there the finest is still the right answer.
+    return fitting[-1] if fitting else next(iter(STAT_INTERVALS.values()))
 
 
 def to_bybit_symbol(symbol: str) -> str:
@@ -115,9 +156,7 @@ async def fetch_open_interest(symbol: str, interval: str, limit: int) -> List[Tu
 
     Not USD, unlike the other two venues — see the module docstring.
     """
-    span = STAT_INTERVALS.get(interval.lower())
-    if span is None:
-        return []
+    span = _stat_span(interval)
 
     try:
         payload = await get_json(
@@ -138,9 +177,7 @@ async def fetch_open_interest(symbol: str, interval: str, limit: int) -> List[Tu
 
 async def fetch_long_share(symbol: str, interval: str, limit: int) -> List[Tuple[int, float]]:
     """The share of accounts holding longs, as `(timestamp_ms, share)` oldest first."""
-    span = STAT_INTERVALS.get(interval.lower())
-    if span is None:
-        return []
+    span = _stat_span(interval)
 
     try:
         payload = await get_json(
