@@ -1,0 +1,90 @@
+{% extends "email/_layout.html" %}
+
+{#
+  The confirmation code.
+
+  Deliberately has no link in it. A code the reader retypes into the tab they
+  already have open cannot be phished by forwarding this message, cannot be
+  fired by a link scanner walking the inbox, and needs no public GET endpoint on
+  the backend to redeem. The whole flow closes inside the Alarm Center.
+#}
+
+{% block content %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td style="padding:28px 28px 0 28px;">
+      <h1
+        style="margin:0 0 8px 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:20px; line-height:28px; font-weight:600; color:#e8e8ea;"
+      >
+        Confirm your email address
+      </h1>
+      <p
+        style="margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:14px; line-height:22px; color:#9a9aa3;"
+      >
+        Enter the code below in the Alarm Center so alarm notifications can be sent to
+        <strong style="color:#e8e8ea; font-weight:600;">{{ email }}</strong>.
+      </p>
+    </td>
+  </tr>
+
+  <!-- The code. Its own panel, because it is the only thing on this page the
+       reader has to act on. -->
+  <tr>
+    <td style="padding:22px 28px 0 28px;">
+      <table
+        role="presentation"
+        width="100%"
+        cellpadding="0"
+        cellspacing="0"
+        border="0"
+        bgcolor="#17171b"
+        style="background-color:#17171b; border:1px solid #2f6feb; border-radius:10px;"
+      >
+        <tr>
+          <td align="center" style="padding:22px 16px 20px 16px;">
+            <div
+              style="font-family:'SFMono-Regular',ui-monospace,Menlo,Consolas,monospace; font-size:34px; line-height:40px; font-weight:600; letter-spacing:10px; color:#e8e8ea; text-indent:10px;"
+            >
+              {{ code }}
+            </div>
+            <div
+              style="margin-top:10px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:18px; color:#6b6b74;"
+            >
+              Valid for {{ ttl_minutes }} minutes
+            </div>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <tr>
+    <td style="padding:20px 28px 28px 28px;">
+      <table
+        role="presentation"
+        width="100%"
+        cellpadding="0"
+        cellspacing="0"
+        border="0"
+        style="border-top:1px solid #24242b;"
+      >
+        <tr>
+          <td style="padding-top:16px;">
+            <p
+              style="margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:13px; line-height:21px; color:#9a9aa3;"
+            >
+              If you did not ask for this, there is nothing to do — the code expires by
+              itself in {{ ttl_minutes }} minutes, and nothing is ever sent to an address
+              that has not confirmed one.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+{% endblock %}
+
+{% block footer_reason %}
+You are receiving this because this address was entered in the Oracle-X Alarm Center.
+{% endblock %}
