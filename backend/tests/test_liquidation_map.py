@@ -12,6 +12,7 @@ columns that are still left uncovered.
 import pytest
 
 from services import liquidation_map_service as lm
+from services import okx_market
 
 
 def _candles(count, *, start_ms=1_700_000_000_000, step_ms=3_600_000, close=100.0):
@@ -50,8 +51,8 @@ class TestRubikPeriodSelection:
         """
         candles = 220
         period = lm._rubik_period(interval, candles)
-        window_ms = dict(lm.RUBIK_WINDOW_MS)[period]
-        assert window_ms >= candles * lm.INTERVAL_MS[interval]
+        window_ms = dict(okx_market.RUBIK_WINDOW_MS)[period]
+        assert window_ms >= candles * okx_market.INTERVAL_MS[interval]
 
     def test_weekly_window_falls_back_to_the_coarsest(self):
         # 220 weeks is over four years; nothing OKX publishes reaches that far,
@@ -59,14 +60,14 @@ class TestRubikPeriodSelection:
         assert lm._rubik_period("1w", 220) == "1D"
 
     def test_unknown_interval_does_not_raise(self):
-        assert lm._rubik_period("nonsense", 220) in dict(lm.RUBIK_WINDOW_MS)
+        assert lm._rubik_period("nonsense", 220) in dict(okx_market.RUBIK_WINDOW_MS)
 
     def test_every_supported_interval_has_a_length(self):
         # A missing entry would silently fall back to the 1h default and pick a
         # period too fine for the window.
         from services.okx_market import OKX_BAR_BY_INTERVAL
 
-        assert set(OKX_BAR_BY_INTERVAL) <= set(lm.INTERVAL_MS)
+        assert set(OKX_BAR_BY_INTERVAL) <= set(okx_market.INTERVAL_MS)
 
 
 class TestStatsCoverageReporting:
