@@ -140,6 +140,14 @@ class Settings(BaseSettings):
     COINGECKO_API_KEY: str = ""
     COINGECKO_API_PLAN: str = "demo"  # "demo" | "pro"
 
+    # Coinalyze is the open-interest board's depth. The venue endpoints we
+    # already call keep roughly thirty days; Coinalyze never deletes its daily
+    # series, which is the only free way to reach the multi-year chart. Empty
+    # is a supported state — the board falls back to Binance/OKX/Bybit and says
+    # so — so this is a depth upgrade, not a dependency.
+    # Free key: https://coinalyze.net/account/api-key/
+    COINALYZE_API_KEY: str = ""
+
     # ── Feature flags ───────────────────────────────────────────────────────
     USE_REAL_API: bool = True
     USE_AI: bool = True
