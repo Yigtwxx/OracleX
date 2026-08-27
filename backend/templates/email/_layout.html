@@ -1,0 +1,134 @@
+{#
+  The shell every Oracle-X message is drawn in.
+
+  Written the way email is written and not the way the rest of this app is
+  written, on purpose. Three constraints drive every choice below and none of
+  them apply anywhere else in the codebase:
+
+    * Layout is nested `<table>`, not flexbox or grid. Outlook on Windows
+      renders through Word, which supports neither, and a `<div>` column stack
+      collapses there into one full-width run.
+    * Every style is an inline `style=""`. Gmail strips `<style>` blocks in
+      several of its clients, so a class-based rule is a rule that sometimes
+      exists — which is worse than one that never does.
+    * No remote images. Most clients block them until the reader clicks
+      "display images", and a design whose identity lives in a logo file is a
+      blank rectangle by default. The wordmark here is text, the accents are
+      table cells with a background colour, and the marks are Unicode.
+
+  Colours are lifted verbatim from `frontend/app/globals.css` so the message
+  reads as the same product as the terminal it came from. `color-scheme` tells
+  the handful of clients that repaint dark mail (Outlook.com, some Gmail
+  Android builds) to leave these alone rather than inverting them.
+#}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="supported-color-schemes" content="dark light" />
+    <title>{{ subject }}</title>
+  </head>
+  <body
+    style="margin:0; padding:0; width:100%; background-color:#0a0a0c; color:#e8e8ea; -webkit-font-smoothing:antialiased;"
+  >
+    {#
+      The preheader: the grey line a client prints next to the subject in the
+      inbox list. Left unset it fills itself with whatever text comes first,
+      which is usually the wordmark — the one thing the reader already knows.
+      The run of zero-width spaces after it stops the client from padding the
+      preview with the body text that follows.
+    #}
+    <div
+      style="display:none; font-size:1px; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden; mso-hide:all;"
+    >
+      {{ preheader }}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
+    </div>
+
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      bgcolor="#0a0a0c"
+      style="background-color:#0a0a0c; margin:0; padding:0;"
+    >
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table
+            role="presentation"
+            width="600"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            style="width:600px; max-width:100%; border-collapse:separate;"
+          >
+            <!-- Wordmark -->
+            <tr>
+              <td style="padding:0 4px 16px 4px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td
+                      style="width:3px; background-color:#2f6feb; border-radius:2px;"
+                      bgcolor="#2f6feb"
+                    >
+                      &nbsp;
+                    </td>
+                    <td style="padding-left:10px;">
+                      <span
+                        style="font-family:'SFMono-Regular',ui-monospace,Menlo,Consolas,monospace; font-size:13px; font-weight:600; letter-spacing:2.5px; color:#e8e8ea; text-transform:uppercase;"
+                        >Oracle&#8209;X</span
+                      >
+                      <span
+                        style="font-family:'SFMono-Regular',ui-monospace,Menlo,Consolas,monospace; font-size:11px; letter-spacing:1.5px; color:{{ eyebrow_color|default('#6b6b74') }}; text-transform:uppercase;"
+                        >&nbsp;&nbsp;{{ eyebrow }}</span
+                      >
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            {#
+              The card is opt-out. Most messages want the panel — it separates
+              the content from the page and is what the terminal's own surfaces
+              look like. The alarm notification does not: its argument is a
+              headline sitting on the page, and a border around that puts back
+              the dashboard framing the design deliberately dropped.
+            #}
+            <tr>
+              {% if framed|default(true) %}
+              <td
+                bgcolor="#111114"
+                style="background-color:#111114; border:1px solid #24242b; border-radius:12px; padding:0;"
+              >
+                {% block content %}{% endblock %}
+              </td>
+              {% else %}
+              <td style="padding:0;">{{ self.content() }}</td>
+              {% endif %}
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="padding:20px 8px 0 8px;">
+                <p
+                  style="margin:0 0 8px 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:19px; color:#6b6b74;"
+                >
+                  {% block footer_reason %}{% endblock %}
+                </p>
+                <p
+                  style="margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:19px; color:#6b6b74;"
+                >
+                  This is an automated notification, not investment advice.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
