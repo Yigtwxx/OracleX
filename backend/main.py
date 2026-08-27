@@ -34,6 +34,7 @@ from routers import (
     news,
     llm as llm_router,
     market,
+    derivatives,
     liquidation,
     watchlist,
     home,
@@ -407,6 +408,7 @@ def create_app() -> FastAPI:
         market.router
     )  # /api/fear-greed, /api/market-overview, /api/nasdaq-overview, /api/market/indices, /api/heatmap
     app.include_router(liquidation.router)  # /api/liquidations/*, /api/market/candles
+    app.include_router(derivatives.router)  # /api/derivatives/*
     app.include_router(watchlist.router)  # /api/home/watchlist
     app.include_router(home.router)  # /api/home/*, /api/onchain/whales
     app.include_router(macro.router)  # /api/macro/board
