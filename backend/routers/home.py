@@ -10,6 +10,7 @@ real readings ("no events this week", "0 Gwei / Low cost").
 
 from fastapi import APIRouter, HTTPException
 
+from services.asset_brief_service import SymbolNotFound, build_brief
 from services.home_service import (
     UpstreamUnavailable,
     fetch_funding_rates,
@@ -54,6 +55,23 @@ async def get_onchain_data():
     carries the metrics that did resolve.
     """
     return await fetch_onchain_data()
+
+
+@router.get("/api/home/asset-brief/{symbol}")
+async def get_asset_brief(symbol: str):
+    """
+    One asset's daily read: price, series, levels, the class-specific metric and
+    a short grounded note.
+
+    404 rather than a placeholder when the symbol resolves to nothing or nothing
+    can price it — a card carrying an invented price is worse than a card that
+    says it could not find the asset. Everything else degrades to null inside a
+    200, because a missing RSI is a missing badge and not a missing asset.
+    """
+    try:
+        return await build_brief(symbol)
+    except SymbolNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.get("/api/home/macro-calendar")
