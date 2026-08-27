@@ -75,6 +75,7 @@ CATEGORIES: tuple[Category, ...] = (
         (
             "mempool.space",
             "LlamaRPC",
+            "DefiLlama",
             "Blockscout",
             "Coin Metrics",
             "publicnode",
@@ -135,6 +136,10 @@ _HOST_MAP: dict[str, str] = {
     "coinbase.com": "prices_crypto",
     "api.coingecko.com": "prices_crypto",
     "pro-api.coingecko.com": "prices_crypto",
+    # Derivatives statistics for the open-interest board. It reads the same
+    # three exchanges the entries above name, so a Coinalyze outage costs the
+    # board its depth and nothing else in this category.
+    "api.coinalyze.net": "prices_crypto",
     # Macro. The specific subdomain rather than wikipedia.org, following the
     # Polymarket hosts below: the API is the only Wikimedia surface this app
     # touches, and a wildcard would silently adopt any future one.
@@ -149,6 +154,7 @@ _HOST_MAP: dict[str, str] = {
     # On-chain
     "mempool.space": "onchain",
     "llamarpc.com": "onchain",
+    "llama.fi": "onchain",
     "publicnode.com": "onchain",
     "blockscout.com": "onchain",
     "coinmetrics.io": "onchain",
