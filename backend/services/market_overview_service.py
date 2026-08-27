@@ -93,6 +93,7 @@ async def fetch_market_overview() -> dict:
                 "total_market_cap": global_data.get("total_market_cap", 0),
                 "btc_dominance": global_data.get("btc_dominance", 0),
                 "eth_dominance": global_data.get("eth_dominance", 0),
+                "usdt_dominance": global_data.get("usdt_dominance", 0),
                 "active_cryptocurrencies": global_data.get("active_cryptocurrencies", 0),
                 "timestamp": datetime.now().isoformat(),
             }
@@ -117,6 +118,7 @@ async def fetch_market_overview() -> dict:
         "total_market_cap": 0,
         "btc_dominance": 0,
         "eth_dominance": 0,
+        "usdt_dominance": 0,
         "active_cryptocurrencies": 0,
         "timestamp": datetime.now().isoformat(),
     }
@@ -132,6 +134,10 @@ async def _fetch_global_market_data(client: httpx.AsyncClient) -> dict:
                 "total_market_cap": data.get("total_market_cap", {}).get("usd", 0),
                 "btc_dominance": data.get("market_cap_percentage", {}).get("btc", 0),
                 "eth_dominance": data.get("market_cap_percentage", {}).get("eth", 0),
+                # Stablecoin share is the one dominance reading that says
+                # something about intent rather than about a coin: it rises when
+                # capital leaves risk without leaving the asset class.
+                "usdt_dominance": data.get("market_cap_percentage", {}).get("usdt", 0),
                 "active_cryptocurrencies": data.get("active_cryptocurrencies", 0),
             }
     except Exception as e:
