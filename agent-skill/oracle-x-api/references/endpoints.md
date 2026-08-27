@@ -556,6 +556,24 @@ Get real-time funding rates for the core OKX perpetuals, plus any outlier.
 
 Response shape is not declared on the route — inspect one call.
 
+### `GET /api/derivatives/open-interest/{symbol}`
+
+Open Interest
+
+Open interest per exchange, aligned index-for-index with price candles.
+
+`source` says which provider answered: `coinalyze` reaches back years on the
+daily series, `venues` is the exchanges' own ~30-day statistics endpoints.
+The returned `interval` reports what was actually served, which can be
+coarser than the one asked for when a provider does not publish it.
+
+Parameters:
+- `symbol` (path, string, required)
+- `interval` (query, '1h' | '4h' | '1d', optional, default `'1d'`)
+- `limit` (query, integer, optional, default `400`)
+
+Response shape is not declared on the route — inspect one call.
+
 ### `GET /api/liquidations/levels/{symbol}`
 
 Get Liquidation Levels
@@ -582,11 +600,16 @@ These are *estimated* liquidation levels derived from open interest, volume
 and the long/short ratio — not observed liquidations. See
 `services/liquidation_map_service` for the model and its assumptions.
 
+`venue` picks whose book is modelled, from that venue's own statistics.
+There is no `all` here, unlike the profile: this chart's price grid and time
+axis both come from one venue's candles.
+
 Parameters:
 - `symbol` (path, string, required)
 - `interval` (query, string, optional, default `'1h'`)
 - `columns` (query, integer, optional, default `160`)
 - `bins` (query, integer, optional, default `120`)
+- `venue` (query, 'okx' | 'binance' | 'bybit', optional, default `'okx'`)
 
 Response shape is not declared on the route — inspect one call.
 
@@ -601,11 +624,14 @@ swept it, and carries the leverage tier that produced it — the two things
 the heatmap's cells collapse. `/api/liquidations/levels/{symbol}` is a
 different thing entirely: that one counts liquidations that were observed.
 
+`venue` carries the same meaning and the same caveat as on the map route.
+
 Parameters:
 - `symbol` (path, string, required)
 - `interval` (query, string, optional, default `'1h'`)
 - `columns` (query, integer, optional, default `160`)
 - `bins` (query, integer, optional, default `120`)
+- `venue` (query, 'okx' | 'binance' | 'bybit', optional, default `'okx'`)
 
 Response shape is not declared on the route — inspect one call.
 
