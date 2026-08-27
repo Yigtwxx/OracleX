@@ -51,17 +51,42 @@ def to_binance_symbol(symbol: str) -> str:
     return cleaned
 
 
+# Minutes per unit, for reading a candle interval `STAT_PERIODS` does not list.
+_UNIT_MINUTES = {"m": 1, "h": 60, "d": 1440, "w": 10080}
+
+
+def _minutes(interval: str) -> int:
+    """Length of a candle interval in minutes, or 0 when it cannot be read."""
+    text = interval.strip().lower()
+    unit = _UNIT_MINUTES.get(text[-1:])
+    if unit is None:
+        return 0
+    try:
+        return int(text[:-1]) * unit
+    except ValueError:
+        return 0
+
+
 def _stat_period(interval: str) -> str:
-    """The statistics period to use for a candle interval, never finer than 5m."""
+    """
+    The statistics period to use for a candle interval, never finer than 5m.
+
+    A candle the list does not spell gets the coarsest period that still fits
+    inside it, because the samples are aligned onto candles with a "last value
+    at or before" rule and a finer series is correct there, only shorter in
+    reach. Weekly is the case that matters: it used to fall back to one hour,
+    and five hundred hourly rows cover three weeks of a chart that spans years,
+    so nearly every column was modelled from volume alone.
+    """
     wanted = interval.lower()
     if wanted in STAT_PERIODS:
         return wanted
-    # A candle finer than the finest sample still gets the finest sample; a
-    # coarser one that is not on the list rounds up to the nearest that is.
-    minutes = {"1m": 1, "3m": 3}.get(wanted)
-    if minutes is not None:
-        return "5m"
-    return "1h"
+
+    minutes = _minutes(wanted)
+    fitting = [period for period in STAT_PERIODS if _minutes(period) <= minutes]
+    # Nothing fits only when the candle is finer than the finest sample, and
+    # there the finest is still the right answer.
+    return fitting[-1] if fitting else STAT_PERIODS[0]
 
 
 async def fetch_candles(
