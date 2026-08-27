@@ -1,0 +1,155 @@
+{% extends "email/_layout.html" %}
+
+{#
+  One fired alarm.
+
+  Editorial rather than dashboard, and the difference is the argument it makes.
+  A card with a stripe and a badge says "a system emitted an event"; this says
+  the thing the reader actually wants to know, in a sentence, at the top —
+  "BTCUSDT rose above your $70,000.00 level." The figures follow to support it.
+  Someone reading on a phone at a glance gets the whole message from the
+  headline alone and never has to parse a layout.
+
+  So there is no card. The message sits directly on the page with generous
+  spacing and two hairlines, because chrome here would be decoration competing
+  with the one line that matters.
+
+  `tone` colours the eyebrow and the change figure only. Painting the headline
+  with it was tried and is worse: a whole sentence in green reads as a status
+  banner, which is the register this design is deliberately not in.
+
+  Every prose string — `headline`, `lead` — is written by the browser in
+  `lib/alarms/describe.ts`, the module whose entire job is turning an alarm into
+  an English sentence. Composing them here would mean a second implementation of
+  the same grammar in Jinja, in a language the alarm model is not defined in.
+#}
+
+{% block content %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td style="padding:0 8px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <!-- The headline carries the message. -->
+        <tr>
+          <td>
+            <h1
+              style="margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:29px; line-height:39px; font-weight:600; letter-spacing:-0.5px; color:#e8e8ea;"
+            >
+              {{ headline }}
+            </h1>
+          </td>
+        </tr>
+
+        {% if lead %}
+        <tr>
+          <td style="padding-top:16px;">
+            <p
+              style="margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:16px; line-height:26px; color:#9a9aa3;"
+            >
+              {{ lead }}
+            </p>
+          </td>
+        </tr>
+        {% endif %}
+
+        <!-- The figures, between two hairlines. Rendered as a row of cells
+             rather than a bordered table: the rules above and below already
+             group them, and a box would put the card back. -->
+        <tr>
+          <td style="padding-top:30px;">
+            <table
+              role="presentation"
+              width="100%"
+              cellpadding="0"
+              cellspacing="0"
+              border="0"
+              style="border-top:1px solid #24242b; border-bottom:1px solid #24242b;"
+            >
+              <tr>
+                <td style="padding:20px 0;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      {# Width from the count, so a state alarm with only a
+                         reading fills the row instead of hugging the left third. #}
+                      {% set column_width = (100 // stats|length) ~ '%' %}
+                      {% for label, value, colour in stats %}
+                      <td
+                        width="{{ column_width }}"
+                        style="width:{{ column_width }}; padding:0 12px 0 0; vertical-align:top;"
+                      >
+                        <div
+                          style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:11px; letter-spacing:1.4px; text-transform:uppercase; color:#6b6b74; padding-bottom:6px;"
+                        >
+                          {{ label }}
+                        </div>
+                        <div
+                          style="font-family:'SFMono-Regular',ui-monospace,Menlo,Consolas,monospace; font-size:19px; line-height:26px; color:{{ colour }};"
+                        >
+                          {{ value }}
+                        </div>
+                      </td>
+                      {% endfor %}
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Provenance. Quiet, left-aligned, in the body face — this is the
+             part a reader consults rather than reads. -->
+        <tr>
+          <td style="padding-top:24px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              {% for label, value in meta %}
+              <tr>
+                <td
+                  width="120"
+                  style="width:120px; padding:5px 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:13px; line-height:20px; color:#6b6b74; vertical-align:top;"
+                >
+                  {{ label }}
+                </td>
+                <td
+                  style="padding:5px 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:13px; line-height:20px; color:#9a9aa3;"
+                >
+                  {{ value }}
+                </td>
+              </tr>
+              {% endfor %}
+            </table>
+          </td>
+        </tr>
+
+        {% if app_url %}
+        <!-- Outline rather than filled: a solid blue block would be the loudest
+             thing on a page whose argument is the headline. The padding lives on
+             the <a>, so a client that drops cell padding still renders a
+             clickable block rather than a bare word. -->
+        <tr>
+          <td style="padding-top:28px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="border:1px solid #2f6feb; border-radius:6px;">
+                  <a
+                    href="{{ app_url }}"
+                    style="display:inline-block; padding:11px 24px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:14px; font-weight:500; line-height:20px; color:#2f6feb; text-decoration:none;"
+                    >Open the terminal</a
+                  >
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        {% endif %}
+      </table>
+    </td>
+  </tr>
+</table>
+{% endblock %}
+
+{% block footer_reason %}
+You are receiving this because this address was confirmed for email alerts in the
+Oracle-X Alarm Center. To stop them, remove the address under Alarm Center &rsaquo;
+Email Alerts.
+{% endblock %}
