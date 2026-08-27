@@ -17,8 +17,9 @@ normalise them.
 
 import asyncio
 import logging
+from bisect import bisect_right
 from itertools import groupby
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from services.http_client import get_json
 
@@ -456,3 +457,135 @@ async def fetch_many_recent_trades(
         return_exceptions=True,
     )
     return {symbol: trades for symbol, trades in zip(symbols, results) if isinstance(trades, list)}
+
+
+# ── Derivatives statistics ("rubik") ─────────────────────────────────────────
+#
+# These live here rather than in the liquidation model that first needed them
+# because they are not a property of that model: they are how OKX publishes
+# open interest, and the open-interest board reads the same series. Keeping one
+# copy is also the only way the two features cannot disagree about what OKX
+# said.
+
+OKX_RUBIK_URL = "https://www.okx.com/api/v5/rubik/stat/contracts"
+
+MINUTE_MS = 60_000
+
+# Length of one candle at each interval the app accepts, used to work out how
+# far back a requested window reaches.
+INTERVAL_MS = {
+    "1m": MINUTE_MS,
+    "3m": 3 * MINUTE_MS,
+    "5m": 5 * MINUTE_MS,
+    "15m": 15 * MINUTE_MS,
+    "30m": 30 * MINUTE_MS,
+    "1h": 60 * MINUTE_MS,
+    "2h": 120 * MINUTE_MS,
+    "4h": 240 * MINUTE_MS,
+    "6h": 360 * MINUTE_MS,
+    "12h": 720 * MINUTE_MS,
+    "1d": 1440 * MINUTE_MS,
+    "1w": 7 * 1440 * MINUTE_MS,
+}
+
+# How far back each statistics resolution reaches. OKX returns a fixed number of
+# points per period rather than honouring `limit`, so the period *is* the window.
+RUBIK_WINDOW_MS: Tuple[Tuple[str, int], ...] = (
+    ("5m", 576 * 5 * MINUTE_MS),  # 2 days
+    ("1H", 720 * 60 * MINUTE_MS),  # 30 days
+    ("1D", 180 * 1440 * MINUTE_MS),  # 180 days
+)
+
+
+def rubik_period(interval: str, candles: int) -> str:
+    """
+    Pick the finest statistics resolution that still spans the whole window.
+
+    A fine period on a long chart simply runs out partway back, and every candle
+    older than that gets no sample at all. A coarser period samples each candle
+    less precisely but covers the entire window, which is the better trade. When
+    even the coarsest falls short, use it anyway and let the caller mark how much
+    of the series is left uncovered.
+    """
+    span_ms = candles * INTERVAL_MS.get(interval, 60 * MINUTE_MS)
+    for period, window_ms in RUBIK_WINDOW_MS:
+        if window_ms >= span_ms:
+            return period
+    return RUBIK_WINDOW_MS[-1][0]
+
+
+async def fetch_rubik_series(
+    endpoint: str, ccy: str, period: str, value_index: int
+) -> List[Tuple[int, float]]:
+    """
+    Fetch one OKX "rubik" statistics series as chronological (timestamp, value).
+
+    Returns an empty list on any failure; the caller degrades to a neutral
+    assumption rather than failing the whole chart.
+    """
+    try:
+        payload = await get_json(
+            f"{OKX_RUBIK_URL}/{endpoint}",
+            # `limit` is accepted but ignored — OKX always returns the period's
+            # full fixed window. Sent at its maximum for documentation value.
+            params={"ccy": ccy, "period": period, "limit": "1000"},
+            timeout=15.0,
+        )
+    except Exception as e:
+        logger.warning(f"OKX {endpoint} failed for {ccy}: {e}")
+        return []
+
+    if payload.get("code") != "0":
+        logger.warning(f"OKX {endpoint} for {ccy} returned: {payload.get('msg')}")
+        return []
+
+    series: List[Tuple[int, float]] = []
+    for row in payload.get("data") or []:
+        try:
+            series.append((int(row[0]), float(row[value_index])))
+        except (IndexError, TypeError, ValueError):
+            continue
+
+    series.sort(key=lambda item: item[0])
+    return series
+
+
+async def fetch_open_interest(symbol: str, interval: str, limit: int) -> List[Tuple[int, float]]:
+    """
+    Open interest in USD, as `(timestamp_ms, value)` oldest first.
+
+    Signature matches `binance_market.fetch_open_interest` and
+    `bybit_market.fetch_open_interest` so callers can fan out over the three
+    venues without special-casing any of them. Unlike those two, OKX reports per
+    *currency* rather than per contract, so the figure covers every one of that
+    asset's OKX perpetuals rather than a single pair.
+    """
+    base, _ = split_symbol(symbol)
+    if not base:
+        return []
+    return await fetch_rubik_series("open-interest-volume", base, rubik_period(interval, limit), 1)
+
+
+def align_to_candles(
+    series: Sequence[Tuple[int, float]], candle_times_ms: Sequence[int]
+) -> List[Optional[float]]:
+    """
+    Sample `series` at each candle, taking the last value at or before it.
+
+    The statistics endpoints run on their own (coarser) clock, so this is a
+    step-wise lookup rather than an index-for-index join. An index join would
+    not fail loudly — it would quietly attribute one candle's open interest to
+    another, which is exactly the kind of plausible wrong number this codebase
+    refuses to print.
+    """
+    if not series:
+        return [None] * len(candle_times_ms)
+
+    timestamps = [ts for ts, _ in series]
+    values = [value for _, value in series]
+
+    aligned: List[Optional[float]] = []
+    for candle_ms in candle_times_ms:
+        position = bisect_right(timestamps, candle_ms) - 1
+        aligned.append(values[position] if position >= 0 else None)
+    return aligned
