@@ -54,6 +54,7 @@ async def get_liquidation_map_route(
     interval: str = "1h",
     columns: int = Query(160, ge=20, le=280),
     bins: int = Query(120, ge=20, le=200),
+    venue: Literal["okx", "binance", "bybit"] = "okx",
 ):
     """
     Get the modelled liquidation heatmap (Coinglass-style) for a symbol.
@@ -61,8 +62,14 @@ async def get_liquidation_map_route(
     These are *estimated* liquidation levels derived from open interest, volume
     and the long/short ratio — not observed liquidations. See
     `services/liquidation_map_service` for the model and its assumptions.
+
+    `venue` picks whose book is modelled, from that venue's own statistics.
+    There is no `all` here, unlike the profile: this chart's price grid and time
+    axis both come from one venue's candles.
     """
-    return await get_liquidation_map(symbol, interval=interval, columns=columns, bins=bins)
+    return await get_liquidation_map(
+        symbol, interval=interval, columns=columns, bins=bins, venue=venue
+    )
 
 
 @router.get("/api/liquidations/lines/{symbol}")
@@ -71,6 +78,7 @@ async def get_liquidation_lines_route(
     interval: str = "1h",
     columns: int = Query(160, ge=20, le=280),
     bins: int = Query(120, ge=20, le=200),
+    venue: Literal["okx", "binance", "bybit"] = "okx",
 ):
     """
     Get the same modelled liquidation map as spans rather than as a grid.
@@ -79,8 +87,12 @@ async def get_liquidation_lines_route(
     swept it, and carries the leverage tier that produced it — the two things
     the heatmap's cells collapse. `/api/liquidations/levels/{symbol}` is a
     different thing entirely: that one counts liquidations that were observed.
+
+    `venue` carries the same meaning and the same caveat as on the map route.
     """
-    return await get_liquidation_lines(symbol, interval=interval, columns=columns, bins=bins)
+    return await get_liquidation_lines(
+        symbol, interval=interval, columns=columns, bins=bins, venue=venue
+    )
 
 
 @router.get("/api/liquidations/profile/{symbol}")
