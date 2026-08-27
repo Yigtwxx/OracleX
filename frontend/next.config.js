@@ -43,6 +43,14 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      // The page was called Heatmap while three of its eight views were
+      // heatmaps. Permanent, because the old path is in browser histories and
+      // bookmarks and there is nothing left at it.
+      { source: '/heatmap', destination: '/derivatives', permanent: true },
+    ];
+  },
 };
 
 module.exports = nextConfig;
