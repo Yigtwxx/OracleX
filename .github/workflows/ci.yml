@@ -68,8 +68,8 @@ jobs:
       - name: Build
         run: npm run build
 
-  agent-skill:
-    name: Agent skill (endpoint reference is current)
+  generated:
+    name: Generated files (endpoint reference + repository facts)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -81,12 +81,40 @@ jobs:
       - name: Install backend dependencies
         run: pip install -r backend/requirements-dev.txt
 
+      # Only for the test count. The MCP tool list itself is read out of the
+      # source with `ast`, precisely so this job does not depend on the SDK —
+      # but collecting mcp-server's own tests does import it.
+      - name: Install MCP server
+        run: pip install -e mcp-server
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
       # The skill's endpoint reference is generated from the app's own OpenAPI
       # schema. Without this gate a route rename ships a skill that documents a
       # path the API no longer serves — and the agent reading it has no way to
       # tell the difference between a stale document and missing data.
       - name: Check generated reference
         run: python scripts/build_agent_skill.py --check
+
+      # `/developers` states this repository's own numbers. Hand-maintained they
+      # were wrong within a release and stayed wrong: three documents claimed 26
+      # MCP tools long after there were 30, and the frontend suite was reported
+      # 70 tests short because someone had counted `it(` and never saw the
+      # parametrised tables. These now come from the collectors.
+      #
+      # This job runs in parallel with the others and is not on the critical
+      # path — that belongs to the frontend build — so the extra installs cost
+      # no wall-clock time.
+      - name: Check generated repository facts
+        run: python scripts/build_repo_facts.py --check
 
   mcp-server:
     name: MCP server (lint + tests)
