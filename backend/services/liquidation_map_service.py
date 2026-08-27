@@ -40,19 +40,19 @@ are inspectable rather than buried in the arithmetic.
 
 import asyncio
 import logging
-from bisect import bisect_right
 from itertools import chain, zip_longest
 from typing import Any, Dict, List, NamedTuple, Optional, Sequence, Tuple
 
 from services import binance_market, bybit_market
 from services.cache import ServiceCache
-from services.http_client import get_json
 from services.liquidation_service import liquidation_service
 from services.okx_market import OKX_MAX_CANDLES, to_okx_inst_id
+from services.okx_market import align_to_candles as _align_to_candles
+from services.okx_market import fetch_rubik_series as _fetch_rubik_series
+from services.okx_market import rubik_period as _rubik_period
 
 logger = logging.getLogger(__name__)
 
-OKX_RUBIK_URL = "https://www.okx.com/api/v5/rubik/stat/contracts"
 
 # Named in the payload rather than left for the client to assume. Both views are
 # a *model*, and which venue's book they model is part of reading them: OKX's
@@ -82,35 +82,6 @@ VENUE_LABELS = {
 # label reads the same from one refresh to the next.
 AGGREGATED_VENUES = (BINANCE_VENUE, OKX_VENUE, BYBIT_VENUE)
 
-MINUTE_MS = 60_000
-
-# Length of one candle at each interval the map accepts, used to work out how
-# far back the requested window reaches.
-INTERVAL_MS = {
-    "1m": MINUTE_MS,
-    "3m": 3 * MINUTE_MS,
-    "5m": 5 * MINUTE_MS,
-    "15m": 15 * MINUTE_MS,
-    "30m": 30 * MINUTE_MS,
-    "1h": 60 * MINUTE_MS,
-    "2h": 120 * MINUTE_MS,
-    "4h": 240 * MINUTE_MS,
-    "6h": 360 * MINUTE_MS,
-    "12h": 720 * MINUTE_MS,
-    "1d": 1440 * MINUTE_MS,
-    "1w": 7 * 1440 * MINUTE_MS,
-}
-
-# OKX publishes the aggregate statistics at three resolutions only, and serves a
-# fixed number of rows per resolution regardless of the `limit` we ask for
-# (measured: 5m → 576 rows, 1H → 720, 1D → 180). So each period reaches back a
-# fixed distance and no further, finest first.
-RUBIK_WINDOW_MS: Tuple[Tuple[str, int], ...] = (
-    ("5m", 576 * 5 * MINUTE_MS),  # 2 days
-    ("1H", 720 * 60 * MINUTE_MS),  # 30 days
-    ("1D", 180 * 1440 * MINUTE_MS),  # 180 days
-)
-
 # One emitted span: (start_column, end_column, bin, leverage, side, notional).
 # `side` is 0 for longs and 1 for shorts.
 LineRecord = Tuple[int, int, int, int, int, float]
@@ -123,30 +94,29 @@ LineRecord = Tuple[int, int, int, int, int, float]
 VOLUME_OPEN_RATIO = 0.06
 
 # How the opened notional is assumed to distribute over leverage. Skewed toward
-# mid leverage: 100x exists but carries far less size than the 10–50x band.
+# mid leverage: 100x exists but carries far less size than the 10-50x band.
+#
+# Ten sample points rather than the four this started with, because at four the
+# table stops being a distribution and becomes visible as the model's own
+# scaffolding. A tier liquidates a fixed fraction from its entry, so it lands as
+# a band about as wide as the window's traded range, and four bands do not
+# touch: their distances from spot are 0.6%, 1.6%, 3.6% and 9.6%, which leaves a
+# six-percent desert between the last two where every view drew nothing at all.
+# That emptiness is an artefact of where the samples were taken, not a price
+# nobody is levered into, and on the profile — where a bar *is* a price — it was
+# the most misleading thing on the page. Ten points close the gaps to roughly
+# one band's width.
+#
+# Grouped, the weights reproduce the coarse table they replaced: 10-20x carries
+# 0.29 against its 0.28, 25-40x 0.30 against 0.30, 50-75x 0.25 against 0.26, and
+# 100-125x 0.16 against 0.16. So this is a resolution change, not a change to
+# what the model believes.
+#
+# The floor stays at 10x on purpose. `MAX_LEVERAGE_DISTANCE` is derived from it,
+# so a 5x tier would liquidate outside the price grid and be dropped in silence,
+# and widening the grid to admit one would stretch every view's geometry to draw
+# a band that carries almost no weight.
 LEVERAGE_TIERS: Tuple[Tuple[int, float], ...] = (
-    (10, 0.28),
-    (25, 0.30),
-    (50, 0.26),
-    (100, 0.16),
-)
-
-# The same distribution at the resolution the levels view draws at.
-#
-# `LEVERAGE_TIERS` is deliberately coarse: the heatmap sums every tier into one
-# cell, so four sample points already spend the whole grid. A span, though, *is*
-# its tier — four of them draw four bands where the market has a continuum, and
-# the chart then reads as a diagram of the model's assumptions rather than as
-# the book. Ten tiers cost nothing (the simulation is per candle, not per tier)
-# and put the picture back.
-#
-# Grouped, the weights reproduce `LEVERAGE_TIERS`: 10-20x carries 0.29 against
-# its 0.28, 25-40x 0.30 against 0.30, 50-75x 0.25 against 0.26, and 100-125x
-# 0.16 against 0.16. The floor stays at 10x on purpose — `MAX_LEVERAGE_DISTANCE`
-# is derived from the coarse table, so a 5x tier would liquidate outside the
-# shared price grid and be dropped in silence, and widening the grid here would
-# break the one geometry both views are pinned to.
-LINE_LEVERAGE_TIERS: Tuple[Tuple[int, float], ...] = (
     (10, 0.12),
     (15, 0.09),
     (20, 0.08),
@@ -195,7 +165,7 @@ CELL_FLOOR = 0.004
 LINE_FLOOR = 0.002
 
 # Safety valve on the payload. The structural bound is
-# `simulated candles * len(LINE_LEVERAGE_TIERS) * 2`, 6000 at OKX's candle
+# `simulated candles * len(LEVERAGE_TIERS) * 2`, 6000 at OKX's candle
 # limit, and a realistic window measures around half that. Set where the picture
 # is still dense enough to read as a book rather than as a sample of one: at
 # roughly 23 bytes a span this is under 100 KB, a third of what the heatmap's
@@ -205,85 +175,6 @@ MAX_LINES = 4000
 CACHE_TTL_SECONDS = 120
 
 _map_cache = ServiceCache(maxsize=32)
-
-
-# ── OKX statistics ───────────────────────────────────────────────────────────
-
-
-def _rubik_period(interval: str, candles: int) -> str:
-    """
-    Pick the finest statistics resolution that still spans the whole window.
-
-    A fine period on a long chart simply runs out partway back, and every candle
-    older than that gets no open-interest or long/short sample at all — the model
-    then falls back to volume alone with a neutral split. A coarser period
-    samples each candle less precisely but covers the entire window, which is the
-    better trade. When even the coarsest falls short, use it anyway and let
-    `stats_from_column` mark how much of the map is left uncovered.
-    """
-    span_ms = candles * INTERVAL_MS.get(interval, 60 * MINUTE_MS)
-    for period, window_ms in RUBIK_WINDOW_MS:
-        if window_ms >= span_ms:
-            return period
-    return RUBIK_WINDOW_MS[-1][0]
-
-
-async def _fetch_rubik_series(
-    endpoint: str, ccy: str, period: str, value_index: int
-) -> List[Tuple[int, float]]:
-    """
-    Fetch one OKX "rubik" statistics series as chronological (timestamp, value).
-
-    Returns an empty list on any failure; the caller degrades to a neutral
-    assumption rather than failing the whole map.
-    """
-    try:
-        payload = await get_json(
-            f"{OKX_RUBIK_URL}/{endpoint}",
-            # `limit` is accepted but ignored — OKX always returns the period's
-            # full fixed window. Sent at its maximum for documentation value.
-            params={"ccy": ccy, "period": period, "limit": "1000"},
-            timeout=15.0,
-        )
-    except Exception as e:
-        logger.warning(f"OKX {endpoint} failed for {ccy}: {e}")
-        return []
-
-    if payload.get("code") != "0":
-        logger.warning(f"OKX {endpoint} for {ccy} returned: {payload.get('msg')}")
-        return []
-
-    series: List[Tuple[int, float]] = []
-    for row in payload.get("data") or []:
-        try:
-            series.append((int(row[0]), float(row[value_index])))
-        except (IndexError, TypeError, ValueError):
-            continue
-
-    series.sort(key=lambda item: item[0])
-    return series
-
-
-def _align_to_candles(
-    series: Sequence[Tuple[int, float]], candle_times_ms: Sequence[int]
-) -> List[Optional[float]]:
-    """
-    Sample `series` at each candle, taking the last value at or before it.
-
-    The statistics endpoints run on their own (coarser) clock, so this is a
-    step-wise lookup rather than an index-for-index join.
-    """
-    if not series:
-        return [None] * len(candle_times_ms)
-
-    timestamps = [ts for ts, _ in series]
-    values = [value for _, value in series]
-
-    aligned: List[Optional[float]] = []
-    for candle_ms in candle_times_ms:
-        position = bisect_right(timestamps, candle_ms) - 1
-        aligned.append(values[position] if position >= 0 else None)
-    return aligned
 
 
 # ── Model ────────────────────────────────────────────────────────────────────
@@ -511,7 +402,7 @@ def _simulate_lines(
             long_notional = notional * long_shares[index]
             short_notional = notional - long_notional
 
-            for leverage, weight in LINE_LEVERAGE_TIERS:
+            for leverage, weight in LEVERAGE_TIERS:
                 distance = 1.0 / leverage - MAINTENANCE_MARGIN_RATE
 
                 for side, price, amount in (
@@ -537,7 +428,7 @@ def _simulate_lines(
         for key, record in book[cell].items():
             emit(cell, key, record, len(candles) - 1)
 
-    tiers = [tier for tier, _ in LINE_LEVERAGE_TIERS]
+    tiers = [tier for tier, _ in LEVERAGE_TIERS]
     tier_max: Dict[int, float] = dict.fromkeys(tiers, 0.0)
     for line in closed:
         tier_max[line[3]] = max(tier_max[line[3]], line[5])
@@ -772,7 +663,9 @@ async def _load_inputs(
     return inputs
 
 
-def _empty_result(inst_id: str, interval: str, bins: int) -> Dict[str, Any]:
+def _empty_result(
+    inst_id: str, interval: str, bins: int, exchange: str = EXCHANGE
+) -> Dict[str, Any]:
     """
     The fields every payload carries, with the geometry zeroed.
 
@@ -780,10 +673,14 @@ def _empty_result(inst_id: str, interval: str, bins: int) -> Dict[str, Any]:
     frontend renders it as "no data" rather than as a broken chart. Every key is
     still present, because an omitted field reads to the client as a lookup that
     never happened rather than as an emptiness that was measured.
+
+    `exchange` names the venue that came back empty rather than defaulting to
+    OKX, because the header keeps showing it: a Bybit request that answered with
+    nothing would otherwise say "OKX" above an empty chart.
     """
     return {
         "symbol": inst_id,
-        "exchange": EXCHANGE,
+        "exchange": exchange,
         "interval": interval,
         "candles": [],
         "bins": bins,
@@ -814,6 +711,7 @@ async def get_liquidation_map(
     interval: str = "1h",
     columns: int = 160,
     bins: int = 120,
+    venue: str = OKX_VENUE,
 ) -> Dict[str, Any]:
     """
     Build the liquidation map for `symbol`.
@@ -822,19 +720,26 @@ async def get_liquidation_map(
     `[column, bin, long_usd, short_usd]`, plus the grid geometry needed to place
     those cells on a price/time chart. Results are cached briefly because the
     simulation replays the whole window on every call.
+
+    `venue` picks whose book is modelled, the same way it does on the profile.
+    There is no aggregate here: this chart has a time axis and a price grid that
+    both come from one venue's candles, and summing three of them would mean
+    re-binning every cell twice — once onto a shared price grid and once onto a
+    shared clock. The profile can aggregate because it has neither axis.
     """
-    inst_id = to_okx_inst_id(symbol)
+    inst_id = _venue_inst_id(venue, symbol)
+    exchange = VENUE_LABELS.get(venue, EXCHANGE)
     interval, columns, bins = _clamp(interval, columns, bins)
 
-    cache_key = f"map:{inst_id}:{interval}:{columns}:{bins}"
+    cache_key = f"map:{venue}:{inst_id}:{interval}:{columns}:{bins}"
     cached = _map_cache.get(cache_key)
     if cached is not None:
         return cached
 
-    inputs = await _load_inputs(inst_id, interval, columns)
+    inputs = await _load_inputs(inst_id, interval, columns, venue=venue)
 
     if inputs is None:
-        empty = _empty_result(inst_id, interval, bins)
+        empty = _empty_result(inst_id, interval, bins, exchange)
         empty["cells"] = []
         stale = _map_cache.get_with_fallback(cache_key)
         return stale if stale is not None else empty
@@ -844,7 +749,7 @@ async def get_liquidation_map(
     result.update(
         {
             "symbol": inst_id,
-            "exchange": EXCHANGE,
+            "exchange": exchange,
             "interval": interval,
             "candles": inputs.candles[inputs.emit_from :],
             "interval_ms": inputs.interval_ms,
@@ -862,6 +767,7 @@ async def get_liquidation_lines(
     interval: str = "1h",
     columns: int = 160,
     bins: int = 120,
+    venue: str = OKX_VENUE,
 ) -> Dict[str, Any]:
     """
     Build the same map as spans rather than as a grid.
@@ -873,24 +779,29 @@ async def get_liquidation_lines(
     the last column is a level still standing. `side` is 0 for longs and 1 for
     shorts, and `tier_max` gives each leverage tier's strongest span so a client
     can scale intensity per tier instead of flattening the high-leverage band.
+
+    `venue` picks whose book is modelled, and carries the same caveat as the
+    map: no aggregate, because the spans are indexed by column and bin and both
+    belong to one venue's candles.
     """
-    inst_id = to_okx_inst_id(symbol)
+    inst_id = _venue_inst_id(venue, symbol)
+    exchange = VENUE_LABELS.get(venue, EXCHANGE)
     interval, columns, bins = _clamp(interval, columns, bins)
 
-    cache_key = f"lines:{inst_id}:{interval}:{columns}:{bins}"
+    cache_key = f"lines:{venue}:{inst_id}:{interval}:{columns}:{bins}"
     cached = _map_cache.get(cache_key)
     if cached is not None:
         return cached
 
-    inputs = await _load_inputs(inst_id, interval, columns)
+    inputs = await _load_inputs(inst_id, interval, columns, venue=venue)
 
     if inputs is None:
-        empty = _empty_result(inst_id, interval, bins)
+        empty = _empty_result(inst_id, interval, bins, exchange)
         empty.update(
             {
                 "lines": [],
-                "leverage_tiers": [tier for tier, _ in LINE_LEVERAGE_TIERS],
-                "tier_max": [0 for _ in LINE_LEVERAGE_TIERS],
+                "leverage_tiers": [tier for tier, _ in LEVERAGE_TIERS],
+                "tier_max": [0 for _ in LEVERAGE_TIERS],
             }
         )
         stale = _map_cache.get_with_fallback(cache_key)
@@ -903,11 +814,11 @@ async def get_liquidation_lines(
     result.update(
         {
             "symbol": inst_id,
-            "exchange": EXCHANGE,
+            "exchange": exchange,
             "interval": interval,
             "candles": inputs.candles[inputs.emit_from :],
             "interval_ms": inputs.interval_ms,
-            "leverage_tiers": [tier for tier, _ in LINE_LEVERAGE_TIERS],
+            "leverage_tiers": [tier for tier, _ in LEVERAGE_TIERS],
             "stats_from_column": inputs.stats_from_column,
         }
     )
@@ -927,14 +838,13 @@ def _venue_inst_id(venue: str, symbol: str) -> str:
 
 def _empty_profile(inst_id: str, interval: str, bins: int, exchange: str) -> Dict[str, Any]:
     """The profile's shape with the geometry zeroed."""
-    empty = _empty_result(inst_id, interval, bins)
+    empty = _empty_result(inst_id, interval, bins, exchange)
     # A profile is one moment. These two would be answering a question the
     # payload does not ask, and a client that found them would draw a series the
     # numbers do not describe.
     empty.pop("candles")
     empty.pop("interval_ms")
     empty.update({"levels": [], "price": 0.0, "total_long": 0, "total_short": 0})
-    empty["exchange"] = exchange
     return empty
 
 
