@@ -118,6 +118,17 @@ CATEGORIES: tuple[Category, ...] = (
     # one delivery channel while the toast, the sound and the OS notification
     # all still fire.
     Category("notifications", "Notifications", False, ("SMTP relay",), stale_after_s=None),
+    # Borsa İstanbul's surface. Its own category rather than folded into
+    # `stocks` because the two lose different things: `stocks` is the US board,
+    # and every host below serves a page that has no US equivalent — a fund
+    # platform, a disclosure archive, a central bank series. A TEFAS outage
+    # costs the entire Fonlar tab while the US board is untouched, and the
+    # badge should say so.
+    #
+    # Yahoo is deliberately absent from this list even though BIST quotes come
+    # from it. It is already named under `stocks`, and one upstream reported in
+    # two categories would show as two independent failures when it broke.
+    Category("bist", "BIST & TEFAS", False, ("TEFAS", "KAP", "Borsa İstanbul", "TCMB")),
 )
 
 _BY_KEY = {c.key: c for c in CATEGORIES}
@@ -151,6 +162,22 @@ _HOST_MAP: dict[str, str] = {
     "fc.yahoo.com": "stocks",
     "api.nasdaq.com": "stocks",
     "financialmodelingprep.com": "stocks",
+    # Borsa İstanbul. Mapped by registrable domain: TEFAS fronts both
+    # `www.tefas.gov.tr` and the bare host, and KAP moved to a Next.js app whose
+    # API subdomain has changed once already.
+    "tefas.gov.tr": "bist",
+    "kap.org.tr": "bist",
+    "borsaistanbul.com": "bist",
+    "isyatirim.com.tr": "bist",
+    # The equity board's quote source. The specific subdomain, not
+    # tradingview.com: the economic calendar above is a different host on the
+    # same domain and belongs to `macro`, and a bare suffix here would swallow
+    # it — longest-suffix-first matching means the more specific entry wins,
+    # but only if both are spelled out.
+    "scanner.tradingview.com": "bist",
+    # The central bank's statistical service — policy rate, CPI, USDTRY. The
+    # specific host rather than tcmb.gov.tr, which also serves the public site.
+    "evds2.tcmb.gov.tr": "bist",
     # On-chain
     "mempool.space": "onchain",
     "llamarpc.com": "onchain",
