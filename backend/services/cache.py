@@ -103,3 +103,10 @@ news_cache = ServiceCache(maxsize=64)
 # a source that fails at noon must replay yesterday's figures rather than let an
 # entity render as holding nothing.
 ownership_cache = ServiceCache(maxsize=64)
+# Borsa İstanbul. Sized well above the others because the per-fund price
+# endpoint has no bulk form — a screener pass over a thousand funds is a
+# thousand cache keys, and evicting them means fetching them again. The stale
+# fallback carries more weight here than anywhere: the exchange is shut
+# sixteen hours a day and every weekend, and a closed market should show
+# yesterday's close rather than an error.
+bist_cache = ServiceCache(maxsize=2048)
