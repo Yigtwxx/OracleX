@@ -45,7 +45,7 @@ Covers the top `TOP_COINS_COUNT` coins by market cap, resolved live from
 CoinGecko — no fixed symbol list.
 
 
-Returns `MarketOverview`: `coins`, `total_volume_24h`, `total_market_cap`, `btc_dominance`, `eth_dominance`, `active_cryptocurrencies`, `timestamp`, `fear_greed`, `market_status`
+Returns `MarketOverview`: `coins`, `total_volume_24h`, `total_market_cap`, `btc_dominance`, `eth_dominance`, `usdt_dominance`, `active_cryptocurrencies`, `timestamp`, `fear_greed`, `market_status`
 
 ### `GET /api/market/indices`
 
@@ -733,6 +733,202 @@ has already reported from its own board query.
 `facts` carries the deterministic aggregation and renders whether or not the
 note itself arrives.
 
+
+Response shape is not declared on the route — inspect one call.
+
+## Borsa İstanbul (BIST)
+
+The Turkish market: equities, TEFAS funds, KAP filings and the macro series they are measured against.
+
+Two things about this surface differ from the rest of the API and will produce wrong answers if assumed away. **Every return is quoted twice.** A lira figure over a year in which consumer prices rose ~32% is not a result, so `returns`/`framed_returns` carry `nominal`, `real` (inflation-adjusted) and `usd` side by side; a null `real` means the window could not be deflated, never that inflation was zero. **Prices are delayed at least 15 minutes** — `delay_minutes` says so on every board that carries a quote.
+
+Symbols carry the venue: `BIST:THYAO`. A bare ticker never resolves to Borsa İstanbul unless the caller asks for it explicitly.
+
+### `GET /api/bist/overview`
+
+Get Overview
+
+The realm's landing board: indices, sector heat, breadth and the macro strip.
+
+Sector performance is derived from the constituents rather than read off the
+sector indices — those are published by Borsa İstanbul but absent from the
+quote source, and a capitalisation-weighted roll-up of the members is what a
+heatmap is asking for anyway.
+
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/stocks`
+
+Get Stocks
+
+The equity screener, with each company's one-year return in three frames.
+
+Parameters:
+- `index` (query, string?, optional) — Index code, e.g. XU100
+- `sector` (query, string?, optional)
+- `search` (query, string?, optional)
+- `sort_by` (query, string, optional, default `'market_cap'`) — One of ('market_cap', 'change_pct', 'volume', 'traded_value', 'pe', 'pb', 'ev_ebitda', 'perf_ytd', 'perf_1y', 'rsi', 'relative_volume')
+- `descending` (query, boolean, optional, default `True`)
+- `limit` (query, integer, optional, default `100`)
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/stocks/{ticker}`
+
+Get Stock
+
+One company: quote, fundamentals, index membership and a price history.
+
+Parameters:
+- `ticker` (path, string, required)
+- `range` (query, string, optional, default `'1y'`) — Yahoo chart range, e.g. 6mo, 1y, 5y
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/funds`
+
+Get Funds
+
+The fund screener.
+
+Returns TEFAS's own published period returns rather than ones derived from
+the price series: the price endpoint is per-fund, so deriving them for a
+thousand funds would be a thousand round trips to reach the same figures.
+Risk statistics are on the detail endpoint, where a reader has asked for one
+fund.
+
+Parameters:
+- `fund_type` (query, string, optional, default `'YAT'`) — One of ('YAT', 'EMK', 'BYF')
+- `umbrella` (query, string?, optional) — Şemsiye fon type, exact match
+- `search` (query, string?, optional) — Substring of the code or title
+- `tradable_only` (query, boolean, optional, default `True`)
+- `max_risk` (query, integer?, optional)
+- `sort_by` (query, string, optional, default `'1y'`) — One of ('1a', '3a', '6a', '1y', '3y', '5y', 'yb')
+- `limit` (query, integer, optional, default `100`)
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/funds/{code}`
+
+Get Fund
+
+One fund: its net asset value history and the statistics derived from it.
+
+Parameters:
+- `code` (path, string, required)
+- `months` (query, integer, optional, default `12`)
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/funds/compare`
+
+Get Fund Comparison
+
+Several funds on one axis.
+
+Declared before `/funds/{code}` on purpose: FastAPI matches in declaration
+order, and the path parameter would otherwise swallow `compare` and go
+looking for a fund by that name.
+
+Parameters:
+- `codes` (query, string, required) — Comma-separated fund codes, at most 8
+- `months` (query, integer, optional, default `12`)
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/macro`
+
+Get Macro
+
+The Turkish macro backdrop, and the deflators the rest of the realm uses.
+
+`cpi_series` is empty without a `TCMB_EVDS_API_KEY`, which is a supported
+state rather than a failure: the trailing-year deflator comes from the
+published year-on-year rate and needs no key, and every longer window
+reports nominal only rather than approximating.
+
+Parameters:
+- `fx_range` (query, string, optional, default `'5y'`) — Yahoo range for the USDTRY series
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/kap`
+
+Get Kap
+
+The most recent KAP filings.
+
+The default view excludes `FON` — around nine filings in ten are a portfolio
+manager reporting an overnight repo, forty of them stamped the same minute,
+and they bury the company news a reader came for.
+
+Parameters:
+- `limit` (query, integer, optional, default `40`)
+- `ticker` (query, string?, optional)
+- `categories` (query, string?, optional) — Comma-separated KAP categories. Omit for the signal set (ODA, FR, DUY); pass 'all' to include fund housekeeping.
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/restrictions`
+
+Get Restrictions
+
+Exchange measures: circuit breakers, gross settlement, short-selling bans.
+
+Filtered out of the KAP tape rather than fetched separately — Borsa
+İstanbul files these as ordinary disclosures with fixed titles, and there is
+no feed of measures on its own.
+
+Parameters:
+- `limit` (query, integer, optional, default `30`)
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/calendar`
+
+Get Calendar
+
+Results announcements and ex-dividend dates.
+
+Rights and bonus issues are absent on purpose: they are announced through
+KAP as prose with no structured date anywhere, so they appear on the
+disclosure tape as filings rather than here as calendar rows. A partial
+calendar that looked complete would be worse than one that says what it
+covers.
+
+Parameters:
+- `days_ahead` (query, integer, optional, default `90`)
+- `days_back` (query, integer, optional, default `14`)
+- `kinds` (query, string?, optional) — Comma-separated: earnings, dividend
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/viop`
+
+Get Viop
+
+Futures and options, with the open interest behind each contract.
+
+Parameters:
+- `underlying` (query, string?, optional)
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/positioning`
+
+Get Positioning
+
+Where the crowd is: free float, unusual volume, range position, futures OI.
+
+Not the fund-to-stock cross index this board was originally meant to be —
+TEFAS withdrew portfolio breakdowns from its public API and KAP publishes
+holdings only as prose attachments. `positioning_service` documents what was
+tried. What is here is published positioning rather than inferred, which is
+a narrower claim honestly made.
+
+Parameters:
+- `limit` (query, integer, optional, default `50`)
 
 Response shape is not declared on the route — inspect one call.
 
