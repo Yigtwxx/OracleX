@@ -47,6 +47,17 @@ EQUITY_SPARK_DAYS = 30
 # roughly six trading weeks, which smooths earnings without burying it.
 EQUITY_VOLUME_WINDOW = 30
 
+# Liquidation clusters kept per side. Three is what fits the card without the
+# bars becoming a chart the reader has to study; past that they are levels
+# nobody would reach before the book has been rebuilt anyway.
+LIQUIDITY_CLUSTERS_PER_SIDE = 3
+
+# Bins either side of a chosen peak that are folded into it. The model deposits
+# one entry per leverage tier per bin, so a single wall lands as three or four
+# adjacent bins — picking the top three bins without this would return the same
+# wall three times and call it three levels.
+LIQUIDITY_MERGE_RADIUS = 2
+
 # How many points the sparkline keeps. The card is ~180px wide, so more than
 # this is drawing detail no one can see and shipping bytes no one reads.
 SPARK_POINTS = 48
@@ -134,16 +145,93 @@ def _numeric(value: Any) -> Optional[float]:
 # ── Per-asset-class collection ───────────────────────────────────────────────
 
 
+def _liquidity(profile: Any, price: float) -> Optional[dict[str, Any]]:
+    """
+    The standing liquidation book reduced to the few walls worth naming.
+
+    The profile is one entry per `[bin, tier, side, notional]` — several hundred
+    of them — and the card has room for a handful of bars. So bins are summed
+    across leverage tiers, the tallest are taken per side, and each one absorbs
+    its neighbours: the model deposits the same wall once per tier, so adjacent
+    bins are one level seen four times rather than four levels.
+
+    Returns None rather than an empty book when the simulation had no inputs.
+    Zero clusters and "we could not model this venue" are different claims, and
+    an empty bar chart makes the second one look like the first.
+    """
+    if not isinstance(profile, dict) or not profile.get("levels") or price <= 0:
+        return None
+
+    bin_size = profile.get("bin_size") or 0
+    price_min = profile.get("price_min")
+    if not bin_size or price_min is None:
+        return None
+
+    # side 0 is longs (liquidate below spot), side 1 is shorts (above).
+    sums: dict[tuple[int, int], float] = {}
+    for entry in profile["levels"]:
+        try:
+            index, _tier, side, notional = entry[0], entry[1], entry[2], entry[3]
+        except (IndexError, TypeError):
+            continue
+        key = (int(side), int(index))
+        sums[key] = sums.get(key, 0.0) + float(notional)
+
+    clusters: list[dict[str, Any]] = []
+    for side in (0, 1):
+        candidates = sorted(
+            ((index, total) for (s, index), total in sums.items() if s == side and total > 0),
+            key=lambda row: -row[1],
+        )
+        picked: list[int] = []
+        for index, total in candidates:
+            if any(abs(index - taken) <= LIQUIDITY_MERGE_RADIUS for taken in picked):
+                continue
+            picked.append(index)
+            level_price = price_min + (index + 0.5) * bin_size
+            clusters.append(
+                {
+                    "price": round(level_price, 8),
+                    "notional_usd": round(total),
+                    "side": "long" if side == 0 else "short",
+                    "distance_pct": (level_price - price) / price * 100,
+                }
+            )
+            if len(picked) == LIQUIDITY_CLUSTERS_PER_SIDE:
+                break
+
+    if not clusters:
+        return None
+
+    clusters.sort(key=lambda row: row["price"])
+    return {
+        "clusters": clusters,
+        "total_long_usd": profile.get("total_long"),
+        "total_short_usd": profile.get("total_short"),
+        "venue": profile.get("exchange"),
+        # Said on the card, not buried here: these are levels a model puts in the
+        # book from open interest and leverage assumptions, not liquidations
+        # anyone observed.
+        "modelled": True,
+    }
+
+
 async def _crypto_facts(clean: str) -> dict[str, Any]:
-    """Price, series and funding for a perpetual's spot pair."""
+    """Price, series, funding and the standing liquidation book for a pair."""
     from services.home_service import fetch_funding_rates
+    from services.liquidation_map_service import get_liquidation_profile
     from services.liquidation_service import liquidation_service
     from services.okx_market import fetch_ticker_24h, split_symbol
 
-    ticker, candles, funding_rows = await asyncio.gather(
+    # The profile runs on this service's defaults on purpose rather than on a
+    # cheaper grid of its own: those are the parameters the Derivatives page
+    # asks for, so the two surfaces share one cache entry instead of paying for
+    # the same simulation twice under different keys.
+    ticker, candles, funding_rows, profile = await asyncio.gather(
         fetch_ticker_24h(clean),
         liquidation_service.fetch_candles(clean, CRYPTO_SPARK_INTERVAL, CRYPTO_SPARK_HOURS),
         fetch_funding_rates(),
+        get_liquidation_profile(clean),
         return_exceptions=True,
     )
 
@@ -173,6 +261,7 @@ async def _crypto_facts(clean: str) -> dict[str, Any]:
             "funding_interval_hours": (funding_row.get("interval_hours") if funding_row else None),
             "funding_is_extreme": bool(funding_row.get("is_extreme")) if funding_row else None,
             "volume_24h_usd": _numeric(ticker.get("volume_usd")),
+            "liquidity": _liquidity(profile, float(ticker["price"])),
         },
     }
 
