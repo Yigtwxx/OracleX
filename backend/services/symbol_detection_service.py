@@ -36,6 +36,11 @@ logger = logging.getLogger(__name__)
 
 CRYPTO_EXCHANGES = frozenset({"BINANCE", "OKX"})
 EQUITY_EXCHANGES = frozenset({"NASDAQ", "NYSE"})
+# Borsa İstanbul. A separate set from `EQUITY_EXCHANGES` even though its
+# instruments are equities, because the two are priced from different upstreams
+# and a BIST ticker resolved as a US one would be looked up on a market that has
+# never listed it.
+BIST_EXCHANGES = frozenset({"BIST"})
 
 
 @dataclass(frozen=True)
@@ -299,13 +304,34 @@ async def resolve_equity(ticker: str, exchange_hint: Optional[str] = None) -> Op
     return None
 
 
+async def resolve_bist(ticker: str) -> Optional[str]:
+    """A confirmed Borsa İstanbul symbol (`BIST:THYAO`), or None."""
+    from services.bist.equity_service import EquityDataUnavailable, fetch_equity
+
+    ticker = ticker.strip().upper()
+    if not ticker:
+        return None
+    try:
+        row = await fetch_equity(ticker)
+    except (EquityDataUnavailable, ValueError):
+        return None
+    return row.symbol
+
+
 async def resolve(candidate: str, hint: str = "crypto") -> Optional[str]:
     """
-    Confirm one candidate — `"BINANCE:BTCUSDT"`, `"AAPL"`, `"pepe"` — or None.
+    Confirm one candidate — `"BINANCE:BTCUSDT"`, `"AAPL"`, `"BIST:THYAO"` — or None.
 
-    Both asset classes are always tried. `hint` only decides which is tried
-    first, because a bare ticker can exist in both worlds; an explicit exchange
-    prefix on the candidate outranks it.
+    Crypto and US equities are always both tried; `hint` only decides which goes
+    first, because a bare ticker can exist in both worlds.
+
+    **Borsa İstanbul is never reached by a bare ticker.** It resolves only from
+    an explicit `BIST:` prefix or an explicit `hint="bist"`, and that asymmetry
+    is deliberate. Adding a third listing to the fall-through would mean any
+    four-letter word that happens to be listed in Istanbul could capture a
+    symbol somebody meant as a US ticker or a coin — the same failure that once
+    read AAPL off a tokenised-equity market, which is what the venue prefixes in
+    this codebase exist to prevent.
     """
     candidate = (candidate or "").strip().lstrip("$").strip()
     if not candidate:
@@ -316,6 +342,9 @@ async def resolve(candidate: str, hint: str = "crypto") -> Optional[str]:
     ticker = ticker.strip()
     if not ticker:
         return None
+
+    if exchange in BIST_EXCHANGES or (not exchange and hint == "bist"):
+        return await resolve_bist(ticker)
 
     if exchange in EQUITY_EXCHANGES:
         order = ("equity", "crypto")
@@ -334,12 +363,24 @@ async def resolve(candidate: str, hint: str = "crypto") -> Optional[str]:
     return None
 
 
+def is_bist_symbol(symbol: Optional[str]) -> bool:
+    """Whether a symbol is listed on Borsa İstanbul."""
+    return bool(symbol) and symbol.split(":")[0].upper() in BIST_EXCHANGES
+
+
 def asset_type_for_symbol(symbol: Optional[str], fallback: str = "crypto") -> str:
-    """The asset class a resolved symbol belongs to."""
+    """
+    The asset class a resolved symbol belongs to.
+
+    BIST answers `"stock"` rather than a class of its own: every existing caller
+    branches on the two-value union, and widening it here would send a third
+    string into code that has no case for it. Callers that genuinely need the
+    venue use `is_bist_symbol`.
+    """
     if not symbol:
         return fallback
     exchange = symbol.split(":")[0].upper()
-    if exchange in EQUITY_EXCHANGES:
+    if exchange in EQUITY_EXCHANGES or exchange in BIST_EXCHANGES:
         return "stock"
     if exchange in CRYPTO_EXCHANGES:
         return "crypto"
