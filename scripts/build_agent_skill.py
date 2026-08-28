@@ -29,8 +29,8 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-BACKEND = REPO_ROOT / "backend"
+from _openapi import REPO_ROOT, load_spec
+
 SKILL_DIR = REPO_ROOT / "agent-skill" / "oracle-x-api"
 REFERENCE = SKILL_DIR / "references" / "endpoints.md"
 
@@ -126,8 +126,11 @@ ENDPOINT_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
         [
             ("GET", "/api/home/liquidations"),
             ("GET", "/api/home/funding-rates"),
+            ("GET", "/api/derivatives/open-interest/{symbol}"),
             ("GET", "/api/liquidations/levels/{symbol}"),
             ("GET", "/api/liquidations/map/{symbol}"),
+            ("GET", "/api/liquidations/lines/{symbol}"),
+        ("GET", "/api/liquidations/profile/{symbol}"),
             ("GET", "/api/onchain/whales"),
         ],
     ),
@@ -140,6 +143,35 @@ ENDPOINT_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
             ("GET", "/api/ownership/assets/{symbol}"),
             ("GET", "/api/ownership/moves"),
             ("GET", "/api/ownership/flow-note"),
+        ],
+    ),
+    (
+        "Borsa İstanbul (BIST)",
+        "The Turkish market: equities, TEFAS funds, KAP filings and the macro "
+        "series they are measured against.\n\n"
+        "Two things about this surface differ from the rest of the API and will "
+        "produce wrong answers if assumed away. **Every return is quoted twice.** "
+        "A lira figure over a year in which consumer prices rose ~32% is not a "
+        "result, so `returns`/`framed_returns` carry `nominal`, `real` "
+        "(inflation-adjusted) and `usd` side by side; a null `real` means the "
+        "window could not be deflated, never that inflation was zero. "
+        "**Prices are delayed at least 15 minutes** — `delay_minutes` says so on "
+        "every board that carries a quote.\n\n"
+        "Symbols carry the venue: `BIST:THYAO`. A bare ticker never resolves to "
+        "Borsa İstanbul unless the caller asks for it explicitly.",
+        [
+            ("GET", "/api/bist/overview"),
+            ("GET", "/api/bist/stocks"),
+            ("GET", "/api/bist/stocks/{ticker}"),
+            ("GET", "/api/bist/funds"),
+            ("GET", "/api/bist/funds/{code}"),
+            ("GET", "/api/bist/funds/compare"),
+            ("GET", "/api/bist/macro"),
+            ("GET", "/api/bist/kap"),
+            ("GET", "/api/bist/restrictions"),
+            ("GET", "/api/bist/calendar"),
+            ("GET", "/api/bist/viop"),
+            ("GET", "/api/bist/positioning"),
         ],
     ),
     (
@@ -219,14 +251,6 @@ a response shape is not declared on the route, the entry says so — call it onc
 and read the actual JSON rather than guessing.
 
 """
-
-
-def load_spec() -> dict[str, Any]:
-    """Build the app in-process and return its OpenAPI document."""
-    sys.path.insert(0, str(BACKEND))
-    from main import create_app
-
-    return create_app().openapi()
 
 
 def resolve_ref(spec: dict[str, Any], ref: str) -> dict[str, Any]:
