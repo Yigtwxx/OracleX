@@ -31,6 +31,7 @@ from routers import (
     admin,
     alarms,
     auth,
+    bist,
     news,
     llm as llm_router,
     market,
@@ -412,6 +413,7 @@ def create_app() -> FastAPI:
     app.include_router(watchlist.router)  # /api/home/watchlist
     app.include_router(home.router)  # /api/home/*, /api/onchain/whales
     app.include_router(macro.router)  # /api/macro/board
+    app.include_router(bist.router)  # /api/bist/* — Borsa İstanbul, TEFAS, KAP
     app.include_router(live.router)  # /api/live/events, /api/live/streams, /api/live/tape
     app.include_router(chains.router)  # /api/chains/board
     app.include_router(polymarket.router)  # /api/polymarket/board, /api/polymarket/markets/*
