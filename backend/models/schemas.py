@@ -292,6 +292,12 @@ class MarketOverview(BaseModel):
     total_market_cap: float
     btc_dominance: float
     eth_dominance: float = 0
+    # Stablecoin share. Defaulted like `eth_dominance` rather than required,
+    # because this model also answers `/api/nasdaq-overview`, which has no
+    # such reading — and because the response model *filters*: a field the
+    # service computes but this class does not declare never reaches the
+    # client, which is how this one was silently dropped when it was added.
+    usdt_dominance: float = 0
     active_cryptocurrencies: int
     timestamp: str
     fear_greed: Optional[FearGreedData] = None
