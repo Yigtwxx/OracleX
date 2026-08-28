@@ -36,11 +36,24 @@ async def resolve_price(symbol: str) -> Optional[Dict[str, Any]]:
 
     from services.okx_market import fetch_ticker_24h
     from services.stock_market_service import get_stock_context_data
+    from services.symbol_detection_service import is_bist_symbol
 
     clean = symbol.split(":")[-1].upper()
 
     try:
-        if is_crypto_symbol(symbol):
+        # Borsa İstanbul before the US path. Both are equities, but a BIST
+        # ticker looked up on Yahoo's US listing resolves to nothing at best
+        # and to an unrelated company at worst.
+        if is_bist_symbol(symbol):
+            from services.bist.equity_service import EquityDataUnavailable, fetch_equity
+
+            try:
+                row = await fetch_equity(clean)
+            except (EquityDataUnavailable, ValueError):
+                return None
+            if row.price:
+                return {"symbol": row.symbol, "price": row.price, "source": "Borsa İstanbul"}
+        elif is_crypto_symbol(symbol):
             ticker = await fetch_ticker_24h(clean)
             if ticker and ticker.get("price"):
                 return {"symbol": symbol, "price": ticker["price"], "source": "OKX"}
