@@ -148,6 +148,15 @@ class Settings(BaseSettings):
     # Free key: https://coinalyze.net/account/api-key/
     COINALYZE_API_KEY: str = ""
 
+    # The central bank's statistical service (EVDS), which is the only free
+    # source for the Turkish policy rate, CPI and the official USDTRY series.
+    # Empty is a supported state and the failure is contained: the BIST macro
+    # board reports the series as unavailable, and — more consequentially —
+    # every real-return column falls back to showing the nominal figure alone
+    # rather than a wrong one. It never invents an inflation rate.
+    # Free key: https://evds2.tcmb.gov.tr/index.php?/evds/userDocs
+    TCMB_EVDS_API_KEY: str = ""
+
     # ── Feature flags ───────────────────────────────────────────────────────
     USE_REAL_API: bool = True
     USE_AI: bool = True
