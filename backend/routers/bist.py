@@ -20,6 +20,15 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
+from services.bist.brief_note import note_for_fund, note_for_stock
+from services.bist.market_note import (
+    build_funds_market_facts,
+    build_market_facts,
+    funds_market_note,
+    market_note,
+)
+from services.bist.night_shift_service import fetch_night_shift_index
+from services.bist.sentiment_service import compute_dominance, compute_sentiment
 from services.bist.fund_service import (
     MAX_COMPARE,
     SORTABLE_PERIODS,
@@ -260,6 +269,30 @@ async def get_fund_comparison(
     }
 
 
+@router.get("/funds/market-note")
+async def get_funds_market_note(
+    fund_type: str = Query("YAT", description=f"One of {FUND_TYPES}"),
+):
+    """
+    What this whole fund universe looks like, narrated.
+
+    Declared above `/funds/{code}` deliberately: FastAPI matches in declaration
+    order, and behind it this path resolves as a fund whose code is
+    "market-note".
+
+    Keyed on the fund type rather than on the caller's filters. The medians and
+    the dispersion are computed across every fund of the type, because "half the
+    board lost purchasing power" is a fact about the market and the same count
+    over the page a reader happens to be looking at would invert it.
+
+    Never 503s. The screener beside this is already reporting whatever went
+    wrong from its own query, and a second error for a missing paragraph would
+    be reporting the same outage twice.
+    """
+    facts = await build_funds_market_facts(fund_type)
+    return {"facts": facts, "note": await funds_market_note(facts)}
+
+
 @router.get("/funds/{code}")
 async def get_fund(code: str, months: int = Query(12, ge=1, le=60)):
     """One fund: its net asset value history and the statistics derived from it."""
@@ -280,10 +313,12 @@ async def get_fund(code: str, months: int = Query(12, ge=1, le=60)):
         fx_series=fx,
         window_months=WINDOW_MONTHS,
     )
-    return {
+    payload = {
         **_detail(detail, framed),
         "real_return": _real_return_meta(snapshot, deflators),
     }
+    payload["ai_note"] = await note_for_fund(payload)
+    return payload
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -433,7 +468,7 @@ async def get_stock(
     deflators, snapshot, fx = await _real_return_context(_EQUITY_WINDOWS)
     candles = await fetch_candles(row.ticker, range_=range_)
 
-    return {
+    payload = {
         "delay_minutes": DELAY_MINUTES,
         **_equity_row(
             row,
@@ -447,6 +482,11 @@ async def get_stock(
         "real_return": _real_return_meta(snapshot, deflators),
         "candles": candles,
     }
+    # Last, and from the finished payload: the note may only speak about figures
+    # this response actually carries, and building it from the payload is what
+    # makes that structural rather than a convention to remember.
+    payload["ai_note"] = await note_for_stock(payload)
+    return payload
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -487,6 +527,10 @@ async def get_overview():
     except MacroUnavailable:
         snapshot = None
 
+    sectors = sector_performance(board.equities)
+    sentiment = compute_sentiment(board.equities)
+    dominance = compute_dominance(board.equities, sectors)
+
     return {
         "as_of": board.as_of,
         "stale": board.stale,
@@ -519,13 +563,60 @@ async def get_overview():
                 "advancers": stat.advancers,
                 "decliners": stat.decliners,
             }
-            for stat in sector_performance(board.equities)
+            for stat in sectors
         ],
+        # Both derived from the board above rather than from a feed of their
+        # own: the index exists so a reader can check it, and a figure they
+        # cannot find on another panel of this realm would defeat that.
+        "sentiment": (
+            {
+                "score": sentiment.score,
+                "label": sentiment.label,
+                "measured": sentiment.measured,
+                "components": [
+                    {
+                        "key": component.key,
+                        "label": component.label,
+                        "score": round(component.score, 1),
+                        "reading": component.reading,
+                    }
+                    for component in sentiment.components
+                ],
+            }
+            if sentiment
+            else None
+        ),
+        "dominance": {
+            "sector": dominance.sector,
+            "sector_weight": dominance.sector_weight,
+            "sector_change_pct": dominance.sector_change_pct,
+            "top_ticker": dominance.top_ticker,
+            "top_turnover_share": dominance.top_turnover_share,
+            "top5_turnover_share": dominance.top5_turnover_share,
+        },
         "gainers": [_equity_row(row) for row in gainers],
         "losers": [_equity_row(row) for row in losers],
         "most_traded": [_equity_row(row) for row in by_value],
         "macro": _macro_payload(snapshot) if snapshot else None,
     }
+
+
+@router.get("/market-note")
+async def get_market_note():
+    """
+    What the equity board as a whole looks like, narrated.
+
+    Deliberately not scoped to the screener's index or sector filter. The read
+    is whether the index and the breadth agree, which is a property of the
+    whole board — recomputing it per filter would answer a question nobody on
+    the page asked and would multiply the note cache by every combination.
+
+    `facts` carries the deterministic aggregation and renders whether or not
+    the sentence arrives, which is what keeps an absent note from looking like
+    a broken panel.
+    """
+    facts = await build_market_facts()
+    return {"facts": facts, "note": await market_note(facts)}
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -833,3 +924,23 @@ async def get_positioning(limit: int = Query(50, ge=1, le=500)):
         "crowded": [_positioning(row) for row in rows[:limit]],
         "futures": [_positioning(row) for row in futures_positioning(rows)[:limit]],
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Gece Mesaisi Endeksi
+# ══════════════════════════════════════════════════════════════════════════
+
+
+@router.get("/night-shift")
+async def get_night_shift():
+    """
+    How hard the state is legislating today, and whether any of it skipped the
+    queue.
+
+    Deliberately the one endpoint on this router that cannot fail, for the same
+    reason `/api/macro/pizza-index` cannot: it feeds a badge in the chrome of
+    every BIST page, and a government site that stopped answering must not be
+    able to take those pages down with it. The service answers
+    `status: "unavailable"` instead, which the badge renders as its own state.
+    """
+    return await fetch_night_shift_index()
