@@ -97,6 +97,8 @@ CATEGORIES: tuple[Category, ...] = (
             "ForexFactory",
             "PizzINT",
             "Wikipedia",
+            "Resmî Gazete",
+            "Cumhurbaşkanlığı",
         ),
     ),
     Category("ai", "AI / LLM", False, ("Local LLM chain",), stale_after_s=None),
@@ -177,7 +179,7 @@ _HOST_MAP: dict[str, str] = {
     "scanner.tradingview.com": "bist",
     # The central bank's statistical service — policy rate, CPI, USDTRY. The
     # specific host rather than tcmb.gov.tr, which also serves the public site.
-    "evds2.tcmb.gov.tr": "bist",
+    "evds3.tcmb.gov.tr": "bist",
     # On-chain
     "mempool.space": "onchain",
     "llamarpc.com": "onchain",
@@ -210,6 +212,12 @@ _HOST_MAP: dict[str, str] = {
     # macro board, which is the same shape of loss as losing the Fear & Greed
     # feed beside it.
     "pizzint.watch": "macro",
+    # The Gece Mesaisi Endeksi's two sources. Filed under `macro` beside
+    # PizzINT rather than under `bist`, by that category's own rule: losing
+    # these costs one novelty gauge in the chrome, while every host under
+    # `bist` costs a whole tab.
+    "resmigazete.gov.tr": "macro",
+    "tccb.gov.tr": "macro",
     # Everything editorial. Listed rather than defaulted so an unmapped host is
     # visible as unmapped instead of quietly inflating the news category.
     "investing.com": "news",
