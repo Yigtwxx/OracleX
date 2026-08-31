@@ -40,7 +40,13 @@ TTL_FX = 30 * 60
 TTL_CPI = 12 * 60 * 60
 MAX_STALE_SNAPSHOT = 7 * 24 * 60 * 60
 
-EVDS_BASE = "https://evds2.tcmb.gov.tr/service/evds"
+# EVDS 3. The old `evds2.tcmb.gov.tr` host — including its `/service/evds` API
+# path — now redirects to the new single-page app for every request, key or no
+# key, so the previous base returned HTML rather than data. This is the base the
+# EVDS 3 client itself calls, and it answers `403 {"message": "Required request
+# header 'key' is not present"}` without one, which is how it was confirmed to
+# be the keyed public service rather than a session-only internal route.
+EVDS_BASE = "https://evds3.tcmb.gov.tr/igmevdsms-dis"
 # TÜFE, 2003=100, monthly. The series every real-return figure in Turkey is
 # quoted against.
 EVDS_CPI_SERIES = "TP.FG.J0"
@@ -237,16 +243,21 @@ async def fetch_cpi_series(years: int = 6) -> list[dict]:
 
     end = date.today()
     start = end - timedelta(days=365 * years + 31)
-    params = {
-        "series": EVDS_CPI_SERIES,
-        "startDate": start.strftime("%d-%m-%Y"),
-        "endDate": end.strftime("%d-%m-%Y"),
-        "type": "json",
-    }
+    # Every parameter goes in one path segment joined by `&`, and none of them
+    # in a query string. EVDS 3 answers `400 {"message": "Bad Request. Missing
+    # parameters."}` to the query-string form the previous version accepted, so
+    # this is a shape requirement rather than a style choice.
+    query = "&".join(
+        [
+            f"series={EVDS_CPI_SERIES}",
+            f"startDate={start.strftime('%d-%m-%Y')}",
+            f"endDate={end.strftime('%d-%m-%Y')}",
+            "type=json",
+        ]
+    )
     try:
         body = await get_json(
-            f"{EVDS_BASE}/series={EVDS_CPI_SERIES}",
-            params=params,
+            f"{EVDS_BASE}/{query}",
             headers={"key": settings.TCMB_EVDS_API_KEY},
             timeout=25.0,
         )
