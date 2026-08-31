@@ -108,6 +108,15 @@ class NoteSpec:
     max_tokens: int = 220
     temperature: float = 0.2
     max_age_seconds: int = 6 * 3600
+    max_chars: int = MAX_NOTE_CHARS
+    """
+    Per-note ceiling on stored prose.
+
+    Defaults to the shared cap so every note designed around a paragraph keeps
+    that shape. The market-wide reads raise it: they weave a dozen readings
+    rather than describing one instrument, and at 900 characters the model was
+    dropping the macro backdrop to fit.
+    """
 
 
 def _load_json(filepath: str, default: Any) -> Any:
@@ -179,7 +188,7 @@ _HEADING = re.compile(r"^\s*#{1,6}\s*", re.MULTILINE)
 _BLANK_RUN = re.compile(r"\n{2,}")
 
 
-def _clean(raw: str) -> str:
+def _clean(raw: str, limit: int = MAX_NOTE_CHARS) -> str:
     """Model output as the plain prose the page expects, or "" if there is none."""
     text = _FENCE.sub("", raw or "").strip()
     text = _HEADING.sub("", text)
@@ -188,7 +197,32 @@ def _clean(raw: str) -> str:
     # the model padding, not structure worth keeping.
     text = _BLANK_RUN.sub(" ", text)
     text = " ".join(text.split())
-    return text[:MAX_NOTE_CHARS].strip()
+    return _truncate(text, limit)
+
+
+def _truncate(text: str, limit: int) -> str:
+    """
+    The note at or under `limit`, cut at a sentence end where one is close.
+
+    A hard slice leaves the reader mid-clause, which looks like the panel broke
+    rather than like the model overran. Falling back to the hard slice matters
+    just as much: a model that answers in one 1200-character sentence would
+    otherwise have the whole note thrown away by a search for a full stop that
+    is not there.
+    """
+    if len(text) <= limit:
+        return text.strip()
+
+    head = text[:limit]
+    if head.endswith((".", "!", "?")):
+        end = len(head) - 1
+    else:
+        end = max(head.rfind(". "), head.rfind("! "), head.rfind("? "))
+    # Only honoured if it keeps most of the note. A sentence boundary in the
+    # first third would cost more text than the ragged edge it avoids.
+    if end >= limit * 0.6:
+        return head[: end + 1].strip()
+    return head.strip()
 
 
 def _stored(key: str) -> Optional[Dict[str, Any]]:
@@ -378,7 +412,7 @@ async def _generate(spec: NoteSpec, values: Dict[str, str]) -> str:
         logger.warning("Note %s could not be generated: %s", spec.kind, e)
         return ""
 
-    note = _clean(raw or "")
+    note = _clean(raw or "", spec.max_chars)
     if not note:
         logger.info("Note %s came back empty — the provider chain is unusable", spec.kind)
     return note
