@@ -758,6 +758,24 @@ heatmap is asking for anyway.
 
 Response shape is not declared on the route — inspect one call.
 
+### `GET /api/bist/market-note`
+
+Get Market Note
+
+What the equity board as a whole looks like, narrated.
+
+Deliberately not scoped to the screener's index or sector filter. The read
+is whether the index and the breadth agree, which is a property of the
+whole board — recomputing it per filter would answer a question nobody on
+the page asked and would multiply the note cache by every combination.
+
+`facts` carries the deterministic aggregation and renders whether or not
+the sentence arrives, which is what keeps an absent note from looking like
+a broken panel.
+
+
+Response shape is not declared on the route — inspect one call.
+
 ### `GET /api/bist/stocks`
 
 Get Stocks
@@ -834,6 +852,30 @@ looking for a fund by that name.
 Parameters:
 - `codes` (query, string, required) — Comma-separated fund codes, at most 8
 - `months` (query, integer, optional, default `12`)
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/funds/market-note`
+
+Get Funds Market Note
+
+What this whole fund universe looks like, narrated.
+
+Declared above `/funds/{code}` deliberately: FastAPI matches in declaration
+order, and behind it this path resolves as a fund whose code is
+"market-note".
+
+Keyed on the fund type rather than on the caller's filters. The medians and
+the dispersion are computed across every fund of the type, because "half the
+board lost purchasing power" is a fact about the market and the same count
+over the page a reader happens to be looking at would invert it.
+
+Never 503s. The screener beside this is already reporting whatever went
+wrong from its own query, and a second error for a missing paragraph would
+be reporting the same outage twice.
+
+Parameters:
+- `fund_type` (query, string, optional, default `'YAT'`) — One of ('YAT', 'EMK', 'BYF')
 
 Response shape is not declared on the route — inspect one call.
 
