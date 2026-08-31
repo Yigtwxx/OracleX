@@ -161,11 +161,13 @@ ENDPOINT_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
         "Borsa İstanbul unless the caller asks for it explicitly.",
         [
             ("GET", "/api/bist/overview"),
+            ("GET", "/api/bist/market-note"),
             ("GET", "/api/bist/stocks"),
             ("GET", "/api/bist/stocks/{ticker}"),
             ("GET", "/api/bist/funds"),
             ("GET", "/api/bist/funds/{code}"),
             ("GET", "/api/bist/funds/compare"),
+            ("GET", "/api/bist/funds/market-note"),
             ("GET", "/api/bist/macro"),
             ("GET", "/api/bist/kap"),
             ("GET", "/api/bist/restrictions"),
