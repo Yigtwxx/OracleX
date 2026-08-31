@@ -43,6 +43,12 @@
   --warn-bg: rgba(245, 158, 11, 0.12);
   --accent: #2f6feb;
   --accent-bg: rgba(47, 111, 235, 0.12);
+  /* A lighter accent, for a filled track rather than for text or a button.
+     `--accent` at reduced alpha reads as a dark smear on this background — the
+     fill has to be lighter than the surface it sits on to read as covered
+     ground, not as a shadow. Independent of `--accent` rather than mixed from
+     it because the landing page flips that one to white. */
+  --accent-soft: #6fa8f5;
   /* What text sits on a solid accent fill. A constant everywhere except the
      landing page, which runs a white accent — the same button markup is shared
      between the two (the auth forms render inside both), so the pairing has to
@@ -73,6 +79,10 @@
   /* Asset identity — used to label an entity, never as decoration */
   --data-btc: #f7931a;
   --data-eth: #627eea;
+  /* Tether's own green, which is close to --up and must never be mistaken for
+     it: this hue labels the stablecoin, and stablecoin share going up is not a
+     market going up. Only ever drawn on a share bar, never on a delta. */
+  --data-usdt: #26a17b;
 
   /* Metals. Identity again, on the same terms as BTC and ETH: the hue names the
      instrument, never its direction — a gold row is this colour whether gold is
@@ -136,6 +146,11 @@
      it is the same family as neither at 14px, and clears 6:1 on --surface and
      on the hover fill. */
   --pizza: #e8763a;
+  /* The Gece Mesaisi badge's mark, the BIST realm's counterpart to `--pizza`.
+     Ink blue rather than another orange: the two badges never appear together
+     — one per realm — but they do appear in the same slot, and a reader
+     switching realms should see that something changed. */
+  --gazette: #6f9ad6;
 
   /* Navigation identity — one hue per destination.
      This is the one place in the app where colour labels a *place* rather than
@@ -160,6 +175,15 @@
   /* Broadcast red — the one hue the subject names outright. It sits close to
      --nav-admin, which is the trade accepted here: the admin tab only renders
      for admins, so the two are almost never in the bar together. */
+  /* Prediction markets. The palette had fourteen stops when this arrived and
+     only one genuine gap left, between Social's 274° and Analysis's 326° — the
+     obvious green at ~122° is unusable because --up sits at 142° and the rule
+     for this family is that it never borrows from the semantic one. 291° is the
+     middle of that gap, and the neighbourhood that actually decides legibility
+     is the bar rather than the wheel: this tab sits between Macro's pale cyan
+     (185°) and Live's broadcast red (0°), so the two stops nearest it in hue
+     are nowhere near it on screen. Measured at 6.05:1 on --surface. */
+  --nav-polymarket: #d95cf0;
   --nav-live: #ff4d4d;
   /* Sits two tabs from --nav-macro's cyan, which is the pairing to justify. The
      two are not the same hue read twice: Macro is pale and desaturated (69% S,
@@ -178,6 +202,19 @@
   --nav-social: #c77dff;
   --nav-profile: #f3a683;
   --nav-admin: #f4595f;
+
+  /* The BIST realm's tabs. Hues are reused from the wheel above rather than
+     extending it, because the two sets are never in the bar at the same time —
+     picking a realm replaces the whole row. Only separation *within* this set
+     is a constraint, and these eight are spaced roughly 45deg apart. Every stop
+     clears 4.5:1 on --surface, same rule the global set is held to. */
+  --nav-bist-overview: #e8b34a;
+  --nav-bist-stocks: #5bd6a0;
+  --nav-bist-funds: #6aa9f5;
+  --nav-bist-smart-money: #c99bff;
+  --nav-bist-kap: #f07fa8;
+  --nav-bist-viop: #ff9f5a;
+  --nav-bist-macro: #b8d95c;
 
   /* Heatmap is the one tab that cannot be a single stop: the board it opens is
      a yellow→orange→red ramp, so the tab carries the ramp itself. Stop 2 is
@@ -235,6 +272,21 @@
   --chart-4: #b8836a;
   --chart-5: #5b9bd5;
   --chart-6: #8f9199;
+
+  /* Open-interest board. Deliberately its own ramp rather than --chart-*: the
+     two top panes draw the same quantity twice, once summed and once split by
+     venue, and the aggregate has to read as the same substance as the stack
+     under it. The price line is amber because it is the one series on those
+     panes that is not open interest, and hue is the only thing separating it
+     from an area it overlaps. */
+  --oi-total: #5ac8fa;
+  --oi-venue-1: #3ecf8e;
+  --oi-venue-2: #4db6ac;
+  /* Violet, not the steel blue it used to be. The aggregate above it is sky
+     blue now, and a venue band in a neighbouring blue invited reading the
+     split pane's top edge as the total. */
+  --oi-venue-3: #8b7fe8;
+  --oi-price: #e0a63d;
 }
 
 * {
@@ -246,8 +298,21 @@
 html,
 body {
   max-width: 100vw;
-  overflow-x: hidden;
   color: var(--fg);
+}
+
+/* Horizontal clipping belongs to the root element alone.
+   `overflow` on <html> is propagated to the viewport and <html> itself computes
+   back to `visible`, so the page is still clipped sideways but nothing on the
+   way down becomes a scroll container. The same declaration on <body> is not
+   free: any `overflow` other than `visible` makes that element the scrollport
+   for every `position: sticky` descendant, and since <body> is as tall as its
+   content it never scrolls — so the sticky element has nothing to stick to and
+   silently scrolls away. That is what the documentation pages' section spine ran
+   into. Note this is the same trap the `.nav-scroll` comment below describes
+   from the other direction: naming one axis pulls the other out of `visible`. */
+html {
+  overflow-x: hidden;
 }
 
 /* The base colour lives on the root element and nowhere else. In the root
@@ -318,13 +383,21 @@ body {
 /* Opt-in variant for scroll containers inside cards — thinner, only visible
    while the container is hovered. */
 .custom-scrollbar {
+  /* macOS hands the browser an overlay scrollbar: the thumb reserves no width
+     (`offsetWidth === clientWidth`) and floats over the content, and it is
+     painted below any positioned descendant — z-index does not enter into it.
+     So an opaque sticky heading inside the scroller covers the thumb outright,
+     and the only fix is to stop the heading short of the track. Published as a
+     variable rather than repeated as a literal so those insets cannot drift
+     from the width declared right below. */
+  --scrollbar-w: 6px;
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: var(--scrollbar-w);
+  height: var(--scrollbar-w);
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
@@ -465,9 +538,56 @@ body {
  * The bar rests grey and only pays out colour on hover or on the current tab.
  * Ten hues lit at once is a fruit salad that identifies nothing; lit one at a
  * time, the hue is a confirmation of where you are and where you are pointing. */
+/* ── Realm switcher ───────────────────────────────────────────────────────
+ * The mark in the top-left corner turns a quarter of a turn while its menu is
+ * open, and the chevron under it turns the other way.
+ *
+ * Same contract as the fourteen nav icon gestures below: the component writes
+ * one `data-realm-open` attribute and never touches a transform, so the rule
+ * and its reduced-motion opt-out live together here.
+ *
+ * Worth knowing before changing the angle: the mark is four reticle arcs around
+ * an X and has *exact* 90deg rotational symmetry — every arc lands on the next
+ * one and the two X arms swap. So the quarter turn animates visibly, and reads
+ * as a dial clicking over, but the parked open state is pixel-identical to the
+ * closed one. The chevron is what actually carries the open state. Anything
+ * that has to look turned while parked needs 45deg, not 90.
+ *
+ * The overshoot easing is what makes it read as a mechanism catching rather
+ * than a fade; it is small enough (~8%) not to wobble at 18px. */
+.realm-mark svg,
+.realm-chevron {
+  transition: transform 240ms cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+.realm-trigger[data-realm-open='true'] .realm-mark svg {
+  transform: rotate(90deg);
+}
+
+.realm-trigger[data-realm-open='true'] .realm-chevron {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .realm-mark svg,
+  .realm-chevron {
+    transition: none;
+  }
+
+  .realm-trigger[data-realm-open='true'] .realm-mark svg,
+  .realm-trigger[data-realm-open='true'] .realm-chevron {
+    transform: none;
+  }
+}
+
 .nav-tab {
   color: var(--fg-muted);
   border-bottom-color: transparent;
+  /* `color` by name, never the `transition-colors` shorthand: that utility also
+     covers `border-color`, which cross-faded the outgoing tab's underline
+     against the incoming one and put two underlines on the bar at once. The
+     label may ease; the underline says where you are and must not. */
+  transition: color 120ms ease;
 }
 
 .nav-tab:hover,
@@ -735,6 +855,102 @@ body {
   animation: nav-fx-emit 200ms 410ms ease-out backwards;
 }
 
+/* Polymarket — one pen draws the mark, then hands it to the fill.
+ *
+ * The same stroke-dashoffset walk Chains uses two hundred lines down, applied to
+ * four subpaths instead of one. A dash the length of each path is carried in
+ * from a full offset, so the line grows from a single point rather than fading
+ * in everywhere at once.
+ *
+ * Why the icon carries a separate ink layer at all: this mark is a filled shape
+ * with three chevrons punched out of it, and there is nothing in a fill for a
+ * pen to trace. Stroking it permanently was tried and abandoned — at the 14px
+ * the bar renders, the shell outline and the three triangle outlines merge and
+ * the logo reads as a tangle. So the ink is transient. It draws, and at the
+ * moment it finishes the fill takes over and the ink leaves; the reader sees a
+ * line become a logo.
+ *
+ * The order is the order a hand would take: the shell from its top-left corner
+ * along the top edge and round, then the chevrons from the top down, each
+ * starting at its own highest vertex so the pen never jumps backwards. Delays
+ * are end-to-end, never overlapping — two strokes growing at once is two pens.
+ *
+ * The dash lengths are each path's own length rounded up (measured: the shell
+ * runs 63.6 units, each chevron 29.4). The value only has to be at least the
+ * length; under it the dash repeats and the stroke grows from several places,
+ * which is exactly the thing this gesture is not.
+ *
+ * `backwards` on every leg holds its 0% frame through its own delay, so a
+ * chevron that has not been reached yet is not sitting there already drawn. It
+ * is also what makes frame zero an empty icon rather than a finished one. */
+@keyframes nav-fx-pen {
+  from {
+    stroke-dashoffset: var(--pm-len);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* The fill is absent while the pen works, then arrives. */
+@keyframes nav-fx-pen-fill {
+  0%,
+  78% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* And the ink steps back as it does, so the two never both hold the frame. */
+@keyframes nav-fx-pen-ink {
+  0%,
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.nav-tab[data-nav='polymarket'] svg .pm-ink {
+  opacity: 0;
+}
+
+.nav-tab[data-nav='polymarket']:hover svg .pm-fill {
+  animation: nav-fx-pen-fill 800ms ease-out backwards;
+}
+
+.nav-tab[data-nav='polymarket']:hover svg .pm-ink {
+  animation: nav-fx-pen-ink 800ms linear backwards;
+}
+
+.nav-tab[data-nav='polymarket']:hover svg .pm-ink path {
+  stroke-dasharray: var(--pm-len);
+  animation: nav-fx-pen var(--pm-dur) linear var(--pm-delay) backwards;
+}
+
+/* Two strokes, end to end and never overlapping — two growing at once is two
+   pens. The frame is the long one and reads as a shape on its own, so it takes
+   most of the time; the zigzag follows immediately, with no gap for the eye to
+   read as hesitation.
+
+   Lengths are each path's own, measured and rounded up: the frame runs 56.8
+   units and the zigzag 28.0. The value only has to be at least the length —
+   under it the dash repeats and the stroke grows from several places at once,
+   which is the one thing this gesture must not do. */
+.nav-tab[data-nav='polymarket']:hover svg .pm-ink path:nth-child(1) {
+  --pm-len: 58;
+  --pm-dur: 360ms;
+  --pm-delay: 0ms;
+}
+.nav-tab[data-nav='polymarket']:hover svg .pm-ink path:nth-child(2) {
+  --pm-len: 29;
+  --pm-dur: 200ms;
+  --pm-delay: 360ms;
+}
+
 /* Chains — the chain draws itself, and only once it is whole does the next
  * block land on top of it. Strictly sequential, and the order is the reading:
  * you cannot append to a chain that does not exist yet.
@@ -988,8 +1204,10 @@ body {
   animation: nav-fx-typing 340ms ease-in-out 180ms 2;
 }
 
-/* Heatmap — the stack fans apart and closes. Middle plate held still on
-   purpose: it is what the other two are seen to move against. */
+/* Derivatives — the stack fans apart and closes. Middle plate held still on
+   purpose: it is what the other two are seen to move against. Keyed on
+   `derivatives`, the tab's key in Navigation.tsx: the tab was renamed from
+   Heatmap and the selector was not, which left the icon inert for a release. */
 @keyframes nav-fx-lift {
   45% {
     transform: translateY(-2.4px);
@@ -1006,10 +1224,10 @@ body {
     transform: translateY(0);
   }
 }
-.nav-tab[data-nav='heatmap']:hover svg path:nth-child(1) {
+.nav-tab[data-nav='derivatives']:hover svg path:nth-child(1) {
   animation: nav-fx-lift 480ms ease-in-out;
 }
-.nav-tab[data-nav='heatmap']:hover svg path:nth-child(2) {
+.nav-tab[data-nav='derivatives']:hover svg path:nth-child(2) {
   animation: nav-fx-drop 480ms ease-in-out;
 }
 
@@ -1274,6 +1492,118 @@ body {
   border-radius: 8px;
 }
 
+/* ── Surge rim ──────────────────────────────────────────────────────────────
+   A lit border for a card whose asset has moved far enough that the reader
+   should notice it without reading the number.
+
+   Two effects on one element. The `box-shadow` breathes, which is what makes
+   the card read as emphasised from across the page; the masked ring travels,
+   which is what makes it read as alive rather than as a static highlight
+   somebody drew. Neither works alone — the breath by itself is a coloured
+   border, and the travel by itself is a thin line nobody notices at a glance.
+
+   The hue arrives as `--surge-hue` rather than being baked in, for the same
+   reason `.metal-sheen` reads `currentColor`: one class has to be able to mark
+   a move in either direction, and hardcoding green here would make the down
+   case a second, subtly different effect.
+
+   It breathes rather than pulses. A hard on/off in a terminal is the vocabulary
+   of an alarm — `.live-indicator` is the only thing on this app that gets to
+   use it, and it means "the socket is alive". A slow ease is emphasis on a card
+   the reader is already looking at; a blink is a demand for attention.
+
+   The glow is a `box-shadow` and not a `border-color` animation so the 1px rule
+   keeps its exact geometry: animating the border would shift the card's inner
+   box by a subpixel every cycle and the text inside would shimmer with it. */
+
+/* The conic sweep needs an angle CSS can interpolate, and a raw custom property
+   is a string — it would jump from 0deg to 360deg with nothing in between.
+   Registering it as an `<angle>` is what makes the rotation continuous. Where
+   `@property` is unsupported the angle stays at its initial value and the ring
+   is a static highlight, which is a fallback rather than a broken state. */
+@property --surge-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes surge-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--surge-hue) 52%, transparent),
+      0 0 20px -2px color-mix(in srgb, var(--surge-hue) 38%, transparent);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--surge-hue) 88%, transparent),
+      0 0 34px -4px color-mix(in srgb, var(--surge-hue) 64%, transparent);
+  }
+}
+
+@keyframes surge-orbit {
+  to {
+    --surge-angle: 360deg;
+  }
+}
+
+.surge-rim {
+  /* The travelling ring is an absolutely positioned child. */
+  position: relative;
+  border-color: color-mix(in srgb, var(--surge-hue) 60%, var(--border));
+  animation: surge-breathe 3.6s ease-in-out infinite;
+}
+
+/* The light that goes round.
+   `padding: 1px` plus the two-layer mask is the standard gradient-border trick:
+   the element is filled with the conic sweep, then everything except a 1px ring
+   is masked away, so the sweep is only ever visible on the edge. `inset: 0`
+   rather than `-1px` because the card clips its overflow — a ring hung outside
+   the padding box would be cut off along the top and bottom. */
+.surge-rim::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--surge-angle),
+    transparent 0deg,
+    color-mix(in srgb, var(--surge-hue) 85%, #fff 30%) 30deg,
+    color-mix(in srgb, var(--surge-hue) 90%, transparent) 55deg,
+    transparent 110deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: surge-orbit 2.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The emphasis survives, the movement does not. Dropping the whole effect
+     would hide which card is the outlier from the readers most likely to be
+     scanning rather than reading. */
+  .surge-rim {
+    animation: none;
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--surge-hue) 70%, transparent),
+      0 0 26px -3px color-mix(in srgb, var(--surge-hue) 48%, transparent);
+  }
+
+  .surge-rim::before {
+    animation: none;
+  }
+}
+
 /* ── Lit rim ────────────────────────────────────────────────────────────────
    A panel sitting in front of a lit floor with a uniformly neutral edge reads
    as pasted on: the light stops dead at the card boundary. This puts the same
@@ -1319,7 +1649,15 @@ body {
     content: '';
     position: absolute;
     inset: 0;
-    z-index: 0;
+    /* Above a panel's own sticky headers, below anything that overlaps a card
+       from outside it. A sticky header is opaque and spans the full width, so
+       at z-index 0 it painted straight over this ring and erased the card's
+       left and right hairline across its band — the header read as sitting on
+       top of the frame rather than inside it. Kept in single digits on purpose:
+       the ring must not outrank a dropdown or a sticky bar at z-10/z-20 that
+       legitimately passes over the card, or it would draw 1px lines across
+       those instead. */
+    z-index: 3;
     border-radius: inherit;
     /* Ring width. With border-box sizing the content box is inset by this much
        on every side, which is exactly what the mask below keeps. */
@@ -1352,6 +1690,225 @@ body {
       linear-gradient(#000 0 0);
     mask-composite: exclude;
   }
+}
+
+/* Opt out of the lit rim.
+ *
+ * The rim is priced for a handful of large panels: two viewport-anchored
+ * radial gradients, six color-mix stops and a two-layer mask with an exclude
+ * composite, per element. On the Home or Chains grid that is six or eight
+ * elements and free. On a board of sixty cards it is not — and because
+ * `background-attachment: fixed` anchors the gradient to the viewport rather
+ * than to the card, every one of them has to be re-resolved on every scroll
+ * frame. Chrome absorbs it; Safari drops to single-figure frame rates, which is
+ * what this class was added to fix.
+ *
+ * Nothing is lost visually. The rim's job is to let a panel catch the colour of
+ * the backdrop pool behind it, and at card size the lit edge is a couple of
+ * pixels nobody can see. Use it on any grid dense enough that the effect is
+ * decoration rather than depth. */
+.surface-flat::after {
+  content: none;
+}
+
+/* A card whose figure gained in lira and lost in purchasing power.
+ *
+ * The one state the BIST brief lights, because it is the one fact this realm
+ * exists to surface and the two numbers sit in the same colour otherwise.
+ *
+ * Written out rather than as `ring-1 ring-down/40`: the palette tokens are
+ * `var()` strings, and Tailwind cannot inject an alpha into one — the opacity
+ * modifier fails silently and `--tw-ring-color` falls back to the framework's
+ * default blue, which is what this replaced. `color-mix` does the same job on
+ * the resolved value, and the inset ring keeps the card's box the size the grid
+ * measured it at. */
+.brief-real-loss {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--down) 45%, transparent);
+}
+
+/* ── The model's own panel ──────────────────────────────────────────────────
+   Three surfaces in this app carry a sentence a model wrote: the macro regime
+   read, the chain anomaly banner and the institutional flow note. Everything
+   else on those pages is arithmetic done in Python. That is a difference in
+   epistemic status, not in importance, and the reader has to be able to see it
+   before reading the sentence rather than after — so it is carried by the panel,
+   not by a disclaimer under it.
+
+   The separation is built from what is already here rather than from a new
+   effect. `.surface::after` resolves its rim from `--lit-a-hue`/`--lit-b-hue`,
+   so re-pointing those two on this element alone puts the panel in a different
+   light while keeping the identical geometry, falloff and viewport anchoring as
+   every other card: it is lit by the same room, just not by the same lamp.
+   Both pools take --mode-detailed, which this codebase already spends on "the
+   model is speaking at length" — one meaning, one hue, in two places.
+
+   Colour is never the only carrier. The left rail is a shape, and the note's
+   own settle animation is a behaviour; a reader who cannot separate indigo from
+   blue still gets both. */
+.ai-surface {
+  --lit-a-hue: var(--mode-detailed);
+  --lit-b-hue: var(--mode-detailed);
+  /* Wash + inner highlight, in that order: the first says the surface is not
+     the same material as the panel beside it, the second gives it the 1px lip
+     that reads as glass rather than as a tinted rectangle.
+
+     3.5% is the ceiling, not a starting point. --fg-subtle sits at 4.2:1 on
+     --surface and every one of these panels puts a footnote in it; a wash heavy
+     enough to be admired is a wash that has taken contrast from the smallest
+     text on the card. The tint has to be findable next to a plain panel and
+     invisible when the panel is alone, which is what this alpha buys. */
+  background:
+    radial-gradient(
+      ellipse 120% 100% at 0% 0%,
+      color-mix(in srgb, var(--mode-detailed) 3.5%, transparent) 0%,
+      transparent 62%
+    ),
+    var(--surface);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--mode-detailed) 9%, transparent);
+  transition:
+    background 120ms ease-out,
+    box-shadow 120ms ease-out;
+}
+
+/* The rail. `::before` because `::after` is the lit rim and this must not cost
+   the panel its edge — the two layers are doing different jobs at the same
+   coordinates, and the rim is the one that ties the card to the room.
+
+   Inset by the border rather than by 0: at inset 0 the bar paints over the
+   hairline's rounded corner and leaves a 1px square notch at the top-left,
+   which at 8px radius is visible. z-index stays under the rim's 3 so the ring
+   still closes over it. */
+.ai-surface::before {
+  content: '';
+  position: absolute;
+  inset: 1px auto 1px 1px;
+  width: 2px;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: inherit;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--mode-detailed) 85%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 55%, transparent) 100%
+  );
+  transition: opacity 120ms ease-out;
+  opacity: 0.75;
+}
+
+/* Hover lifts the light rather than adding anything new: same wash, same rail,
+   one step brighter. A panel that grew a border or a shadow on hover would be
+   claiming to be interactive, and none of these three are — there is nothing
+   here to click. What the step says is that the card is one thing to read, which
+   matters most on the chain banner, where four independent readings sit on one
+   row and the eye needs telling where the group ends. */
+.ai-surface:hover {
+  background:
+    radial-gradient(
+      ellipse 120% 100% at 0% 0%,
+      color-mix(in srgb, var(--mode-detailed) 6%, transparent) 0%,
+      transparent 66%
+    ),
+    var(--surface);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--mode-detailed) 14%, transparent);
+}
+
+.ai-surface:hover::before {
+  opacity: 1;
+}
+
+/* The sentence arriving.
+ *
+ * It replaces a shimmering line of the same height, so nothing moves on the
+ * page when it lands — the 4px is travelled by the text inside a box that was
+ * already the right size, which is why this can animate `transform` and never
+ * touch layout. Without it the swap is a hard cut between two things that look
+ * alike, and reads as a glitch rather than as an answer.
+ *
+ * 260ms and a decelerating curve: long enough to be seen as motion at the edge
+ * of vision while the reader is still on the figures above, short enough that
+ * someone looking straight at it is not waiting for a panel to finish. */
+@keyframes ai-note-settle {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ai-note-settle {
+  animation: ai-note-settle 260ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
+}
+
+/* Reduced motion takes the movement, not the arrival: the note still fades in,
+   because a paragraph that appears between two frames with no transition at all
+   is the jump this was added to remove. The hover step stays — it is a colour
+   change on an unmoving box, which is not what the preference is about. */
+@media (prefers-reduced-motion: reduce) {
+  .ai-note-settle {
+    animation: ai-note-settle 120ms linear both;
+  }
+
+  @keyframes ai-note-settle {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+/* Dialog scrim that keeps the board legible behind it.
+ *
+ * The default `Modal` scrim is an opaque wash, which is right for a dialog that
+ * replaces the page. The alarm centre is not that: it is a place to reason
+ * about what is on the board, so the board stays visible and simply recedes.
+ *
+ * `color-mix` against `--bg` rather than `black/N`, so the scrim is the same
+ * colour as the app rather than a grey film over it.
+ *
+ * The reduced-transparency fallback goes opaque rather than dropping the blur:
+ * without the blur the tape and the ticker behind a full-screen dialog compete
+ * with its own text, and legibility is the point of the effect. */
+.scrim-blur {
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .scrim-blur {
+    background: var(--bg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* Skip rendering what is off screen.
+ *
+ * A board of sixty cards is sixty subtrees the engine styles, lays out and
+ * paints whether or not any of them is on screen. `content-visibility: auto`
+ * lets it skip the ones that are not, which is the single largest lever
+ * available for a grid this long and costs nothing when a card scrolls into
+ * view.
+ *
+ * The intrinsic size is what stops the scrollbar jumping: without it a skipped
+ * card measures zero, the page collapses, and the browser then discovers its
+ * real height as it scrolls past. 168px is a card with three outcome rows —
+ * close enough that the correction is invisible, and only ever a correction
+ * downward for the two-row majority.
+ *
+ * Unsupported browsers ignore both properties and render as before. */
+.grid-virtual > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 168px;
 }
 
 /* News list row */
@@ -2342,6 +2899,122 @@ body {
   filter: drop-shadow(0 0 3px rgb(255 255 255 / 0.7));
 }
 
+/* The terminal link, on hover: the label stops being page furniture and lights
+   up. The header control and the page's closing CTA share it, so the two ways
+   out of the page answer the pointer the same way.
+ *
+ * The page's palette is deliberately black, white and the up/down pair — there
+ * is a long comment above `.landing` explaining why a third hue was taken off
+ * it. This is the one sanctioned exception, and it is bounded on purpose: it
+ * exists only under the pointer, only on the controls that leave the page, and
+ * it is gone the moment the pointer is. A colour that is a response to the
+ * reader is not the decoration that rule was written against.
+ *
+ * Two stacked copies rather than one restyled copy. ShinyText writes its
+ * gradient, its `background-position` and `-webkit-text-fill-color` as inline
+ * styles from a motion value, and no stylesheet rule outranks those; swapping
+ * the layer is the only way to hand the same word a different gradient. */
+.landing-ultra-slot {
+  position: relative;
+  display: inline-grid;
+}
+
+/* Both copies in one grid cell, rather than the second one absolutely
+   positioned against the control. The CTA's box also holds an arrow, so an
+   overlay pinned to the control would centre the word across the pair and
+   land it half a glyph off the word underneath. The cell is sized by the
+   resting copy, which is the one that has to keep the layout. */
+.landing-ultra-slot > * {
+  grid-area: 1 / 1;
+}
+
+.landing-ultra-base {
+  transition: opacity 200ms ease;
+}
+
+.landing-ultra:hover .landing-ultra-base,
+.landing-ultra:focus-visible .landing-ultra-base {
+  opacity: 0;
+}
+
+/* The lit copy.
+ *
+ * Two full colour cycles inside one image, against a `background-size` of 200%:
+ * the label's own box is therefore always showing exactly one complete cycle, so
+ * the whole word is lit at every frame and the travel moves the colours through
+ * it. One cycle instead read as a mostly-white label with a tinted band crossing
+ * it once every few seconds — a shine rather than the thing lighting up, and a
+ * shine is what this replaced.
+ *
+ * The gradient starts and ends on white so the sweep can loop without a seam,
+ * and white is what the label already wears: the hue is carried by the travel,
+ * not by the label giving up its contrast. Every other stop is a light tint —
+ * both controls are small type on near-black, and a saturated mid-tone reads as
+ * a smudge at that size long before it reads as a colour.
+ *
+ * The halo is drop-shadow rather than text-shadow because the glyphs' own fill
+ * is transparent here: drop-shadow works off the element's rendered alpha, so
+ * it picks up the gradient and the light comes out the colour of whatever part
+ * of the sweep is passing. text-shadow would have to be given one flat colour
+ * and would sit there while the colours moved past it. */
+.landing-ultra-ink {
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  background-image: linear-gradient(
+    100deg,
+    #ffffff 0%,
+    #ffd0ae 8%,
+    #ff9e6d 17%,
+    #ff86b0 25%,
+    #b48cff 33%,
+    #7cc6ff 42%,
+    #ffffff 50%,
+    #ffd0ae 58%,
+    #ff9e6d 67%,
+    #ff86b0 75%,
+    #b48cff 83%,
+    #7cc6ff 92%,
+    #ffffff 100%
+  );
+  background-size: 200% auto;
+  background-position: 150% center;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.landing-ultra:hover .landing-ultra-ink,
+.landing-ultra:focus-visible .landing-ultra-ink {
+  opacity: 1;
+  animation: landing-ultra-sweep 3.2s linear infinite;
+  filter: drop-shadow(0 0 4px rgb(255 255 255 / 0.4)) drop-shadow(0 0 12px rgb(180 140 255 / 0.35));
+}
+
+/* One full image width per period — two colour cycles, since the image carries
+   two. Both ends of the gradient are the same colour, so the wrap lands on
+   itself and the flow has no restart in it. */
+@keyframes landing-ultra-sweep {
+  from {
+    background-position: 150% center;
+  }
+  to {
+    background-position: -50% center;
+  }
+}
+
+/* The colour is the point; the travel is the part this preference is asking
+   about. Held mid-gradient rather than at the seam, so the held state is the
+   iridescence rather than the neutral the loop happens to start on. */
+@media (prefers-reduced-motion: reduce) {
+  .landing-ultra:hover .landing-ultra-ink,
+  .landing-ultra:focus-visible .landing-ultra-ink {
+    animation: none;
+    background-position: 50% center;
+  }
+}
+
 /* `.landing-cta` used to live here — a hover lift and an accent glow on the
    primary button. Both are gone: the label now carries React Bits' shine, and
    the two effects together read as the button leaving the surface and lighting
@@ -2404,6 +3077,195 @@ html:has(.landing-gate[data-hold]) {
   }
 }
 
+/* ── The documentation pages ──────────────────────────────────────────────────
+   `/developers` and `/faq` share the landing chrome but none of its scroll
+   machinery. What they add is a reading column with a live margin: a tape that
+   prints across the masthead, a spine that marks where you are, and figures
+   that fill in as they arrive. Every one of them is a transition rather than a
+   keyframe, so the global reduced-motion rule below lands them on their end
+   state instead of stranding them at zero. */
+
+/* The header tab row. Colour only — the underline is a separate element, so it
+   can slide between tabs instead of switching on and off per tab. */
+.landing-tab {
+  color: var(--fg-muted);
+}
+
+.landing-tab:hover,
+.landing-tab[data-active='true'] {
+  color: var(--fg);
+}
+
+/* `bottom: -1px` puts the bar *on* the header's own bottom border rather than a
+   hairline above it — the same thing `Navigation`'s `h-[calc(100%+1px)]` and
+   `-mb-px` pairing buys, done with one element instead of one per tab.
+   Hidden until measured: the server frame has no offsets to work from, and a
+   zero-width bar at the left edge would be visible for exactly one paint. */
+.landing-tab-underline {
+  position: absolute;
+  bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0;
+  transition:
+    left 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 160ms ease;
+}
+
+.landing-tab-underline[data-ready] {
+  opacity: 1;
+}
+
+/* The ground the prose sits on.
+   The tape behind these pages is quiet, but quiet is not the same as absent and
+   a paragraph over a moving-average line is a paragraph you read twice. So the
+   reading area gets its own opaque floor, faded at the left and right edges so
+   the board survives in the page gutters rather than being boxed out of them —
+   a hard-edged panel would read as a card dropped on the page, which is the one
+   thing this layout is not. */
+.landing-read {
+  position: absolute;
+  /* Horizontal bleed only. A negative top inset let the section ground reach up
+     over the masthead's last line and — being later in the tree — paint on top
+     of it. The two grounds are adjacent rows of the same grid, so a hard join
+     between them is invisible anyway. */
+  /* The bleed matches the page gutter at each breakpoint, so the ground reaches
+     the viewport edge and never past it. A fixed bleed overflowed by the
+     difference on a phone, where the gutter is smallest. */
+  inset: 0 -1.5rem;
+  /* Not quite opaque. A solid floor read as a document pasted over the board;
+     a tenth of the tape coming through says the two belong to the same page,
+     and at this strength it is still well clear of the contrast the body copy
+     needs. */
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 3.5rem,
+    #000 calc(100% - 3.5rem),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 3.5rem,
+    #000 calc(100% - 3.5rem),
+    transparent
+  );
+}
+
+/* The masthead tape. Masked at both ends so it reads as a cut from a longer
+   tape rather than as a widget that happens to have edges. */
+.landing-tape {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+}
+
+/* The section spine's read head. It is `.landing-caret` — the same candle the
+   typed lists write with — given a size and somewhere to slide to. The size is
+   set here rather than inline because the caret is measured in `em`. */
+.landing-spine-mark {
+  font-size: 14px;
+  transition: top 380ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Figure bars fill when their section arrives. The target width is carried in
+   `--w` so the bar can be measured by the generator and drawn by CSS, with no
+   layout effect in between. */
+.landing-bar {
+  width: 0;
+  transition: width 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.landing-reveal[data-inview] .landing-bar {
+  width: var(--w);
+}
+
+/* The FAQ disclosure. `0fr` to `1fr` is the one height transition that works
+   without measuring the content first, which is what keeps this a stylesheet
+   concern rather than a resize observer.
+   `visibility` rather than `display`: it still removes a closed answer from the
+   tab order and the accessibility tree, but it leaves the row transitionable.
+   It is deliberately not animated — it flips at the start of the open. */
+.landing-disclosure {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 380ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.landing-disclosure[data-open] {
+  grid-template-rows: 1fr;
+  visibility: visible;
+}
+
+/* The open/closed marker: two hairlines, not a chevron. The rest of these pages
+   is built from dashed rules and mono labels, and a rounded icon in the middle
+   of that reads as borrowed from a different interface. */
+.landing-plus {
+  position: relative;
+  width: 9px;
+  height: 9px;
+  flex: none;
+  color: var(--fg-subtle);
+}
+
+.landing-plus::before,
+.landing-plus::after {
+  content: '';
+  position: absolute;
+  background: currentColor;
+}
+
+.landing-plus::before {
+  top: 4px;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.landing-plus::after {
+  top: 0;
+  bottom: 0;
+  left: 4px;
+  width: 1px;
+  transition:
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 300ms ease;
+}
+
+.landing-plus[data-open]::after {
+  transform: rotate(90deg);
+  opacity: 0;
+}
+
+/* The FAQ tally's tick tape: one mark per question, lit as it is opened. */
+.landing-tick {
+  width: 3px;
+  height: 9px;
+  background: var(--border-strong);
+  transition: background-color 260ms ease;
+}
+
+.landing-tick[data-on] {
+  background: var(--accent);
+}
+
+@media (min-width: 640px) {
+  .landing-read {
+    inset: 0 -2.5rem;
+  }
+}
+
+/* Someone who has asked for less transparency is asking for exactly the thing
+   the tenth of tape costs: contrast. Give them the solid floor. */
+@media (prefers-reduced-transparency: reduce) {
+  .landing-read {
+    background: var(--bg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -2411,5 +3273,1430 @@ html:has(.landing-gate[data-hold]) {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BORSA — the BIST product page
+   ═══════════════════════════════════════════════════════════════════════════
+
+   A second look inside one app, expressed as a token override rather than a
+   second component tree. `.borsa` sits above the marketing header, so the
+   shared chrome below it — header, logo menu, auth modal — comes up light
+   without knowing a light palette exists.
+
+   The palette is cool paper, not cream, and the accent is teal rather than the
+   terminal's blue. Both are deliberate distance from the dark product: these
+   two pages should not read as the same page with the lights on.
+
+   The one colour that carries an argument is the nominal green. It is the exact
+   shade every Turkish finance site paints a "+%148" in, and it is used here for
+   a number the page then takes apart. */
+.borsa {
+  /* Surfaces. Paper is cool blue-grey — a cream page here would land on the
+     one palette every generated landing page already uses. */
+  --bg: #eaeef2;
+  /* Pushed away from the paper: at #f8fafc a card was a ~1.1:1 step and the
+     panels were legible only through their seam. */
+  --surface: #ffffff;
+  --surface-2: #dfe5ec;
+
+  /* Rules are ink at low alpha rather than a flat grey, so they sit on both
+     paper and card without a second token. */
+  --border: rgba(13, 22, 32, 0.12);
+  --border-strong: rgba(13, 22, 32, 0.22);
+
+  --fg: #0d1620;
+  --fg-muted: #4d5a67;
+  /* 4.6:1 on paper, measured rather than eyeballed. The previous #78848f was
+     3.28:1 and this token carries every eyebrow, table header, timestamp and
+     footer link on the page — all of them 12px, uppercase and tracked, which
+     makes the deficit worse rather than decorative. Subtlety here is a
+     type-size decision, not a contrast one. */
+  --fg-subtle: #5c6976;
+
+  /* The accent is chrome. It used to be the same teal as a real gain, which
+     made the session rail, a positive real return and a hover state one colour
+     doing three unrelated jobs — a gain is a measurement and an accent is not. */
+  --accent: #0b6b8f;
+  --accent-bg: rgba(11, 107, 143, 0.1);
+  --accent-soft: #3f95b5;
+  --accent-fg: #ffffff;
+
+  /* The two readings of one return. Nominal is only ever used at display size,
+     where 3:1 is the bar it has to clear — its caption is set in muted ink, not
+     in green, so nothing small depends on it. */
+  --borsa-nominal: #1f9d55;
+  /* The same green, dark enough for a figure set at table size. Keeping one
+     token for both would either fail contrast in the table or wash out the
+     display figure the whole page is built around. */
+  --borsa-nominal-ink: #15703c;
+  --borsa-real-loss: #b3301f;
+  --borsa-real-gain: #0f7d75;
+  --borsa-rule: #aeb9c4;
+
+  /* ── The board ──────────────────────────────────────────────────────────
+     The one ink-dark object on the paper, with its own palette. A figure at
+     72px is the last place on this page to reuse a colour that was measured
+     against a different background: #b3301f clears 4.5:1 on paper and 2.6:1
+     on ink, which is the wrong direction for the number the page is about. */
+  --borsa-board: #101a24;
+  --borsa-board-2: #17232f;
+  --borsa-board-fg: #e9eef4;
+  --borsa-board-muted: #93a3b3;
+  --borsa-board-rule: rgba(233, 238, 244, 0.14);
+  --borsa-board-gain: #40d989;
+  --borsa-board-loss: #ff7a70;
+
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-borsa-body), Georgia, 'Times New Roman', serif;
+}
+
+.borsa-display {
+  font-family: var(--font-borsa-display), var(--font-sans), system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+}
+
+/* Small caps-ish utility labels. Not the serif: these are instrument markings,
+   and the body face is for sentences. */
+.borsa-label {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-subtle);
+}
+
+.borsa-figure {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* ── The session rail ──────────────────────────────────────────────────────
+ * Borsa İstanbul opens at 10:00 and closes at 18:00. The other terminal in this
+ * app never closes at all, and that is the honest difference between the two
+ * products — so the page is scaled to one session and the rail is how far
+ * through it you have read.
+ *
+ * Hidden below lg: at tablet width there is no margin to put it in, and a
+ * device that cannot show it loses nothing but an ornament. */
+.borsa-rail {
+  display: none;
+  position: fixed;
+  left: 28px;
+  top: 96px;
+  bottom: 96px;
+  width: 1px;
+  background: var(--borsa-rule);
+}
+
+.borsa-rail-fill {
+  position: absolute;
+  inset: 0 0 auto 0;
+  width: 1px;
+  background: var(--accent);
+  /* Height is written from JS on scroll; a transition here would lag the
+     pointer rather than smooth it. */
+}
+
+.borsa-rail-tick {
+  position: absolute;
+  left: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.borsa-rail-time {
+  position: absolute;
+  left: 10px;
+  transform: translateY(-50%);
+}
+
+@media (min-width: 1024px) {
+  .borsa-rail {
+    display: block;
+  }
+}
+
+/* The same session, laid on its side, for the widths with no margin to hang a
+   rail in. Under the fixed header rather than over it: the header already owns
+   a hairline and two rules stacked read as a rendering fault. */
+.borsa-rail-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 56px;
+  z-index: 40;
+  height: 2px;
+  background: color-mix(in srgb, var(--borsa-rule) 55%, transparent);
+}
+
+.borsa-rail-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+@media (min-width: 1024px) {
+  .borsa-rail-bar {
+    display: none;
+  }
+}
+
+/* ── The deflating figure ──────────────────────────────────────────────────
+ * The page's one animated moment: the nominal number is struck through and the
+ * real one rises under it. It plays once, on load, and then the page is still.
+ *
+ * Split into two keyframes rather than one on a wrapper because the two halves
+ * move in opposite directions — the claim recedes, the correction arrives. */
+@keyframes borsa-nominal-strike {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes borsa-real-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Absolute, across the middle of the digits: a rule *under* the number reads
+   as an underline, which is emphasis — the opposite of what this line means. */
+.borsa-strike-slot {
+  position: relative;
+  display: inline-block;
+}
+
+.borsa-strike {
+  position: absolute;
+  left: -0.06em;
+  right: -0.06em;
+  top: 52%;
+  height: 4px;
+  background: var(--borsa-real-loss);
+  transform-origin: left center;
+  animation: borsa-nominal-strike 520ms cubic-bezier(0.2, 0.8, 0.3, 1) 900ms both;
+}
+
+.borsa-real {
+  animation: borsa-real-rise 480ms cubic-bezier(0.2, 0.8, 0.3, 1) 1250ms both;
+}
+
+/* Reduced motion is handled explicitly below rather than left to the global
+   `animation-duration: 0.01ms !important` collapse. That collapse does land
+   both of these on their final frame — `both` fill mode, so the end state is
+   struck through and risen, which is the correct result — but it is a subtle
+   interaction between an `!important` shorthand override and a fill mode, and
+   the page's whole argument lives in that end state. Stated outright it cannot
+   be broken by an edit somewhere else in the file. */
+
+/* ── Ledger rows ───────────────────────────────────────────────────────────
+ * Each capability is one row of a statement: what it is on the left, what it
+ * actually does on the right. The rule above each row is the only structural
+ * device on the page, and it is doing the job a rule does on a settlement
+ * statement rather than decorating a section break. */
+.borsa-row {
+  border-top: 1px solid var(--borsa-rule);
+}
+
+/* ── Page frame ────────────────────────────────────────────────────────────
+ * One measure for the whole document. The page used to centre `max-w-5xl`
+ * inside `lg:px-20`, which on a wide screen left the content in a narrow strip
+ * with the session rail orphaned two hundred pixels to its left and no
+ * relationship between them. The grid is wider than a reading column because
+ * most of what is on it is a figure, and figures need the room a sentence does
+ * not. */
+.borsa-grid {
+  width: 100%;
+  max-width: 76rem;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .borsa-grid {
+    padding-inline: 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .borsa-grid {
+    padding-inline: 4rem;
+  }
+}
+
+/* ── Hero ──────────────────────────────────────────────────────────────────
+ * Copy left, board right. Below lg the board drops under the copy rather than
+ * shrinking: a flipping figure at 40% width is a widget, and this one is the
+ * page's argument. */
+.borsa-hero .borsa-grid {
+  display: grid;
+  gap: 3rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .borsa-hero .borsa-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(24rem, 30rem);
+    gap: 4.5rem;
+  }
+}
+
+.borsa-hero-title {
+  font-size: clamp(2.4rem, 4.9vw, 3.9rem);
+}
+
+/* ── The board ─────────────────────────────────────────────────────────────
+ * The single ink object on the paper. Its shadow carries an offset and a real
+ * blur — this is a plate lying on a page, not a glow. */
+.borsa-board {
+  margin: 0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, var(--borsa-board-2), var(--borsa-board));
+  color: var(--borsa-board-fg);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 18px 44px -22px rgba(13, 22, 32, 0.55),
+    0 2px 6px -2px rgba(13, 22, 32, 0.25);
+  overflow: hidden;
+}
+
+.borsa-board-head,
+.borsa-board-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.25rem;
+}
+
+.borsa-board-head {
+  border-bottom: 1px solid var(--borsa-board-rule);
+}
+
+.borsa-board-foot {
+  border-top: 1px solid var(--borsa-board-rule);
+  flex-wrap: wrap;
+  row-gap: 0.75rem;
+  padding-block: 1.1rem;
+}
+
+.borsa-board-label {
+  color: var(--borsa-board-muted);
+}
+
+.borsa-board-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--borsa-board-muted);
+}
+
+.borsa-board-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--borsa-board-gain);
+}
+
+.borsa-board-face {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 2.25rem 1.25rem 2.5rem;
+}
+
+.borsa-board-slot {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  color: var(--borsa-board-muted);
+}
+
+.borsa-board-number {
+  font-size: clamp(2.75rem, 6.4vw, 4.25rem);
+  line-height: 1;
+  color: var(--borsa-board-fg);
+}
+
+.borsa-board-struck {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 15px;
+  color: var(--borsa-board-muted);
+}
+
+.borsa-board-struck-note {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.borsa-board-math {
+  font-size: 12px;
+  color: var(--borsa-board-muted);
+}
+
+/* On ink the strike has to be the board's red, not the document's. */
+.borsa-board .borsa-strike {
+  background: var(--borsa-board-loss);
+  height: 2px;
+}
+
+/* ── The flip ──────────────────────────────────────────────────────────────
+ * Borsa İstanbul's floor board and every departure board share one mechanism:
+ * a number does not fade into another number, it turns over, and the turn is
+ * what says the old value was withdrawn rather than adjusted. That is exactly
+ * the claim, so the transition carries it instead of decorating it.
+ *
+ * Nothing moves until the observer sets `data-played`; an animation armed on
+ * mount would be finished before the section reached the viewport. */
+.borsa-flip {
+  display: inline-block;
+}
+
+.borsa-flip-board {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.borsa-flip-char {
+  display: inline-grid;
+  perspective: 260px;
+}
+
+.borsa-flip-out,
+.borsa-flip-in {
+  grid-area: 1 / 1;
+  backface-visibility: hidden;
+  /* The faces are padded to a common width with real spaces. */
+  white-space: pre;
+}
+
+.borsa-flip-out {
+  transform-origin: 50% 100%;
+}
+
+.borsa-flip-in {
+  opacity: 0;
+  transform: rotateX(90deg);
+  transform-origin: 50% 0%;
+}
+
+@keyframes borsa-flip-away {
+  from {
+    transform: rotateX(0deg);
+    opacity: 1;
+  }
+  to {
+    transform: rotateX(-88deg);
+    opacity: 0;
+  }
+}
+
+@keyframes borsa-flip-arrive {
+  from {
+    transform: rotateX(88deg);
+    opacity: 0;
+  }
+  to {
+    transform: rotateX(0deg);
+    opacity: 1;
+  }
+}
+
+.borsa-flip[data-played] .borsa-flip-out {
+  animation: borsa-flip-away 240ms cubic-bezier(0.5, 0, 0.75, 0.2) var(--flip-delay, 0ms) both;
+}
+
+.borsa-flip[data-played] .borsa-flip-in {
+  animation: borsa-flip-arrive 300ms cubic-bezier(0.16, 0.9, 0.3, 1)
+    calc(var(--flip-delay, 0ms) + 210ms) both;
+}
+
+/* ── Sections ──────────────────────────────────────────────────────────────
+ * Title left, lede right. The page's previous rhythm was one column of
+ * heading-then-paragraph seven times over, which reads as a document rather
+ * than as a board; splitting the head gives every section two columns of
+ * different weight before its figures arrive. */
+.borsa-section {
+  padding-block: 4.5rem;
+}
+
+@media (min-width: 1024px) {
+  .borsa-section {
+    padding-block: 6rem;
+  }
+}
+
+.borsa-section-head {
+  display: grid;
+  gap: 1.5rem;
+  margin-bottom: 2.75rem;
+}
+
+@media (min-width: 900px) {
+  .borsa-section-head {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: end;
+    gap: 3rem;
+  }
+}
+
+.borsa-section-lede {
+  max-width: 34rem;
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--fg-muted);
+}
+
+.borsa-quiet {
+  padding-block: 2.5rem;
+  font-size: 15px;
+  color: var(--fg-muted);
+}
+
+.borsa-coverage {
+  padding-bottom: 1.5rem;
+}
+
+/* A link out of a block, in the page's instrument voice. */
+.borsa-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  padding-bottom: 3px;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease;
+}
+
+.borsa-more:hover {
+  color: var(--fg);
+  border-color: var(--fg);
+}
+
+.borsa-more span {
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.borsa-more:hover span {
+  transform: translateX(3px);
+}
+
+/* ── Skeletons ─────────────────────────────────────────────────────────────
+ * The block's own shape while its figures are in flight. Three lines of
+ * centred grey text under a hero is a page that has not arrived. */
+.borsa-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.borsa-skeleton-row {
+  height: 1.75rem;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 0%,
+    color-mix(in srgb, var(--surface) 70%, var(--surface-2)) 50%,
+    var(--surface-2) 100%
+  );
+  background-size: 220% 100%;
+  animation: borsa-skeleton-sweep 1500ms ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * 90ms);
+  /* The rows taper, so a loading block reads as a list rather than as a wall. */
+  width: calc(100% - var(--i, 0) * 3%);
+}
+
+.borsa-skeleton-row[data-tall] {
+  height: 2.75rem;
+}
+
+@keyframes borsa-skeleton-sweep {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -20% 0;
+  }
+}
+
+/* ── The deflation chart ───────────────────────────────────────────────────
+ * Each row is a span, not a bar: the right end is what was printed, the left
+ * end is what was kept, and the distance between them is the year's inflation
+ * expressed in that fund's own return. */
+.borsa-slope-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--borsa-rule);
+}
+
+.borsa-slope-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-subtle);
+}
+
+.borsa-slope-key-note {
+  margin-left: auto;
+  text-transform: none;
+  letter-spacing: 0.04em;
+}
+
+.borsa-slope-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.borsa-slope-swatch-nominal {
+  background: var(--borsa-nominal-ink);
+}
+
+.borsa-slope-swatch-real {
+  background: var(--fg);
+}
+
+.borsa-slope-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.borsa-slope-link {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  grid-template-areas:
+    'code figures'
+    'title title'
+    'track track';
+  gap: 0.5rem 1rem;
+  align-items: center;
+  padding: 0.9rem 0.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--borsa-rule) 55%, transparent);
+  transition: background-color 140ms ease;
+}
+
+.borsa-slope-link:hover {
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+@media (min-width: 900px) {
+  .borsa-slope-link {
+    grid-template-columns: 4.5rem minmax(6rem, 1fr) minmax(0, 2.4fr) auto;
+    grid-template-areas: 'code title track figures';
+    gap: 1.25rem;
+  }
+}
+
+.borsa-slope-code {
+  grid-area: code;
+  font-size: 14px;
+  color: var(--fg);
+}
+
+.borsa-slope-title {
+  grid-area: title;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--fg-muted);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.borsa-slope-track {
+  grid-area: track;
+  position: relative;
+  display: block;
+  height: 18px;
+}
+
+.borsa-slope-zero {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--borsa-rule);
+}
+
+.borsa-slope-bar {
+  position: absolute;
+  top: 50%;
+  height: 3px;
+  margin-top: -1.5px;
+  border-radius: 2px;
+  /* One tint, not a two-hue gradient: at three pixels a red-to-green ramp mixes
+     to mud and reads as neither end. The bar is what inflation took, so it is
+     the loss colour held quiet enough to stay behind its two dots. */
+  background: color-mix(in srgb, var(--borsa-real-loss) 46%, var(--bg));
+  transform-origin: right center;
+  transform: scaleX(0);
+  transition: transform 620ms cubic-bezier(0.16, 0.9, 0.3, 1);
+  transition-delay: calc(var(--i, 0) * 45ms);
+}
+
+.borsa-slope[data-shown] .borsa-slope-bar {
+  transform: scaleX(1);
+}
+
+/* A row whose ends run past the plotted domain is pinned and marked, so the
+   edge reads as "further right than this" rather than as a measured value.
+   Its span is dropped rather than drawn at zero width: a clamped bar would be
+   a measured gap of nothing, which is the opposite of what is true. Both
+   figures are still printed in the row. */
+.borsa-slope-track[data-off] .borsa-slope-bar,
+.borsa-slope-track[data-off] .borsa-slope-dot-real {
+  display: none;
+}
+
+.borsa-slope-track[data-off]::after {
+  content: '›';
+  position: absolute;
+  right: -0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 13px;
+  color: var(--fg-subtle);
+}
+
+.borsa-slope-dot-nominal,
+.borsa-slope-dot-real {
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+}
+
+.borsa-slope-dot-nominal {
+  background: var(--borsa-nominal-ink);
+}
+
+.borsa-slope-dot-real {
+  background: var(--fg);
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity 300ms ease,
+    transform 380ms cubic-bezier(0.16, 0.9, 0.3, 1);
+  transition-delay: calc(var(--i, 0) * 45ms + 420ms);
+}
+
+.borsa-slope-dot-real[data-loss] {
+  background: var(--borsa-real-loss);
+}
+
+.borsa-slope[data-shown] .borsa-slope-dot-real {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.borsa-slope-axis {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  /* The axis is stated once under the list rather than as a labelled tick on
+     every row: fourteen copies of "%0" is a grid, not a scale. */
+  .borsa-slope-axis {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(6rem, 1fr) minmax(0, 2.4fr) auto;
+    gap: 1.25rem;
+    padding: 0.5rem 0.5rem 0;
+  }
+
+  .borsa-slope-axis-track {
+    grid-column: 3;
+    position: relative;
+    display: block;
+    height: 1rem;
+  }
+
+  /* Reserves the same width the figures column holds, so the track column
+     lands under the tracks above it rather than half a step to the right. */
+  .borsa-slope-axis::after {
+    content: '';
+    grid-column: 4;
+    width: 11.5rem;
+  }
+}
+
+.borsa-slope-axis-zero {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--fg-subtle);
+}
+
+.borsa-slope-figures {
+  grid-area: figures;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.85rem;
+  font-size: 14px;
+}
+
+.borsa-slope-nominal {
+  color: var(--borsa-nominal-ink);
+}
+
+.borsa-slope-real {
+  min-width: 5.5rem;
+  text-align: right;
+  color: var(--fg);
+}
+
+.borsa-slope-real[data-loss] {
+  color: var(--borsa-real-loss);
+}
+
+/* ── Index board ───────────────────────────────────────────────────────── */
+.borsa-index {
+  display: grid;
+  gap: 2rem 3rem;
+  padding-bottom: 2.5rem;
+  border-bottom: 1px solid var(--borsa-rule);
+}
+
+@media (min-width: 700px) {
+  .borsa-index {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.borsa-index-value {
+  margin-top: 0.6rem;
+  font-size: clamp(1.9rem, 3.4vw, 2.6rem);
+  line-height: 1.05;
+  color: var(--fg);
+}
+
+.borsa-index-change {
+  margin-top: 0.35rem;
+  font-size: 14px;
+  color: var(--borsa-nominal-ink);
+}
+
+.borsa-index-change[data-down] {
+  color: var(--borsa-real-loss);
+}
+
+/* An unchanged index is not a gain. Painting a flat day green is the one place
+   on this page where a colour would state something the number does not. */
+.borsa-index-change[data-flat] {
+  color: var(--fg-muted);
+}
+
+.borsa-index-note {
+  margin-top: 0.5rem;
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+
+.borsa-index-slash {
+  color: var(--fg-subtle);
+}
+
+.borsa-breadth {
+  display: flex;
+  gap: 2px;
+  margin-top: 0.75rem;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.borsa-breadth-up {
+  background: var(--borsa-nominal-ink);
+}
+
+.borsa-breadth-flat {
+  background: var(--borsa-rule);
+}
+
+.borsa-breadth-down {
+  background: var(--borsa-real-loss);
+}
+
+/* ── Sector strip ──────────────────────────────────────────────────────────
+ * Band width is capitalisation share, tint is the day. A sector list ranked by
+ * change hides the fact that the loudest mover may be two percent of the
+ * exchange. */
+.borsa-sectors {
+  padding-top: 2.5rem;
+}
+
+.borsa-sector-strip {
+  display: flex;
+  gap: 2px;
+  height: 76px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.borsa-sector-band {
+  position: relative;
+  /* Zero basis so `flex-grow` alone decides the width. With `auto` the label
+     inside sets the base and a sector with a long name came out wider than one
+     twice its capitalisation — the encoding read backwards. */
+  flex-basis: 0;
+  min-width: 6px;
+  display: flex;
+  align-items: flex-end;
+  padding: 0.5rem;
+  overflow: hidden;
+  transition: filter 140ms ease;
+}
+
+.borsa-sector-band:hover {
+  filter: brightness(0.94);
+}
+
+.borsa-sector-band-label {
+  min-width: 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.borsa-sector-legend {
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0 2rem;
+}
+
+@media (min-width: 640px) {
+  .borsa-sector-legend {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .borsa-sector-legend {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.borsa-sector-legend-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding-block: 0.55rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--borsa-rule) 55%, transparent);
+  font-size: 14px;
+}
+
+.borsa-sector-chip {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.borsa-sector-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-muted);
+}
+
+.borsa-sector-change {
+  font-size: 13px;
+  color: var(--borsa-nominal-ink);
+}
+
+.borsa-sector-change[data-down] {
+  color: var(--borsa-real-loss);
+}
+
+/* ── Positioning ───────────────────────────────────────────────────────── */
+.borsa-crowd {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.borsa-crowd-row {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr);
+  grid-template-areas:
+    'ticker name'
+    'track track'
+    'stats stats';
+  gap: 0.5rem 1rem;
+  align-items: center;
+  padding-block: 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--borsa-rule) 55%, transparent);
+}
+
+@media (min-width: 900px) {
+  .borsa-crowd-row {
+    grid-template-columns: 5rem minmax(7rem, 1fr) minmax(0, 1.6fr) auto;
+    grid-template-areas: 'ticker name track stats';
+    gap: 1.5rem;
+  }
+}
+
+.borsa-crowd-ticker {
+  grid-area: ticker;
+  font-size: 15px;
+  color: var(--fg);
+}
+
+.borsa-crowd-name {
+  grid-area: name;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.borsa-crowd-track {
+  grid-area: track;
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.borsa-crowd-bar {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+.borsa-crowd-stats {
+  grid-area: stats;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 13px;
+  color: var(--fg);
+}
+
+.borsa-crowd-stat-label {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-subtle);
+  margin-right: 0.6rem;
+}
+
+/* ── Fund risk ─────────────────────────────────────────────────────────── */
+.borsa-metrics-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.85rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--borsa-rule);
+  font-size: 15px;
+}
+
+.borsa-metrics-title {
+  min-width: 0;
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.borsa-metrics {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+@media (min-width: 640px) {
+  .borsa-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .borsa-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.borsa-metric {
+  padding: 1.5rem 1.5rem 1.5rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--borsa-rule) 55%, transparent);
+}
+
+.borsa-metric-value {
+  margin: 0.65rem 0 0;
+  font-size: clamp(1.5rem, 2.6vw, 2rem);
+  line-height: 1.1;
+  color: var(--fg);
+}
+
+.borsa-metric-note {
+  margin: 0.4rem 0 0;
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+
+/* ── KAP tape ──────────────────────────────────────────────────────────── */
+.borsa-tape {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.borsa-tape-link {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: baseline;
+  padding-block: 0.95rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--borsa-rule) 55%, transparent);
+  transition: background-color 140ms ease;
+}
+
+.borsa-tape-link:hover {
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+.borsa-tape-ticker {
+  font-size: 14px;
+  color: var(--fg);
+}
+
+.borsa-tape-body {
+  min-width: 0;
+}
+
+.borsa-tape-title {
+  display: block;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--fg);
+}
+
+.borsa-tape-company {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 13px;
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.borsa-tape-time {
+  white-space: nowrap;
+}
+
+/* ── Close ─────────────────────────────────────────────────────────────── */
+.borsa-close {
+  padding-block: 5rem 3rem;
+}
+
+.borsa-close-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2rem;
+}
+
+@media (min-width: 700px) {
+  .borsa-close-head {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+}
+
+.borsa-close-title {
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+/* The doors. The page argued for a terminal and then named none of it. */
+.borsa-doors {
+  list-style: none;
+  margin: 3.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--borsa-rule);
+}
+
+@media (min-width: 640px) {
+  .borsa-doors {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .borsa-doors {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.borsa-door {
+  display: block;
+  height: 100%;
+  padding: 1.35rem 1.25rem 1.35rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--borsa-rule) 55%, transparent);
+  transition: color 140ms ease;
+}
+
+.borsa-door-label {
+  display: block;
+  font-family: var(--font-borsa-display), var(--font-sans), system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-size: 19px;
+  color: var(--fg);
+}
+
+.borsa-door-note {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--fg-muted);
+}
+
+.borsa-door:hover .borsa-door-label {
+  color: var(--accent);
+}
+
+/* ── Footer ────────────────────────────────────────────────────────────── */
+.borsa-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem 2rem;
+  padding-block: 2rem 3.5rem;
+}
+
+.borsa-footer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 1.5rem;
+}
+
+.borsa-footer-note {
+  max-width: 38rem;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fg-muted);
+}
+
+.borsa-footer-sources {
+  white-space: nowrap;
+}
+
+.borsa-footer-link {
+  transition: color 140ms ease;
+}
+
+.borsa-footer-link:hover {
+  color: var(--fg);
+}
+
+/* ── Header status line ────────────────────────────────────────────────────
+ * What sits where the English section tabs would be. The bar keeps its
+ * three-part layout and its middle states the session instead of holding a
+ * spacer open. */
+.borsa-status {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .borsa-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.borsa-status-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-subtle);
+  white-space: nowrap;
+}
+
+.borsa-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fg-subtle);
+}
+
+.borsa-status-inner[data-state='open'] .borsa-status-dot {
+  background: var(--borsa-nominal-ink);
+}
+
+.borsa-status-inner[data-state='open'] .borsa-status-label {
+  color: var(--fg);
+}
+
+.borsa-status-label {
+  min-width: 8.5ch;
+}
+
+.borsa-status-sep {
+  width: 1px;
+  height: 11px;
+  background: var(--borsa-rule);
+}
+
+.borsa-status-scope {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .borsa-status-scope {
+    display: inline;
+  }
+}
+
+/* ── Primary action on paper ───────────────────────────────────────────────
+ * `GoTerminalButton` is shared with `/`, where `.landing-ultra`'s hover ink is
+ * a gradient anchored on #ffffff over a near-black page. On #eaeef2 half of
+ * every sweep is white on white, so hovering the page's primary call to action
+ * made its label disappear. The board's own ink replaces it here. */
+.borsa .landing-ultra {
+  background: var(--surface);
+  border-color: var(--fg-subtle);
+}
+
+.borsa .landing-ultra:hover {
+  border-color: var(--fg);
+}
+
+.borsa .landing-ultra-ink {
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  color: var(--fg);
+  filter: none;
+  animation: none;
+}
+
+.borsa .landing-ultra:hover .landing-ultra-base {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The end state, reached without the journey: the nominal figure is struck
+     and the real one is present. Removing the animation must not remove the
+     correction — that would leave the page making the opposite claim. */
+  .borsa-strike {
+    animation: none;
+    transform: scaleX(1);
+  }
+
+  .borsa-real {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .borsa-rail-fill {
+    transition: none;
+  }
+
+  /* The board lands on its second reading rather than holding the first. The
+     flip is the argument; removing the motion must not remove the correction. */
+  .borsa-flip-out {
+    display: none;
+  }
+
+  .borsa-flip-in {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+
+  /* The chart is drawn complete rather than measured out. */
+  .borsa-slope-bar {
+    transition: none;
+    transform: scaleX(1);
+  }
+
+  .borsa-slope-dot-real {
+    transition: none;
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .borsa-skeleton-row {
+    animation: none;
+  }
+
+  .borsa-more span,
+  .borsa-more {
+    transition: none;
   }
 }
