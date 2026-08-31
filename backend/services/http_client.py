@@ -148,6 +148,7 @@ async def get_text(
     headers: Optional[dict] = None,
     timeout: float = DEFAULT_TIMEOUT,
     max_bytes: int = DEFAULT_MAX_BYTES,
+    verify: Any = None,
 ) -> str:
     """
     GET `url` and return the decoded body, following redirects.
@@ -158,12 +159,21 @@ async def get_text(
     more useful than nothing, and the caller's extractor is tolerant of a body
     cut mid-tag.
 
+    `verify` takes an `ssl.SSLContext` for hosts whose chain httpx cannot
+    complete on its own. It exists for servers that omit their intermediate
+    certificate — the caller supplies the missing link so verification still
+    happens, which is the opposite of switching verification off. Leave it None
+    and the default certifi bundle is used.
+
     Raises `httpx.HTTPStatusError` on non-2xx and the usual transport
     exceptions, same contract as `get_json`.
     """
     merged_headers = {**DEFAULT_HEADERS, **HTML_HEADERS, **(headers or {})}
+    client_kwargs: dict[str, Any] = {}
+    if verify is not None:
+        client_kwargs["verify"] = verify
     async with httpx.AsyncClient(
-        timeout=timeout, headers=merged_headers, follow_redirects=True
+        timeout=timeout, headers=merged_headers, follow_redirects=True, **client_kwargs
     ) as client:
         async with client.stream("GET", url) as response:
             response.raise_for_status()
