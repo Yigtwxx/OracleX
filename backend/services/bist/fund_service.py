@@ -23,14 +23,17 @@ import asyncio
 import logging
 import statistics
 from dataclasses import dataclass
+from datetime import date
 from typing import Optional
 
-from services.bist import fund_metrics
+from services.bist import fund_allocation, fund_metrics
 from services.bist.tefas_client import (
     FUND_TYPE_LABELS,
     FUND_TYPES,
     FundRow,
+    TefasThrottled,
     TefasUnavailable,
+    fetch_fund_allocations,
     fetch_fund_prices,
     fetch_fund_rows,
 )
@@ -49,6 +52,22 @@ TTL_DETAIL = 60 * 60
 # Friday's figures are the correct thing to show on Sunday rather than an error.
 MAX_STALE_BOARD = 3 * 24 * 60 * 60
 MAX_STALE_DETAIL = 3 * 24 * 60 * 60
+
+# A portfolio split is a monthly-scale quantity that TEFAS republishes daily, so
+# the board's half hour buys nothing and spends the one thing this endpoint is
+# stingy with: it answers 429 to a second call arriving inside about a minute.
+TTL_ALLOCATION = 6 * 60 * 60
+
+# Longer tolerance than the board's three days, for the same reason the TTL is
+# longer. A ten-day-old split is still substantially true; a ten-day-old return
+# is not, which is why `MAX_STALE_BOARD` stays short.
+MAX_STALE_ALLOCATION = 10 * 24 * 60 * 60
+
+# After a failed attempt, how long before another one is allowed. Comfortably
+# past the observed throttle window: without it, every reader arriving during an
+# outage fires another request, and `http_client` records each 429 as a failed
+# upstream — which would paint the BIST health badge red for a rate limit.
+TTL_ALLOCATION_COOLDOWN = 120
 
 # TEFAS's own umbrella label for money-market funds. Used to estimate the
 # risk-free rate; see `estimate_risk_free_rate`.
@@ -74,6 +93,9 @@ class FundBoard:
     risk_free_rate: Optional[float]
     """Annual, as a fraction. Estimated from the board — see below."""
     stale: bool
+    allocations: Optional[BoardAllocations] = None
+    """What each fund holds, when TEFAS answered. None is not "nothing held" —
+    it is "the column could not be built", and the two render differently."""
 
 
 def estimate_risk_free_rate(funds: list[FundRow]) -> Optional[float]:
@@ -110,6 +132,76 @@ def estimate_risk_free_rate(funds: list[FundRow]) -> Optional[float]:
     return statistics.median(returns)  # type: ignore[arg-type]
 
 
+@dataclass(frozen=True)
+class BoardAllocations:
+    """Every fund's portfolio split for one book, keyed by fund code."""
+
+    day: date
+    stale: bool
+    breakdowns: dict[str, fund_allocation.AllocationBreakdown]
+
+
+async def fetch_board_allocations(fund_type: str = "YAT") -> Optional[BoardAllocations]:
+    """
+    What every fund of one type is holding, in one upstream request.
+
+    Returns None rather than raising. This is a column on a page whose subject
+    is returns: a fund board that 503s because a decoration could not be drawn
+    would be a worse page than one drawing the decoration as "unknown".
+
+    Makes at most one call per invocation and none at all while the cooldown is
+    set — see `TTL_ALLOCATION_COOLDOWN` for why a retry storm here is costlier
+    than the missing column.
+    """
+    if fund_type not in FUND_TYPES:
+        raise ValueError(f"fund_type must be one of {FUND_TYPES}, got {fund_type!r}")
+
+    key = f"alloc:{fund_type}"
+    cached = bist_cache.get(key)
+    if cached is not None:
+        return cached
+
+    def _stale() -> Optional[BoardAllocations]:
+        previous = bist_cache.get_with_fallback(key, max_age=MAX_STALE_ALLOCATION)
+        if previous is None:
+            return None
+        return BoardAllocations(day=previous.day, stale=True, breakdowns=previous.breakdowns)
+
+    if bist_cache.get(f"alloc:cooldown:{fund_type}") is not None:
+        return _stale()
+    bist_cache.set(f"alloc:cooldown:{fund_type}", True, TTL_ALLOCATION_COOLDOWN)
+
+    try:
+        rows = await fetch_fund_allocations(fund_type)
+    except TefasThrottled as e:
+        # Debug, not warning: nothing is wrong. We asked too soon.
+        logger.debug("TEFAS throttled the allocation request: %s", e)
+        return _stale()
+    except TefasUnavailable as e:
+        logger.warning("TEFAS allocation unavailable: %s", e)
+        return _stale()
+
+    breakdowns: dict[str, fund_allocation.AllocationBreakdown] = {}
+    day: Optional[date] = None
+    for row in rows:
+        grouped = fund_allocation.group_allocation(row.weights, row.day)
+        if grouped is None:
+            continue
+        breakdowns[row.code] = grouped
+        if day is None or row.day > day:
+            day = grouped.day
+
+    if not breakdowns or day is None:
+        # A successful call that described nothing. Same reading as an empty
+        # board: TEFAS covers a thousand funds, so zero means the request found
+        # a date nobody published for, not a market where nobody holds anything.
+        return _stale()
+
+    allocations = BoardAllocations(day=day, stale=False, breakdowns=breakdowns)
+    bist_cache.set(key, allocations, TTL_ALLOCATION)
+    return allocations
+
+
 async def fetch_fund_board(fund_type: str = "YAT") -> FundBoard:
     """
     Every fund of one type, with its published returns and the implied cash rate.
@@ -122,10 +214,15 @@ async def fetch_fund_board(fund_type: str = "YAT") -> FundBoard:
     if fund_type not in FUND_TYPES:
         raise ValueError(f"fund_type must be one of {FUND_TYPES}, got {fund_type!r}")
 
+    # Fetched alongside rather than inside the failure paths below: the two have
+    # independent caches and independent outages, and a board that could be
+    # served has to be served whether or not the split could be.
+    allocations = await fetch_board_allocations(fund_type)
+
     key = f"board:{fund_type}"
     cached = bist_cache.get(key)
     if cached is not None:
-        return _board_from(fund_type, cached, stale=False)
+        return _board_from(fund_type, cached, stale=False, allocations=allocations)
 
     try:
         funds = await fetch_fund_rows(fund_type)
@@ -133,7 +230,7 @@ async def fetch_fund_board(fund_type: str = "YAT") -> FundBoard:
         stale = bist_cache.get_with_fallback(key, max_age=MAX_STALE_BOARD)
         if stale is not None:
             logger.warning("TEFAS board unavailable, serving stale snapshot: %s", e)
-            return _board_from(fund_type, stale, stale=True)
+            return _board_from(fund_type, stale, stale=True, allocations=allocations)
         raise FundDataUnavailable(f"TEFAS fund board unavailable: {e}") from e
 
     if not funds:
@@ -142,20 +239,27 @@ async def fetch_fund_board(fund_type: str = "YAT") -> FundBoard:
         # lists a thousand funds, and zero means something is wrong upstream.
         stale = bist_cache.get_with_fallback(key, max_age=MAX_STALE_BOARD)
         if stale is not None:
-            return _board_from(fund_type, stale, stale=True)
+            return _board_from(fund_type, stale, stale=True, allocations=allocations)
         raise FundDataUnavailable("TEFAS returned no funds")
 
     bist_cache.set(key, funds, TTL_BOARD)
-    return _board_from(fund_type, funds, stale=False)
+    return _board_from(fund_type, funds, stale=False, allocations=allocations)
 
 
-def _board_from(fund_type: str, funds: list[FundRow], *, stale: bool) -> FundBoard:
+def _board_from(
+    fund_type: str,
+    funds: list[FundRow],
+    *,
+    stale: bool,
+    allocations: Optional[BoardAllocations] = None,
+) -> FundBoard:
     return FundBoard(
         fund_type=fund_type,
         fund_type_label=FUND_TYPE_LABELS.get(fund_type, fund_type),
         funds=funds,
         risk_free_rate=estimate_risk_free_rate(funds),
         stale=stale,
+        allocations=allocations,
     )
 
 
@@ -177,6 +281,12 @@ class FundDetail:
     """`{"date": "YYYY-MM-DD", "price": float}`, oldest first."""
     metrics: fund_metrics.FundMetrics
     risk_free_rate: Optional[float]
+    allocation: Optional[fund_allocation.AllocationBreakdown] = None
+    """Read off the board this detail already fetches, so it costs no request.
+
+    Cached with the rest of the detail, which pins it for `TTL_DETAIL` inside
+    the six-hour upstream window. Harmless: the split changes once a day.
+    """
 
 
 async def fetch_fund_detail(code: str, months: int = 12) -> FundDetail:
@@ -238,6 +348,9 @@ async def fetch_fund_detail(code: str, months: int = 12) -> FundDetail:
         # comparable to a published Sharpe, and the frontend says so.
         metrics=fund_metrics.compute(values, risk_free if risk_free is not None else 0.0),
         risk_free_rate=risk_free,
+        allocation=(
+            board.allocations.breakdowns.get(code) if board and board.allocations else None
+        ),
     )
 
     bist_cache.set(key, detail, TTL_DETAIL)
