@@ -839,6 +839,28 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
+### `GET /api/bist/funds/{code}/holdings`
+
+Get Fund Holdings
+
+Which companies the fund actually owns, from its monthly KAP filing.
+
+A separate route rather than a field on `/funds/{code}`, because the two
+have nothing in common but the fund. This one costs up to four upstream
+calls and a PDF parse on a cold cache, against a source that publishes once
+a month; the detail page must not wait on it to draw its chart.
+
+Always 200. An absent book is described by `reason` rather than by a status
+code: "no report filed yet", "the fund holds no equity" and "this filing's
+layout could not be read" are three different sentences, and a 404 would say
+the same wrong thing for all three.
+
+Parameters:
+- `code` (path, string, required)
+- `fund_type` (query, string, optional, default `'YAT'`) — One of ('YAT', 'EMK', 'BYF')
+
+Response shape is not declared on the route — inspect one call.
+
 ### `GET /api/bist/funds/compare`
 
 Get Fund Comparison
@@ -963,14 +985,35 @@ Get Positioning
 
 Where the crowd is: free float, unusual volume, range position, futures OI.
 
-Not the fund-to-stock cross index this board was originally meant to be —
-TEFAS withdrew portfolio breakdowns from its public API and KAP publishes
+Not the fund-to-stock cross index this board was originally meant to be.
+TEFAS publishes a fund's split by asset class — the fund board draws it —
+but nothing public names the securities behind it, and KAP publishes
 holdings only as prose attachments. `positioning_service` documents what was
 tried. What is here is published positioning rather than inferred, which is
 a narrower claim honestly made.
 
 Parameters:
 - `limit` (query, integer, optional, default `50`)
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/positioning-note`
+
+Get Positioning Note
+
+What the positioning board as a whole looks like, narrated.
+
+Its own route rather than a field on `/positioning`, for the reason every
+note here is: the board polls every two minutes and the paragraph is written
+once, so folding them together would either hold the board behind a model
+run or refuse the note a cadence of its own.
+
+Deliberately not scoped to the caller's `limit`. `/positioning` returns rows
+ranked by crowding, so any limit is a biased sample by construction — the
+facts are computed across every listing instead, because "the board is at the
+top of its year" answered over the busiest hundred names is a wrong answer
+rather than a narrower one.
+
 
 Response shape is not declared on the route — inspect one call.
 
