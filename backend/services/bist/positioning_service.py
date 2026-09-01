@@ -4,9 +4,12 @@ Positioning: who is leaning which way, from what the market actually publishes.
 **This is not the board it was meant to be, and the difference matters.** The
 intent was a fund-to-stock cross index — invert every TEFAS portfolio and answer
 "which funds moved into this name last month", the Turkish counterpart of the
-13F board on the global realm. That is not buildable: TEFAS withdrew portfolio
-breakdowns from its public API in the 2026 rewrite, and KAP publishes fund
-holdings as prose attachments with no structured field to read.
+13F board on the global realm. That is still not buildable, though for a
+narrower reason than it first appeared. TEFAS does publish a fund's split by
+*asset class* — see `fund_allocation`, which draws it on the fund board — but
+nothing public names the individual securities behind "hisse senedi %58", and
+KAP publishes fund holdings as prose attachments with no structured field to
+read. A class weight cannot be inverted into a per-stock index.
 
 So this board answers a narrower question from data that does exist:
 
