@@ -99,6 +99,7 @@ const config: Config = {
           4: 'var(--chart-4)',
           5: 'var(--chart-5)',
           6: 'var(--chart-6)',
+          7: 'var(--chart-7)',
         },
       },
       borderColor: {
