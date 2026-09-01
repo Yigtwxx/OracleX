@@ -262,6 +262,25 @@ async def lifespan(app: FastAPI):
 
     _spawn(_warm_ownership())
 
+    # Fill the KAP buffer once at boot. Cold, the tape has to binary-search for
+    # the current disclosure index and then pull a window of pages two at a time
+    # behind KAP's rate limiter — a minute or more, and whoever opened /bist/kap
+    # first was the one paying it. Warm, every later catch-up is the handful of
+    # filings published since. Optional and backgrounded: KAP rate-limits, and a
+    # 429 at boot must not hold the splash open for the rest of the terminal.
+    async def _warm_kap():
+        readiness.start("kap")
+        try:
+            from services.bist.kap_service import fetch_tape as fetch_kap_tape
+
+            await fetch_kap_tape()
+            readiness.succeed("kap")
+        except Exception as e:
+            logger.warning("KAP tape warm-up failed: %s", e)
+            readiness.fail("kap", e)
+
+    _spawn(_warm_kap())
+
     # Warm the RAG embedding model in a background thread so the first AI
     # request never blocks the event loop downloading/loading it. Non-fatal:
     # if it fails (e.g. offline), RAG simply degrades to empty context.
