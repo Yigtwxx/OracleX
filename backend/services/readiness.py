@@ -187,5 +187,6 @@ def register_startup_steps() -> None:
     readiness.register("heatmap", "Isı haritası", OPTIONAL)
     readiness.register("macro", "Makro panosu", OPTIONAL)
     readiness.register("ownership", "Varlık sahiplikleri", OPTIONAL)
+    readiness.register("kap", "KAP bildirim akışı", OPTIONAL)
     readiness.register("llm", "Yerel model", OPTIONAL)
     readiness.register("rag", "RAG embedding modeli", OPTIONAL)
