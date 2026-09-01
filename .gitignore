@@ -90,6 +90,7 @@ backend/data/chain_metrics.json
 backend/data/news_analyses.json
 backend/data/news_attribution.json
 backend/data/crypto_symbol_map.json
+backend/data/kap_tape.json
 backend/data/registry/coin_metrics.json
 backend/data/registry/coin_sectors.json
 backend/data/registry/crypto_universe.json
