@@ -39,6 +39,7 @@ def stubbed_startup(monkeypatch):
     """
     from config import settings
     from services import asset_registry, llm, rag_embeddings, rag_rerank, scheduler_service
+    from services.bist import kap_service
     from services.liquidation_service import liquidation_service
 
     # `settings` is a pydantic model, which refuses attribute assignment for
@@ -85,6 +86,16 @@ def stubbed_startup(monkeypatch):
     monkeypatch.setattr(rag_embeddings, "warm_up", blocking_warm_up)
     monkeypatch.setattr(rag_rerank, "warm_up", blocking_warm_up)
 
+    # The KAP warm-up is the one that reaches the network even when it succeeds:
+    # it answers from the tape on disk and then schedules a background walk to
+    # catch up, which is real paced HTTP landing in whichever loop these tests
+    # are timing. Stubbed to nothing so the ordering assertions measure the
+    # lifespan rather than KAP's rate limiter.
+    async def no_tape(*args, **kwargs) -> list:
+        return []
+
+    monkeypatch.setattr(kap_service, "fetch_tape", no_tape)
+
 
 async def test_startup_yields_before_the_slow_warm_ups_finish(stubbed_startup):
     """
@@ -126,6 +137,7 @@ async def test_readiness_reports_every_step_as_soon_as_startup_yields(stubbed_st
         "heatmap",
         "macro",
         "ownership",
+        "kap",
         "llm",
         "rag",
     ], "Every step must be listed before any of them has finished"
