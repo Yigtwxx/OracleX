@@ -20,6 +20,13 @@ uvicorn>=0.27.0
 pydantic>=2.5.3
 pydantic-settings>=2.1.0
 
+# ── Documents ────────────────────────────────────────────────────────────────
+# Reading a fund's monthly portfolio report, which KAP publishes only as a PDF
+# attachment. Used for its layout-preserving extraction mode: these are column
+# tables and the default mode returns the words in drawing order, which loses
+# the columns that carry the meaning. Pure Python, so CI needs no poppler.
+pypdf>=5.1.0
+
 # ── Configuration ────────────────────────────────────────────────────────────
 python-dotenv>=1.0.0
 
