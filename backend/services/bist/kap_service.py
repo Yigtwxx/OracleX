@@ -5,11 +5,17 @@ KAP — Kamuyu Aydınlatma Platformu — is where every material fact about a li
 Turkish company appears first, which makes it the closest thing this realm has
 to a primary source.
 
-**How this reads it, and why not the obvious way.** KAP has no usable public
-API. The documented endpoints were retired with the 2026 rewrite; the query page
-is a React Server Component app that streams its rows rather than fetching JSON,
-so there is no XHR to call and rendering it in a browser produces a page with no
-rows until a form is submitted. Six approaches were tried before this one.
+**How this reads it, and why not the obvious way.** The *disclosure tape* has no
+usable public API. The documented endpoints were retired with the 2026 rewrite;
+the query page is a React Server Component app that streams its rows rather than
+fetching JSON, so there is no XHR to call and rendering it in a browser produces
+a page with no rows until a form is submitted. Six approaches were tried before
+this one.
+
+That is true of the tape and not of KAP as a whole: the *fund* surface on the
+same host does have a queryable JSON API, and `services/bist/kap_fund_client.py`
+uses it to reach a fund's monthly portfolio report. If the tape ever needs
+revisiting, start by checking whether it grew an equivalent.
 
 What does work: every disclosure has a **detail page that is server-rendered**,
 at `/tr/Bildirim/<index>`, and the page embeds the disclosure as a flat JSON
@@ -25,9 +31,12 @@ the tape is the handful of filings published since the last poll, not the window
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import os
 import re
-from dataclasses import dataclass
+import time
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Optional
 
@@ -52,12 +61,26 @@ MAX_STALE_TAPE = 24 * 60 * 60
 # Two at a time with a pause between batches is what stays under it; six tripped
 # the limiter within a few hundred requests during development and then every
 # subsequent read failed for minutes.
+#
+# The pause is a second rather than the third it started as. Two at a time every
+# 350ms is close to six a second, and it turned out to trip the limiter too —
+# not in a burst, but over a long walk. A slower cold start costs a background
+# task another minute; tripping the limiter costs the tape an hour, and takes
+# kap.org.tr down for whoever is sitting at the browser on the same address.
 CONCURRENCY = 2
-BATCH_PAUSE_S = 0.35
+BATCH_PAUSE_S = 1.0
 
-# How long to stop asking after a 429. Reads during the pause serve whatever the
-# tape already holds rather than hammering a host that has just said no.
+# How long to stop asking after a 429, and how far that grows.
+#
+# Escalating rather than fixed. KAP holds a blocked address for far longer than
+# the two flat minutes this used to wait, so the retry walked straight back into
+# the block and re-armed it — an afternoon of that left the tape stuck at nine
+# filings while every read still answered in a millisecond and looked healthy.
+# Each consecutive 429 doubles the pause up to the cap; the first page that
+# comes back clears it.
 RATE_LIMIT_BACKOFF_S = 120
+RATE_LIMIT_BACKOFF_MAX_S = 30 * 60
+BACKOFF_LEVEL_KEY = "kap:backoff-level"
 
 # How far past the last known head to look for new filings. Comfortably more
 # than a day's volume, so a terminal left closed overnight still catches up in
@@ -167,8 +190,32 @@ def _rate_limited() -> bool:
     return bist_cache.is_valid("kap:backoff")
 
 
+def is_rate_limited() -> bool:
+    """
+    Whether KAP is currently refusing this address.
+
+    Served alongside the tape so a throttled feed reads as throttled rather than
+    as a quiet market. Nine filings under "Tümü" is a alarming number or a
+    boring one depending entirely on this flag, and the board cannot tell.
+    """
+    return _rate_limited()
+
+
 def _note_rate_limit() -> None:
-    bist_cache.set("kap:backoff", True, RATE_LIMIT_BACKOFF_S)
+    """Arm the pause, longer each time the block is still there when it lifts."""
+    level = (bist_cache.get(BACKOFF_LEVEL_KEY) or 0) + 1
+    pause = min(RATE_LIMIT_BACKOFF_S * 2 ** (level - 1), RATE_LIMIT_BACKOFF_MAX_S)
+    bist_cache.set("kap:backoff", True, int(pause))
+    # The level deliberately outlives the pause it set, so the 429 that greets
+    # the first retry reads as an escalation rather than a fresh first offence.
+    bist_cache.set(BACKOFF_LEVEL_KEY, level, int(pause * 4))
+    logger.warning("KAP rate-limited; backing off for %ss (attempt %s)", int(pause), level)
+
+
+def _note_rate_limit_cleared() -> None:
+    """A page came back, so the next 429 starts counting from one again."""
+    if bist_cache.get(BACKOFF_LEVEL_KEY) is not None:
+        bist_cache.invalidate(BACKOFF_LEVEL_KEY)
 
 
 def _is_rate_limit(error: Exception) -> bool:
@@ -201,7 +248,6 @@ async def _fetch_one(index: int) -> Optional[Disclosure]:
         html = await get_text_impersonated(f"{BASE}/{index}", timeout=20.0)
     except Exception as e:  # noqa: BLE001
         if _is_rate_limit(e):
-            logger.warning("KAP rate-limited; backing off for %ss", RATE_LIMIT_BACKOFF_S)
             _note_rate_limit()
         else:
             logger.debug("KAP %s unreadable: %s", index, e)
@@ -209,6 +255,7 @@ async def _fetch_one(index: int) -> Optional[Disclosure]:
         # disclosure exists.
         return None
 
+    _note_rate_limit_cleared()
     disclosure = parse_disclosure(html, index)
     bist_cache.set(key, disclosure or False, TTL_ITEM)
     return disclosure
@@ -324,10 +371,77 @@ COLD_START_SPAN = 150
 TTL_BUFFER = 24 * 60 * 60
 
 
+# Surviving a restart.
+#
+# `bist_cache` is per-process, so without this every restart threw away the
+# whole window and the next reader paid a cold start — a binary search for the
+# head plus a hundred and fifty pages, two at a time, against a host that
+# answers 429. In development, where the server reloads on every save, that was
+# most reads. A filed disclosure never changes, so the window is safe to write
+# down and read back; only its *age* matters, and that is bounded exactly as the
+# in-memory fallback is.
+TAPE_FILE = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "data",
+    "kap_tape.json",
+)
+
+_disk_read = False
+
+
+def _read_tape_file() -> list[Disclosure]:
+    """The last written window, or nothing if it is missing, stale or unreadable."""
+    try:
+        with open(TAPE_FILE) as handle:
+            payload = json.load(handle)
+        if time.time() - float(payload["stored_at"]) > MAX_STALE_TAPE:
+            return []
+        return [Disclosure(**row) for row in payload["rows"]]
+    except FileNotFoundError:
+        return []
+    except Exception as e:  # noqa: BLE001
+        # A truncated or reshaped file is not worth failing a read over; the
+        # tape simply pays the cold start it would have paid anyway.
+        logger.warning("KAP tape file unreadable, ignoring it: %s", e)
+        return []
+
+
+def _write_tape_file(rows: list[Disclosure]) -> None:
+    try:
+        os.makedirs(os.path.dirname(TAPE_FILE), exist_ok=True)
+        temp = f"{TAPE_FILE}.tmp"
+        with open(temp, "w") as handle:
+            json.dump({"stored_at": time.time(), "rows": [asdict(d) for d in rows]}, handle)
+        os.replace(temp, TAPE_FILE)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("KAP tape file could not be written: %s", e)
+
+
+def _held_rows() -> list[Disclosure]:
+    """
+    The buffer, hydrating from disk the first time this process asks for it.
+
+    Seeding `kap:head` from the highest index read back matters as much as the
+    rows do: it is known-good, so `find_head` walks forward from it instead of
+    binary-searching for it, which is twenty requests saved on every restart.
+    """
+    global _disk_read
+    rows: list[Disclosure] = bist_cache.get_with_fallback(BUFFER_KEY, max_age=MAX_STALE_TAPE) or []
+    if rows or _disk_read:
+        return rows
+
+    _disk_read = True
+    rows = _read_tape_file()
+    if rows:
+        bist_cache.set(BUFFER_KEY, rows, TTL_BUFFER)
+        bist_cache.set("kap:head", max(d.index for d in rows), TTL_HEAD)
+        logger.info("KAP tape restored from disk: %d filings", len(rows))
+    return rows
+
+
 async def _refresh_buffer() -> list[Disclosure]:
     """Bring the rolling buffer up to the current head and return it."""
-    held: list[Disclosure] = bist_cache.get_with_fallback(BUFFER_KEY, max_age=MAX_STALE_TAPE) or []
-    highest = max((d.index for d in held), default=0)
+    held: list[Disclosure] = _held_rows()
 
     try:
         head = await find_head()
@@ -336,14 +450,26 @@ async def _refresh_buffer() -> list[Disclosure]:
             return held
         raise
 
-    if highest == 0:
-        wanted = list(range(head, max(head - COLD_START_SPAN, 0), -1))
-    elif head > highest:
-        # Bounded, so a terminal opened after a long gap does not try to walk
-        # ten thousand indices in one request.
-        wanted = list(range(head, max(highest, head - COLD_START_SPAN), -1))
-    else:
-        wanted = []
+    # What is missing from the newest span, rather than only what is newer than
+    # the top of the buffer.
+    #
+    # "Everything above the highest index held" is the obvious rule and it
+    # strands a partial window: a restore of nine rows whose top happens to be
+    # the current head asks for nothing and stays nine rows forever. The span
+    # between the lowest and highest index held has already been walked, so a
+    # miss inside it is a disclosure that was withdrawn or never public — asking
+    # again would spend a request to be told the same thing. Everything else in
+    # the newest span is genuinely unseen.
+    #
+    # Bounded by `COLD_START_SPAN` so a terminal opened after a long gap does not
+    # try to walk ten thousand indices in one request.
+    held_indices = {d.index for d in held}
+    walked = range(min(held_indices, default=1), max(held_indices, default=0) + 1)
+    wanted = [
+        index
+        for index in range(head, max(head - COLD_START_SPAN, 0), -1)
+        if index not in held_indices and index not in walked
+    ]
 
     if wanted:
         fetched = [d for d in await _gather(wanted) if d is not None]
@@ -357,7 +483,51 @@ async def _refresh_buffer() -> list[Disclosure]:
 
     if rows:
         bist_cache.set(BUFFER_KEY, rows, TTL_BUFFER)
+        _write_tape_file(rows)
     return rows
+
+
+# Refreshing off the read path.
+#
+# `_refresh_buffer` walks from the highest index held up to the current head,
+# and during a busy session that is a hundred-odd rate-limited requests at two
+# at a time — tens of seconds. Paying for it inside a reader's request meant the
+# KAP tab spun on every open that followed two idle minutes, because the poll
+# that had been keeping the tape warm stops the moment the tab is unmounted.
+#
+# The buffer already holds up to 600 parsed filings and a disclosure never
+# changes once filed, so the worst a stale read costs is the handful published
+# in the last couple of minutes. Serve those 600 now, catch up behind.
+_refresh_task: Optional[asyncio.Task] = None
+
+
+def _schedule_refresh() -> None:
+    """Start a background catch-up unless one is already in the air."""
+    global _refresh_task
+    # The handle is the stampede guard as much as it is a strong reference:
+    # `asyncio` only holds a weak one, so a task nobody keeps can be collected
+    # mid-walk, and without the guard every reader in the stale window would
+    # start a second walk over the same indices.
+    if _refresh_task is not None and not _refresh_task.done():
+        return
+    _refresh_task = asyncio.create_task(_refresh_quietly())
+
+
+async def _refresh_quietly() -> None:
+    """
+    A catch-up whose failure is nobody's error.
+
+    The reader that scheduled this was already served from the buffer, so an
+    outage here means the next read is slightly staler — not that anything
+    broke. `kap:fresh` is stamped only on success, which is what makes the
+    following read try again rather than sit out the whole TTL on a failure.
+    """
+    try:
+        await _refresh_buffer()
+    except Exception as e:  # noqa: BLE001
+        logger.warning("KAP background refresh failed: %s", e)
+        return
+    bist_cache.set("kap:fresh", True, TTL_TAPE)
 
 
 async def fetch_tape(
@@ -377,14 +547,17 @@ async def fetch_tape(
     """
     wanted_categories = SIGNAL_CATEGORIES if categories is None else categories
 
-    cached = bist_cache.get("kap:fresh")
-    if cached is None:
-        rows = await _refresh_buffer()
-        bist_cache.set("kap:fresh", True, TTL_TAPE)
-    else:
-        rows = bist_cache.get_with_fallback(BUFFER_KEY, max_age=MAX_STALE_TAPE) or []
-        if not rows:
+    rows = _held_rows()
+
+    if bist_cache.get("kap:fresh") is None:
+        if rows:
+            _schedule_refresh()
+        else:
+            # Nothing in memory and nothing on disk, so there is nothing to
+            # serve and no choice but to wait — a first run, or a machine that
+            # was off for longer than the stale bound.
             rows = await _refresh_buffer()
+            bist_cache.set("kap:fresh", True, TTL_TAPE)
 
     if ticker:
         wanted = ticker.strip().upper()
