@@ -296,11 +296,34 @@ def score(
     #    from the last three weeks — and measuring the span between the oldest
     #    and newest date it mentions stretched the denominator over twelve
     #    years, which drove every ratio to zero.
-    in_window = {k: presidency[k] for k in keys if k in presidency}
-    if in_window:
-        per_day = sum(in_window.values()) / BASELINE_DAYS
+    #    The sparkline is scored on that same rolling window, not day by day.
+    #    Scoring it per day contradicted the paragraph above twice over. It
+    #    divided by the *daily* rate, which for this feed is around one and
+    #    therefore below `MIN_BASELINE` — so every bar came back unmeasured and
+    #    the row rendered with an empty grid beside a live 2.0x. And even where
+    #    the arithmetic had worked, a bar would have been measuring something
+    #    the number next to it was not.
+    counts = {k: presidency.get(k, 0) for k in keys}
+    if any(counts.values()):
+        per_day = sum(counts.values()) / BASELINE_DAYS
         baseline = per_day * DUYURU_WINDOW
-        recent = sum(in_window.get(k, 0) for k in keys[:DUYURU_WINDOW])
+        recent = sum(counts[k] for k in keys[:DUYURU_WINDOW])
+        # Zero-filled rather than restricted to the days the feed carried
+        # something: a silent day is a nought inside the window, and dropping it
+        # both shortens the row and overstates every window that spans it.
+        #
+        # The oldest `DUYURU_WINDOW - 1` days score as None because their window
+        # runs off the end of the fortnight. A partial window would read as a
+        # quiet stretch that never happened.
+        rolling = [
+            (
+                key,
+                _ratio(float(sum(counts[k] for k in keys[i : i + DUYURU_WINDOW])), baseline)
+                if i + DUYURU_WINDOW <= len(keys)
+                else None,
+            )
+            for i, key in enumerate(keys)
+        ]
         sources.append(
             _source(
                 "duyuru",
@@ -308,7 +331,7 @@ def score(
                 float(recent),
                 baseline,
                 f"son {DUYURU_WINDOW} günde {recent} · olağan {baseline:.1f}",
-                [(k, _ratio(float(v), per_day)) for k, v in sorted(in_window.items())],
+                sorted(rolling, key=lambda pair: pair[0]),
             )
         )
 
