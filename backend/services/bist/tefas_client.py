@@ -14,23 +14,47 @@ and the shapes are not equivalent:
 * Prices are **per fund only**, over a fixed look-back enum. There is no
   all-funds-on-one-date call any more, so building a cross-section means one
   request per fund, which is why `fund_service` caches hard.
-* Asset allocation, fund size and investor counts are **gone**. No public
-  endpoint carries them. Anything in this codebase that wants a fund's holdings
-  has to find them somewhere else — see `holdings_service`.
+* Asset allocation survived the migration under a new name and an inverted
+  shape: `dagilimSiraliGetirT` ignores `fonKodu` entirely and answers with the
+  **whole book** for a date range. So allocation is the cheap call and prices
+  are the expensive one, which is the opposite of how the old API read.
+* Fund size and investor counts are still gone. No public endpoint carries
+  them.
 
-The screener payload is fussier than it looks. Omitting `calismaTipi` or
-`getiriOrani` returns HTTP 200 with `resultList: null` and no error message at
-all, which reads exactly like "no funds matched". Both are sent on every call
-for that reason. Dates are rejected in ISO *and* in Turkish format; the only
-thing that works is sending null and filtering client-side.
+The payloads are fussier than they look, and each endpoint is fussy in its own
+way.
+
+The screener returns HTTP 200 with `resultList: null` and no error message when
+`calismaTipi` or `getiriOrani` is omitted, which reads exactly like "no funds
+matched". Both are sent on every call for that reason. Its dates are rejected
+in ISO *and* in Turkish format; the only thing that works is sending null and
+filtering client-side.
+
+The allocation endpoint wants the opposite. Its dates are mandatory and only
+`yyyyMMdd` parses — ISO fails "at index 4", Turkish "at index 0". It also wants
+`basSira`/`bitSira`, and without them answers `errorMessage: "Index 0 out of
+bounds for length 0"`. A date with no published data answers with that same
+message rather than an empty list, so "the market was shut" and "the request
+was malformed" are indistinguishable from the response; `fetch_fund_allocations`
+therefore asks for a window of days in one call instead of probing day by day.
+
+Both endpoints sit behind a throttle that answers a second call within roughly a
+minute with HTTP 429 and a body in a different shape entirely
+(`{"faultCode": "ERR-224"}`). Retrying tightly makes it worse; `fund_service`
+caches instead.
 """
 
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any, Optional
+
+# Every call still goes through `services.http_client`. httpx is imported only
+# to read a status code back off the exception that helper re-raises — a 429
+# here is routine and has to be told apart from an outage.
+import httpx
 
 from services.http_client import post_json
 
@@ -39,6 +63,7 @@ logger = logging.getLogger(__name__)
 ROOT = "https://www.tefas.gov.tr"
 SCREENER_ENDPOINT = f"{ROOT}/api/funds/fonGetiriBazliBilgiGetir"
 PRICE_ENDPOINT = f"{ROOT}/api/funds/fonFiyatBilgiGetir"
+ALLOCATION_ENDPOINT = f"{ROOT}/api/funds/dagilimSiraliGetirT"
 
 # TEFAS rejects an unfamiliar client outright, and the platform is behind a WAF
 # that blocks automated browsers while letting a plain request through. These
@@ -66,6 +91,18 @@ VALID_PERIODS = (1, 3, 6, 12, 36, 60)
 
 class TefasUnavailable(RuntimeError):
     """TEFAS did not answer, or answered with something unusable."""
+
+
+class TefasThrottled(TefasUnavailable):
+    """
+    TEFAS refused a request that arrived too soon after the last one.
+
+    A subclass so every existing `except TefasUnavailable` keeps working, but
+    named apart because the two mean opposite things to a caller: an outage is
+    worth a warning and a retry, a throttle is worth waiting out quietly. The
+    health badge reads the same distinction — logging a rate limit as a failed
+    upstream paints the BIST panel red for a service that is working.
+    """
 
 
 @dataclass(frozen=True)
@@ -101,6 +138,27 @@ class FundPrices:
     points: list[PricePoint]
 
 
+@dataclass(frozen=True)
+class FundAllocationRow:
+    """One fund's portfolio split on one day, as TEFAS reports it."""
+
+    code: str
+    title: str
+    day: date
+    weights: dict[str, float]
+    """Fractions of the portfolio, keyed by the codes in `ALLOCATION_FIELDS`.
+
+    Fractions rather than the percentages TEFAS sends, for the same reason
+    `FundRow.returns` converts: the conversion happens once at this boundary, so
+    nothing downstream has to remember which numbers are pre-multiplied.
+    `bist-format.formatPercent` then prints a weight and a return the same way.
+
+    Only the fields the fund actually reported are present. An absent field is
+    absent, never 0: a fund that holds no gold and a fund whose gold line was
+    not published are different claims.
+    """
+
+
 # The screener reports returns as percentages; everything downstream works in
 # fractions, so the conversion happens once, here, at the boundary.
 _RETURN_FIELDS = {
@@ -112,6 +170,84 @@ _RETURN_FIELDS = {
     "5y": "getiri5y",
     "yb": "getiriyb",
 }
+
+
+# TEFAS's own column dictionary for the allocation endpoint, lifted verbatim
+# from the labels the site ships. The names stay in Turkish because they are the
+# regulator's own terms and the BIST surface is a Turkish-language surface —
+# translating "Kamu Kira Sertifikaları" would invent a term no filing uses.
+#
+# Every code the endpoint can return is listed even though only about forty are
+# ever populated today. A field missing from this map would be dropped silently,
+# and a fund's bar would quietly stop summing to a hundred.
+ALLOCATION_FIELDS: dict[str, str] = {
+    "hs": "Hisse Senedi",
+    "yhs": "Yabancı Hisse Senedi",
+    "dt": "Devlet Tahvili",
+    "hb": "Hazine Bonosu",
+    "kibd": "Döviz Cinsi Kamu İç Borçlanma Araçları",
+    "kba": "Kamu Dış Borçlanma Araçları",
+    "eut": "Eurobonds",
+    "kks": "Kamu Kira Sertifikaları",
+    "kkstl": "Kamu Kira Sertifikaları (TL)",
+    "kksd": "Kamu Kira Sertifikaları (Döviz)",
+    "kksyd": "Kamu Yurt Dışı Kira Sertifikaları",
+    "ost": "Özel Sektör Tahvili",
+    "fb": "Finansman Bonosu",
+    "bb": "Banka Bonosu",
+    "vdm": "Varlığa Dayalı Menkul Kıymetler",
+    "osdb": "Özel Sektör Dış Borçlanma Araçları",
+    "osks": "Özel Sektör Kira Sertifikaları",
+    "oksyd": "Özel Sektör Yurt Dışı Kira Sertifikaları",
+    "db": "Döviz Ödemeli Bono",
+    "dot": "Dövize Ödemeli Tahvil",
+    "ybkb": "Yabancı Kamu Borçlanma Araçları",
+    "ybosb": "Yabancı Özel Sektör Borçlanma Araçları",
+    "yba": "Yabancı Borçlanma Aracı",
+    "ymk": "Yabancı Menkul Kıymet",
+    "vm": "Vadeli Mevduat",
+    "vmtl": "Mevduat (TL)",
+    "vmd": "Mevduat (Döviz)",
+    "vmau": "Mevduat (Altın)",
+    "kh": "Katılım Hesabı",
+    "khtl": "Katılma Hesabı (TL)",
+    "khd": "Katılma Hesabı (Döviz)",
+    "khau": "Katılma Hesabı (Altın)",
+    "r": "Repo",
+    "tr": "Ters-Repo",
+    "bpp": "Borsa İstanbul Para Piyasası",
+    "tpp": "Takasbank Para Piyasası",
+    "btaa": "BİST Taahhütlü İşlem Pazarı Alım",
+    "btas": "BİST Taahhütlü İşlem Pazarı Satım",
+    "km": "Kıymetli Madenler",
+    "kmbyf": "Kıymetli Madenler Cinsinden BYF",
+    "kmkba": "Kıymetli Madenler Cinsinden İhraç Edilen Kamu Borçlanma Araçları",
+    "kmkks": "Kıymetli Madenler Cinsinden İhraç Edilen Kamu Kira Sertifikaları",
+    "yyf": "Yatırım Fonları Katılma Payları",
+    "byf": "Borsa Yatırım Fonları Katılma Payları",
+    "ybyf": "Yabancı Borsa Yatırım Fonları",
+    "fkb": "Fon Katılma Belgesi",
+    "gykb": "Gayrimenkul Yatırım Fonları Katılma Payları",
+    "gsykb": "Girişim Sermayesi Yatırım Fonları Katılma Payları",
+    "gyy": "Gayrimenkul Yatırımları",
+    "gsyy": "Girişim Sermayesi Yatırımları",
+    "gas": "Gayrı Menkul Sertifikası",
+    "t": "Türev Araçları",
+    "vint": "Vadeli İşlemler Nakit Teminatları",
+    "d": "Diğer",
+}
+
+# A weekend either side of a public holiday is the run this has to survive. Past
+# that the exchange has been shut for a week and last week's split is still the
+# true one, so `fund_service` leans on its stale window rather than a longer
+# request that would move ten more megabytes on every refresh.
+ALLOCATION_WINDOW_DAYS = 7
+
+# The largest book is around 2,100 funds and the window multiplies it. Asking
+# for a cap this far above the real count means hitting it can only mean the
+# endpoint changed shape — better to fail loudly than to serve a book missing
+# its last alphabetical third.
+_ALLOCATION_ROW_CAP = 25_000
 
 
 def _as_fraction(value: Any) -> Optional[float]:
@@ -144,11 +280,23 @@ async def _post(endpoint: str, payload: dict) -> list[dict]:
     """
     try:
         body = await post_json(endpoint, payload=payload, headers=_HEADERS, timeout=30.0)
-    except Exception as e:  # noqa: BLE001 — transport, status and decode all mean the same here
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 429:
+            raise TefasThrottled(f"TEFAS refused the request: {e}") from e
+        raise TefasUnavailable(f"TEFAS request failed: {e}") from e
+    except Exception as e:  # noqa: BLE001 — transport and decode both mean the same here
         raise TefasUnavailable(f"TEFAS request failed: {e}") from e
 
     if not isinstance(body, dict):
         raise TefasUnavailable("TEFAS returned an unexpected body")
+
+    # The throttle answer is not the usual {errorCode, errorMessage, resultList}
+    # envelope at all — it is {faultCode: "ERR-224", faultString: ...}. Checked
+    # before the two below, which would otherwise read it as "no result list"
+    # and report an outage that is not happening.
+    fault = body.get("faultCode")
+    if fault:
+        raise TefasThrottled(f"TEFAS refused the request: {fault}")
 
     error = body.get("errorMessage")
     if error:
@@ -264,3 +412,95 @@ async def fetch_fund_prices(code: str, months: int = 12) -> FundPrices:
     points.sort(key=lambda point: point.day)
 
     return FundPrices(code=code, title=title, category_rank=rank, category_size=size, points=points)
+
+
+def _allocation_payload(fund_type: str, start: date, end: date, cap: int) -> dict:
+    """
+    The allocation body, in full.
+
+    `basSira`/`bitSira` are the pair that took the longest to find: without them
+    the endpoint answers "Index 0 out of bounds for length 0" against a 200,
+    which reads like a server fault rather than a missing argument. `fonKodu` is
+    present because the site sends it, and null because the endpoint ignores it
+    either way — sending a code does not filter anything.
+    """
+    return {
+        "fonTipi": fund_type,
+        "fonKodu": None,
+        "fonTurKod": None,
+        "fonGrubu": None,
+        "sfonTurKod": None,
+        "fonTurAciklama": None,
+        "kurucuKod": None,
+        # yyyyMMdd and nothing else. ISO fails at index 4, Turkish at index 0.
+        "basTarih": start.strftime("%Y%m%d"),
+        "bitTarih": end.strftime("%Y%m%d"),
+        "basSira": 1,
+        "bitSira": cap,
+        "dil": "TR",
+    }
+
+
+async def fetch_fund_allocations(
+    fund_type: str = "YAT", *, window_days: int = ALLOCATION_WINDOW_DAYS
+) -> list[FundAllocationRow]:
+    """
+    Every fund's portfolio split, one row per fund, from its newest published day.
+
+    This is the whole book or nothing: the endpoint accepts `fonKodu` and then
+    ignores it, so there is no per-fund form to call. Which is the good news —
+    an allocation column on the screener costs one request, where the same
+    column built from the price endpoint would have cost two thousand.
+
+    The window is not an optimisation, it is the only way to ask. A date TEFAS
+    published nothing for answers with an error rather than an empty list, so a
+    probe loop walking backwards day by day cannot tell a closed market from a
+    broken request, and would spend a request per attempt against a throttle
+    that blocks the second call inside a minute. One window covers the weekend,
+    the holiday and the gap before the evening publish at once.
+    """
+    if fund_type not in FUND_TYPES:
+        raise ValueError(f"fund_type must be one of {FUND_TYPES}, got {fund_type!r}")
+
+    end = date.today()
+    start = end - timedelta(days=window_days)
+    rows = await _post(
+        ALLOCATION_ENDPOINT, _allocation_payload(fund_type, start, end, _ALLOCATION_ROW_CAP)
+    )
+    if len(rows) >= _ALLOCATION_ROW_CAP:
+        raise TefasUnavailable("TEFAS allocation response hit the row cap and may be truncated")
+
+    newest: dict[str, FundAllocationRow] = {}
+    for row in rows:
+        code = (row.get("fonKodu") or "").strip().upper()
+        raw_day = row.get("tarih")
+        if not code or not raw_day:
+            continue
+        try:
+            day = datetime.strptime(str(raw_day), "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            continue
+
+        seen = newest.get(code)
+        if seen is not None and seen.day >= day:
+            continue
+
+        weights: dict[str, float] = {}
+        for field in ALLOCATION_FIELDS:
+            value = row.get(field)
+            if value is None:
+                continue
+            weight = _as_fraction(value)
+            # A reported zero carries no more information than a missing line
+            # and would draw a legend entry for a holding that is not there.
+            if weight is not None and weight > 0:
+                weights[field] = weight
+
+        newest[code] = FundAllocationRow(
+            code=code,
+            title=(row.get("fonUnvan") or "").strip(),
+            day=day,
+            weights=weights,
+        )
+
+    return sorted(newest.values(), key=lambda allocation: allocation.code)
