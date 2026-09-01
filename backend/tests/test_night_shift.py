@@ -4,6 +4,7 @@ from datetime import date
 
 from services.bist.night_shift_service import (
     BASELINE_DAYS,
+    DUYURU_WINDOW,
     MIN_SOURCES,
     RATIO_CAP,
     parse_gazette_day,
@@ -228,3 +229,40 @@ def test_a_stray_date_in_the_page_furniture_cannot_stretch_the_baseline():
     assert duyuru["ratio"] == 1.0
     # And the stray day is not drawn on a fortnight's grid.
     assert all(row["day"] >= result["history"][0]["day"] for row in duyuru["history"])
+
+
+def _duyuru(result: dict) -> dict:
+    return next(s for s in result["sources"] if s["key"] == "duyuru")
+
+
+def test_announcement_sparkline_is_scored_on_the_window_its_reading_uses():
+    # The bug this pins: the reading divided by a three-day baseline and the
+    # sparkline beside it by the daily rate. For this feed that rate is around
+    # one, below `MIN_BASELINE`, so every bar came back unmeasured and the row
+    # drew an empty grid next to a live 2.0x.
+    result = score(flat(8), feed(per_day=2), None, today=TODAY)
+    source = _duyuru(result)
+    assert source["ratio"] is not None
+    measured = [day for day in source["history"] if day["ratio"] is not None]
+    assert measured, "the sparkline scored nothing the reading could score"
+    # The newest bar and the headline are the same window, so they must agree.
+    assert measured[-1]["ratio"] == source["ratio"]
+
+
+def test_a_silent_day_is_a_nought_in_the_window_not_a_gap():
+    # Restricting the series to days the feed carried something both shortened
+    # the row and overstated every window spanning a silent day.
+    days = [date.fromordinal(TODAY.toordinal() - i).isoformat() for i in range(BASELINE_DAYS)]
+    sparse = {day: 3 for i, day in enumerate(days) if i % 2 == 0}
+    result = score(flat(8), sparse, None, today=TODAY)
+    source = _duyuru(result)
+    assert len(source["history"]) == BASELINE_DAYS
+
+
+def test_the_oldest_days_refuse_rather_than_score_a_partial_window():
+    # Their window runs off the end of the fortnight, and a short window reads
+    # as a quiet stretch that never happened.
+    result = score(flat(8), feed(per_day=2), None, today=TODAY)
+    history = _duyuru(result)["history"]
+    assert all(day["ratio"] is None for day in history[: DUYURU_WINDOW - 1])
+    assert history[DUYURU_WINDOW - 1]["ratio"] is not None
