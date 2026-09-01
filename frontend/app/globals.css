@@ -272,6 +272,10 @@
   --chart-4: #b8836a;
   --chart-5: #5b9bd5;
   --chart-6: #8f9199;
+  /* Added for the fund allocation bar. The family was drawn for line series,
+     where five hues and a grey are plenty; a categorical stack of twelve asset
+     classes needed one more that is neither a direction nor an identity. */
+  --chart-7: #9b7fe0;
 
   /* Open-interest board. Deliberately its own ramp rather than --chart-*: the
      two top panes draw the same quantity twice, once summed and once split by
