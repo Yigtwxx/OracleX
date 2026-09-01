@@ -12,8 +12,11 @@ Three seams carry the weight here:
 * **Failure.** An empty board reads to a user as "nothing matched your filter",
   which is a different and far more misleading statement than "TEFAS is down".
 
-Nothing here touches the network: `fetch_fund_rows` and `fetch_fund_prices` are
-monkeypatched at the module the service imports them into.
+Nothing here touches the network: `fetch_fund_rows`, `fetch_fund_prices` and
+`fetch_fund_allocations` are monkeypatched at the module the service imports
+them into. The last one is stubbed by an autouse fixture rather than per test,
+because `fetch_fund_board` now asks for the allocation column on every call and
+a test that forgot would reach TEFAS for real.
 """
 
 import pytest
@@ -27,7 +30,14 @@ from services.bist.fund_service import (
     fetch_fund_detail,
     screen_funds,
 )
-from services.bist.tefas_client import FundPrices, FundRow, PricePoint, TefasUnavailable
+from services.bist.tefas_client import (
+    FundAllocationRow,
+    FundPrices,
+    FundRow,
+    PricePoint,
+    TefasThrottled,
+    TefasUnavailable,
+)
 from services.cache import bist_cache
 
 from datetime import date
@@ -41,6 +51,22 @@ def _clean_cache():
     bist_cache.clear()
     yield
     bist_cache.clear()
+
+
+@pytest.fixture(autouse=True)
+def _no_allocations(monkeypatch):
+    """No allocation upstream unless a test asks for one.
+
+    `fetch_fund_board` fetches the split alongside the rows, so leaving this
+    unpatched would put a live TEFAS request behind every board test in this
+    file. Returning an empty list also exercises the path the board must
+    survive: no column, but still a board.
+    """
+
+    async def _none(fund_type="YAT", *, window_days=7):
+        return []
+
+    monkeypatch.setattr(fund_service, "fetch_fund_allocations", _none)
 
 
 def _fund(
@@ -277,3 +303,168 @@ def test_search_survives_turkish_capitals():
     )
     assert [f.code for f in screen_funds(funds, search="iş portföy")] == ["IPB"]
     assert [f.code for f in screen_funds(funds, search="İŞ PORTFÖY")] == ["IPB"]
+
+
+def _allocation(code: str, day=date(2026, 8, 28), **weights) -> FundAllocationRow:
+    return FundAllocationRow(code=code, title=f"{code} PORTFÖY FONU", day=day, weights=weights)
+
+
+class TestBoardAllocations:
+    """
+    The split rides along with the board, and must never be able to sink it.
+
+    The column is a decoration on a page whose subject is returns. Every failure
+    below has the same required outcome: the funds still arrive.
+    """
+
+    @pytest.mark.asyncio
+    async def test_board_carries_the_split_keyed_by_code(self, monkeypatch):
+        async def rows(fund_type="YAT"):
+            return [_fund("AAA"), _fund("BBB")]
+
+        async def allocations(fund_type="YAT", *, window_days=7):
+            return [_allocation("AAA", hs=0.6, vmtl=0.4)]
+
+        monkeypatch.setattr(fund_service, "fetch_fund_rows", rows)
+        monkeypatch.setattr(fund_service, "fetch_fund_allocations", allocations)
+
+        board = await fetch_fund_board("YAT")
+        assert board.allocations is not None
+        assert board.allocations.day == date(2026, 8, 28)
+        assert set(board.allocations.breakdowns) == {"AAA"}
+        # BBB reported nothing, so it is absent rather than present-and-empty.
+        assert "BBB" not in board.allocations.breakdowns
+
+    @pytest.mark.asyncio
+    async def test_allocation_outage_leaves_the_board_intact(self, monkeypatch):
+        async def rows(fund_type="YAT"):
+            return [_fund("AAA")]
+
+        async def down(fund_type="YAT", *, window_days=7):
+            raise TefasUnavailable("nope")
+
+        monkeypatch.setattr(fund_service, "fetch_fund_rows", rows)
+        monkeypatch.setattr(fund_service, "fetch_fund_allocations", down)
+
+        board = await fetch_fund_board("YAT")
+        assert [f.code for f in board.funds] == ["AAA"]
+        assert board.allocations is None
+
+    @pytest.mark.asyncio
+    async def test_throttle_serves_the_previous_snapshot(self, monkeypatch):
+        calls = {"n": 0}
+
+        async def rows(fund_type="YAT"):
+            return [_fund("AAA")]
+
+        async def flaky(fund_type="YAT", *, window_days=7):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return [_allocation("AAA", hs=1.0)]
+            raise TefasThrottled("too soon")
+
+        monkeypatch.setattr(fund_service, "fetch_fund_rows", rows)
+        monkeypatch.setattr(fund_service, "fetch_fund_allocations", flaky)
+
+        await fetch_fund_board("YAT")
+        # Expire the live entry but leave the fallback and the cooldown, which
+        # is the state a reader arrives in a few hours into an outage.
+        bist_cache.invalidate("alloc:YAT")
+        bist_cache.invalidate("alloc:cooldown:YAT")
+
+        board = await fetch_fund_board("YAT")
+        assert board.allocations is not None
+        assert board.allocations.stale is True
+        assert set(board.allocations.breakdowns) == {"AAA"}
+
+    @pytest.mark.asyncio
+    async def test_cooldown_blocks_a_second_attempt(self, monkeypatch):
+        calls = {"n": 0}
+
+        async def rows(fund_type="YAT"):
+            return [_fund("AAA")]
+
+        async def down(fund_type="YAT", *, window_days=7):
+            calls["n"] += 1
+            raise TefasUnavailable("nope")
+
+        monkeypatch.setattr(fund_service, "fetch_fund_rows", rows)
+        monkeypatch.setattr(fund_service, "fetch_fund_allocations", down)
+
+        await fetch_fund_board("YAT")
+        bist_cache.invalidate("board:YAT")
+        await fetch_fund_board("YAT")
+
+        # Without the cooldown every reader arriving during an outage would fire
+        # another request, and each 429 would be recorded as a failed upstream.
+        assert calls["n"] == 1
+
+    @pytest.mark.asyncio
+    async def test_empty_answer_is_not_cached_as_an_answer(self, monkeypatch):
+        async def rows(fund_type="YAT"):
+            return [_fund("AAA")]
+
+        async def nothing(fund_type="YAT", *, window_days=7):
+            return []
+
+        monkeypatch.setattr(fund_service, "fetch_fund_rows", rows)
+        monkeypatch.setattr(fund_service, "fetch_fund_allocations", nothing)
+
+        board = await fetch_fund_board("YAT")
+        assert board.allocations is None
+        assert bist_cache.get("alloc:YAT") is None
+
+    @pytest.mark.asyncio
+    async def test_detail_carries_the_split_for_free(self, monkeypatch):
+        async def rows(fund_type="YAT"):
+            return [_fund("AAA")]
+
+        async def allocations(fund_type="YAT", *, window_days=7):
+            return [_allocation("AAA", hs=0.6, vmtl=0.4)]
+
+        async def prices(code, months=12):
+            return FundPrices(
+                code=code,
+                title="AAA PORTFÖY FONU",
+                category_rank=1,
+                category_size=10,
+                points=[
+                    PricePoint(day=date(2026, 1, 1), price=1.0),
+                    PricePoint(day=date(2026, 6, 1), price=1.5),
+                ],
+            )
+
+        monkeypatch.setattr(fund_service, "fetch_fund_rows", rows)
+        monkeypatch.setattr(fund_service, "fetch_fund_allocations", allocations)
+        monkeypatch.setattr(fund_service, "fetch_fund_prices", prices)
+
+        detail = await fetch_fund_detail("AAA")
+        assert detail.allocation is not None
+        assert [b.key for b in detail.allocation.buckets] == ["hisse", "mevduat"]
+
+    @pytest.mark.asyncio
+    async def test_detail_of_an_unreported_fund_has_no_split(self, monkeypatch):
+        async def rows(fund_type="YAT"):
+            return [_fund("BBB")]
+
+        async def allocations(fund_type="YAT", *, window_days=7):
+            return [_allocation("AAA", hs=1.0)]
+
+        async def prices(code, months=12):
+            return FundPrices(
+                code=code,
+                title="BBB PORTFÖY FONU",
+                category_rank=None,
+                category_size=None,
+                points=[
+                    PricePoint(day=date(2026, 1, 1), price=1.0),
+                    PricePoint(day=date(2026, 6, 1), price=1.2),
+                ],
+            )
+
+        monkeypatch.setattr(fund_service, "fetch_fund_rows", rows)
+        monkeypatch.setattr(fund_service, "fetch_fund_allocations", allocations)
+        monkeypatch.setattr(fund_service, "fetch_fund_prices", prices)
+
+        detail = await fetch_fund_detail("BBB")
+        assert detail.allocation is None
