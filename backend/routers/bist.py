@@ -20,6 +20,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
+from services.bist import fund_allocation, holdings_service
 from services.bist.brief_note import note_for_fund, note_for_stock
 from services.bist.market_note import (
     build_funds_market_facts,
@@ -69,7 +70,9 @@ from services.bist.kap_service import (
     KapUnavailable,
     fetch_tape,
     filter_restrictions,
+    is_rate_limited,
 )
+from services.bist.positioning_note import build_positioning_facts, positioning_note
 from services.bist.positioning_service import (
     PositioningRow,
     build_positioning,
@@ -86,7 +89,33 @@ def _unavailable(error: Exception) -> HTTPException:
     return HTTPException(status_code=503, detail=str(error))
 
 
-def _fund_row(row: FundRow, enriched: Optional[dict] = None) -> dict:
+def _allocation_detail(breakdown: Optional[fund_allocation.AllocationBreakdown]) -> Optional[dict]:
+    """One fund's split, spelled out — bucket, weight and the lines under it."""
+    if breakdown is None:
+        return None
+    return {
+        "as_of": breakdown.day.isoformat(),
+        # The sum of what TEFAS actually reported, never scaled to 1. The card
+        # prints it when it misses, rather than stretching the bar over the gap.
+        "total": breakdown.total,
+        "buckets": [
+            {
+                "key": bucket.key,
+                "label": bucket.label,
+                "weight": bucket.weight,
+                "lines": [
+                    {"code": line.code, "label": line.label, "weight": line.weight}
+                    for line in bucket.lines
+                ],
+            }
+            for bucket in breakdown.buckets
+        ],
+    }
+
+
+def _fund_row(
+    row: FundRow, enriched: Optional[dict] = None, allocation: Optional[dict] = None
+) -> dict:
     return {
         "code": row.code,
         "title": row.title,
@@ -100,6 +129,11 @@ def _fund_row(row: FundRow, enriched: Optional[dict] = None) -> dict:
         # would make this board look like it disagreed with them rather than
         # like it was answering a different question.
         "framed_returns": enriched or {},
+        # Sparse, unlabelled and weight-only: an absent bucket means the fund
+        # does not hold it, and the key-to-label vocabulary is declared once on
+        # the response instead of repeated for every fund on the board.
+        # None is not an empty holding — it is "TEFAS published nothing here".
+        "allocation": allocation,
     }
 
 
@@ -114,6 +148,19 @@ def _board_meta(board: FundBoard) -> dict:
         "risk_free_source": "money_market_median" if board.risk_free_rate is not None else None,
         "stale": board.stale,
         "total": len(board.funds),
+        # None here and a null row `allocation` are different failures: this one
+        # means the column could not be built at all, that one means TEFAS
+        # published nothing for one fund. The frontend words them differently.
+        "allocation": (
+            {
+                "as_of": board.allocations.day.isoformat(),
+                "stale": board.allocations.stale,
+                "reported": len(board.allocations.breakdowns),
+                "buckets": fund_allocation.bucket_vocabulary(),
+            }
+            if board.allocations
+            else None
+        ),
     }
 
 
@@ -203,10 +250,20 @@ async def get_funds(
                     fx_series=fx,
                     window_months=WINDOW_MONTHS,
                 ),
+                _row_allocation(board, row.code),
             )
             for row in rows
         ],
     }
+
+
+def _row_allocation(board: FundBoard, code: str) -> Optional[dict]:
+    if board.allocations is None:
+        return None
+    breakdown = board.allocations.breakdowns.get(code)
+    if breakdown is None:
+        return None
+    return fund_allocation.bucket_weights(breakdown)
 
 
 def _detail(detail: FundDetail, framed: Optional[dict] = None) -> dict:
@@ -223,6 +280,7 @@ def _detail(detail: FundDetail, framed: Optional[dict] = None) -> dict:
         "published_returns": detail.published_returns,
         "framed_returns": framed or {},
         "risk_free_rate": detail.risk_free_rate,
+        "allocation": _allocation_detail(detail.allocation),
         "series": detail.series,
         "metrics": {
             "observations": metrics.observations,
@@ -319,6 +377,68 @@ async def get_fund(code: str, months: int = Query(12, ge=1, le=60)):
     }
     payload["ai_note"] = await note_for_fund(payload)
     return payload
+
+
+@router.get("/funds/{code}/holdings")
+async def get_fund_holdings(
+    code: str,
+    fund_type: str = Query("YAT", description=f"One of {FUND_TYPES}"),
+):
+    """
+    Which companies the fund actually owns, from its monthly KAP filing.
+
+    A separate route rather than a field on `/funds/{code}`, because the two
+    have nothing in common but the fund. This one costs up to four upstream
+    calls and a PDF parse on a cold cache, against a source that publishes once
+    a month; the detail page must not wait on it to draw its chart.
+
+    Always 200. An absent book is described by `reason` rather than by a status
+    code: "no report filed yet", "the fund holds no equity" and "this filing's
+    layout could not be read" are three different sentences, and a 404 would say
+    the same wrong thing for all three.
+    """
+    try:
+        outcome = await holdings_service.fetch_fund_holdings(code, fund_type)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    book = outcome.holdings
+    return {
+        "code": code.strip().upper(),
+        "reason": outcome.reason,
+        "stale": outcome.stale,
+        "as_of": (
+            {
+                "year": book.year,
+                "period": book.period,
+                "published": book.published.isoformat() if book.published else None,
+                # KAP's own flag. Worth surfacing: a late filing is the usual
+                # reason the newest book on the page is two months old.
+                "late": book.late,
+            }
+            if book
+            else None
+        ),
+        # The filing itself, so a reader can check any figure here against it.
+        "source_url": book.disclosure_url if book else None,
+        # The equity book in lira, and the denominator every weight below is
+        # struck against — these are shares of the fund's stocks, not of the
+        # fund. The allocation card says what share of the fund that is.
+        "total_value": book.total_value if book else None,
+        "holdings": (
+            [
+                {
+                    "ticker": holding.ticker,
+                    "label": holding.label,
+                    "value": holding.value,
+                    "weight": holding.weight,
+                }
+                for holding in book.holdings
+            ]
+            if book
+            else []
+        ),
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -732,6 +852,9 @@ async def get_kap(
         "ticker": ticker,
         "categories": sorted(wanted if wanted is not None else SIGNAL_CATEGORIES),
         "count": len(rows),
+        # A thin tape has two very different causes — a quiet session, or KAP
+        # refusing this address — and the rows alone cannot tell them apart.
+        "rate_limited": is_rate_limited(),
         "disclosures": [_disclosure(item) for item in rows],
     }
 
@@ -897,8 +1020,9 @@ async def get_positioning(limit: int = Query(50, ge=1, le=500)):
     """
     Where the crowd is: free float, unusual volume, range position, futures OI.
 
-    Not the fund-to-stock cross index this board was originally meant to be —
-    TEFAS withdrew portfolio breakdowns from its public API and KAP publishes
+    Not the fund-to-stock cross index this board was originally meant to be.
+    TEFAS publishes a fund's split by asset class — the fund board draws it —
+    but nothing public names the securities behind it, and KAP publishes
     holdings only as prose attachments. `positioning_service` documents what was
     tried. What is here is published positioning rather than inferred, which is
     a narrower claim honestly made.
@@ -924,6 +1048,26 @@ async def get_positioning(limit: int = Query(50, ge=1, le=500)):
         "crowded": [_positioning(row) for row in rows[:limit]],
         "futures": [_positioning(row) for row in futures_positioning(rows)[:limit]],
     }
+
+
+@router.get("/positioning-note")
+async def get_positioning_note():
+    """
+    What the positioning board as a whole looks like, narrated.
+
+    Its own route rather than a field on `/positioning`, for the reason every
+    note here is: the board polls every two minutes and the paragraph is written
+    once, so folding them together would either hold the board behind a model
+    run or refuse the note a cadence of its own.
+
+    Deliberately not scoped to the caller's `limit`. `/positioning` returns rows
+    ranked by crowding, so any limit is a biased sample by construction — the
+    facts are computed across every listing instead, because "the board is at the
+    top of its year" answered over the busiest hundred names is a wrong answer
+    rather than a narrower one.
+    """
+    facts = await build_positioning_facts()
+    return {"facts": facts, "note": await positioning_note(facts)}
 
 
 # ══════════════════════════════════════════════════════════════════════════
