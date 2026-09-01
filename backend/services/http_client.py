@@ -20,6 +20,12 @@ a session. `v10/finance/quoteSummary` answers 401 `"Invalid Crumb"` to any
 request without a matching cookie jar and `crumb` query parameter — a browser
 fingerprint alone is not enough. This helper holds the cookie/crumb pair and
 replays it, so callers keep writing a plain GET.
+
+The `*_kap` trio is the same idea for Kamuyu Aydınlatma Platformu, whose fund
+API sits behind a bot-protection layer that answers 500 — not 403 — to a request
+carrying no session cookie. One primed session serves every call, and routing
+them through here rather than opening a client in the service is what puts
+kap.org.tr on the health badge.
 """
 
 import asyncio
@@ -375,3 +381,103 @@ async def get_json_yahoo(
 
         response.raise_for_status()
         return response.json()
+
+
+# ── KAP session ─────────────────────────────────────────────────────────────
+#
+# KAP's fund API is a plain JSON API behind a Netscaler bot-protection layer.
+# The layer issues its cookies on any page load and then requires them: without
+# the jar the API answers **HTTP 500**, not 401 or 403, so the failure reads as
+# an upstream fault rather than as an authentication problem. Priming costs one
+# GET and the jar is good for the life of the process.
+
+KAP_ROOT = "https://www.kap.org.tr"
+KAP_PRIME_URL = f"{KAP_ROOT}/tr"
+
+_kap_session: Any = None
+_kap_lock: Optional[asyncio.Lock] = None
+
+
+def _get_kap_lock() -> asyncio.Lock:
+    global _kap_lock
+    if _kap_lock is None:
+        _kap_lock = asyncio.Lock()
+    return _kap_lock
+
+
+def _open_kap_session() -> Any:
+    """Open a KAP session and prime its cookie jar. Blocking; runs in a thread."""
+    try:
+        from curl_cffi import requests as impersonating_requests
+    except ImportError as e:  # optional dependency; see requirements.txt
+        raise RuntimeError(
+            "curl_cffi is required to reach bot-protected upstreams (pip install curl_cffi)"
+        ) from e
+
+    session = impersonating_requests.Session(impersonate=IMPERSONATE_PROFILE)
+    session.headers.update({"Accept-Language": "tr,en;q=0.9"})
+    response = session.get(KAP_PRIME_URL, timeout=DEFAULT_TIMEOUT * 3)
+    response.raise_for_status()
+    return session
+
+
+async def _get_kap_session(reopen: bool = False) -> Any:
+    global _kap_session
+    async with _get_kap_lock():
+        if _kap_session is None or reopen:
+            _kap_session = await asyncio.to_thread(_open_kap_session)
+        return _kap_session
+
+
+async def _kap_call(url: str, *, payload: Optional[Any], timeout: float) -> Any:
+    """
+    One KAP request, reopening the session once if the jar has gone stale.
+
+    The retry is on 500 rather than on 401 because that is what an expired jar
+    looks like from here — see the note above. A second 500 is raised, so a
+    genuine upstream fault still surfaces as one instead of looping.
+    """
+
+    def _fetch(session: Any) -> Any:
+        if payload is None:
+            return session.get(url, timeout=timeout)
+        return session.post(url, json=payload, timeout=timeout)
+
+    for final_attempt in (False, True):
+        session = await _get_kap_session(reopen=final_attempt)
+        response = await asyncio.to_thread(_fetch, session)
+        if response.status_code >= 500 and not final_attempt:
+            logger.info("KAP answered %s for %s; repriming session", response.status_code, url)
+            continue
+        response.raise_for_status()
+        return response
+
+    raise RuntimeError("unreachable")
+
+
+@_observe
+async def get_json_kap(url: str, *, timeout: float = DEFAULT_TIMEOUT * 6) -> Any:
+    """GET a KAP fund API endpoint and return JSON."""
+    response = await _kap_call(url, payload=None, timeout=timeout)
+    return response.json()
+
+
+@_observe
+async def post_json_kap(url: str, *, payload: Any, timeout: float = DEFAULT_TIMEOUT * 6) -> Any:
+    """POST to a KAP fund API endpoint and return JSON."""
+    response = await _kap_call(url, payload=payload, timeout=timeout)
+    return response.json()
+
+
+@_observe
+async def get_bytes_kap(url: str, *, timeout: float = DEFAULT_TIMEOUT * 9) -> bytes:
+    """
+    GET a KAP attachment and return its bytes.
+
+    Deliberately untyped about the content: what comes back from the download
+    endpoint is not the file, it is a Java-serialised `byte[]` with the file
+    inside it. Unwrapping that is the caller's business — see
+    `services/bist/kap_fund_client.py`.
+    """
+    response = await _kap_call(url, payload=None, timeout=timeout)
+    return response.content
