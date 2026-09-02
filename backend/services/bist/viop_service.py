@@ -23,7 +23,7 @@ import html as html_module
 import logging
 import re
 from dataclasses import dataclass
-from datetime import datetime, UTC
+from datetime import date, datetime, UTC
 from typing import Optional
 
 from services.cache import bist_cache
@@ -50,6 +50,47 @@ _TAG_RE = re.compile(r"<[^>]+>")
 _CONTRACT_RE = re.compile(r"^([A-ZÇĞİÖŞÜ0-9]+)\s*\((.*?)\)\s*(.*)$")
 
 
+KIND_FUTURE = "future"
+KIND_CALL = "call"
+KIND_PUT = "put"
+
+# The instrument, off the trailing words of the contract label.
+#
+# The board is not futures-only and never was. Ten of its forty-odd rows are
+# options — `ISCTR (30 Eyl 26) Satim opsiyonu FIZ.` sits directly beneath
+# `ISCTR (30 Eyl 26) Vadeli FIZ.` and carries a settlement of 0.13 against the
+# future's 13.16, because one is a premium and the other is a price. Read as one
+# instrument they produce a term structure in 99% backwardation and an open
+# interest total that adds two different books together.
+#
+# Matched on an ASCII transliteration rather than the literal text. The page
+# writes `Alim opsiyonu` with a plain `i` today and `Alım` is the correct
+# spelling, so a rule keyed on either one alone is a rule that stops working the
+# day the upstream fixes its own typography.
+_TR_ASCII = str.maketrans("çğıöşüÇĞİIÖŞÜ", "cgiosucgiiosu")
+
+_KINDS: tuple[tuple[str, str], ...] = (
+    ("alimopsiyonu", KIND_CALL),
+    ("satimopsiyonu", KIND_PUT),
+)
+
+
+def parse_kind(suffix: str) -> str:
+    """
+    Which instrument a row is, defaulting to a future.
+
+    Defaulting rather than refusing: `Vadeli` is what the overwhelming majority
+    of rows say, an unrecognised suffix is far more likely to be a futures
+    variant than a third option type, and a row dropped for an unknown label
+    would take its open interest out of the board's totals silently.
+    """
+    folded = "".join(ch for ch in suffix.translate(_TR_ASCII).lower() if "a" <= ch <= "z")
+    for skeleton, kind in _KINDS:
+        if skeleton in folded:
+            return kind
+    return KIND_FUTURE
+
+
 class ViopUnavailable(RuntimeError):
     """The VİOP board could not be read and no recent enough copy survives."""
 
@@ -71,6 +112,31 @@ class ViopContract:
     settlement: Optional[float]
     previous_settlement: Optional[float]
     traded_at: str
+    kind: str = KIND_FUTURE
+    """
+    `future`, `call` or `put`.
+
+    Carried rather than inferred at each call site because the distinction
+    decides whether two rows belong on the same axis at all, and every surface
+    that draws a curve, a total or a positioning quadrant has to make the same
+    call. `parse_board` always sets it; the default exists only so the quote
+    columns above do not each need one.
+    """
+    expiry_date: Optional[str] = None
+    """
+    `expiry` as an ISO day, or None when the label could not be read.
+
+    The column publishes `31 Ağu 26`, which sorts alphabetically into nonsense —
+    Ağustos before Eylül before Ekim is the calendar, but `A` before `E` before
+    `E` is the string. Anything ordering contracts by time needs a real date, and
+    two of them do: the term-structure curve and the roll split both put expiries
+    on an axis.
+
+    Last in the class with a default rather than beside `expiry` where it
+    belongs, because a dataclass cannot carry a defaulted field ahead of
+    undefaulted ones and the alternative was giving every quote column a default
+    it has no business having.
+    """
 
 
 # Characters that only appear when a UTF-8 payload was decoded as Latin-1.
@@ -128,6 +194,123 @@ def _number(raw: str) -> Optional[float]:
     return None if value != value else value
 
 
+# Turkish month abbreviations, as the expiry column writes them.
+#
+# A table rather than `strptime("%d %b %y")`: `%b` reads the process locale, and
+# the backend runs under whatever the host image happens to set. A container
+# with the C locale would parse every expiry to None and quietly empty the two
+# panels built on it, which is a failure no test running on a Turkish laptop
+# would ever see.
+_MONTHS: dict[str, int] = {
+    "oca": 1,
+    "şub": 2,
+    "sub": 2,
+    "mar": 3,
+    "nis": 4,
+    "may": 5,
+    "haz": 6,
+    "tem": 7,
+    "ağu": 8,
+    "agu": 8,
+    "eyl": 9,
+    "eki": 10,
+    "kas": 11,
+    "ara": 12,
+}
+
+# The Turkish letters with the ASCII they fold to once a byte is lost.
+#
+# Not a nicety. The broker's own page serves `26 Şubat 27` as
+# `26 \xc3\x85\xef\xbf\xbdub 27` — it double-encoded the cell and then replaced
+# the byte its own decoder could not read, so `Ş` reaches us as `Å` plus a
+# replacement character and no amount of re-decoding on this side can recover
+# it. `_repair_encoding` cannot help: the information is gone before the
+# response leaves their server.
+#
+# What survives is the ASCII tail, and it is enough. Stripped of everything
+# outside `a-z`, the twelve month abbreviations become `oca ub mar nis may haz
+# tem au eyl eki kas ara` — still twelve distinct strings, none of them a prefix
+# of another. So a month whose distinctive letter was destroyed is still
+# identifiable, and the alternative was dropping USDTRY's February contract off
+# the term-structure curve every time that expiry is listed.
+_ASCII_MONTHS: dict[str, int] = {
+    "".join(ch for ch in name if "a" <= ch <= "z"): month
+    for name, month in {
+        "oca": 1,
+        "şub": 2,
+        "mar": 3,
+        "nis": 4,
+        "may": 5,
+        "haz": 6,
+        "tem": 7,
+        "ağu": 8,
+        "eyl": 9,
+        "eki": 10,
+        "kas": 11,
+        "ara": 12,
+    }.items()
+}
+
+# `31 Ağu 26`, and also `31 Ağustos 2026` — the abbreviation is what the page
+# serves today, and matching the long form costs nothing here.
+#
+# The month is `\S+` rather than a letter class on purpose: a replacement
+# character is punctuation to `re`, so a class of letters would refuse the very
+# rows the fold above exists to rescue.
+_EXPIRY_RE = re.compile(r"^(\d{1,2})\s+(\S+)\s+(\d{2}|\d{4})$")
+
+
+def _month_of(text: str) -> Optional[int]:
+    """
+    A month name as its number, exactly first and then by its ASCII skeleton.
+
+    The exact table runs first so every ordinary row takes the cheap path and
+    the fold below can never reinterpret a label that was already readable.
+    `.lower()` rather than `.casefold()`: casefold maps `İ` to an `i` with a
+    combining dot, which no key here contains.
+    """
+    month = _MONTHS.get(text[:3].lower())
+    if month is not None:
+        return month
+
+    folded = "".join(ch for ch in text.lower() if "a" <= ch <= "z")
+    for skeleton, number in _ASCII_MONTHS.items():
+        if folded.startswith(skeleton):
+            return number
+    return None
+
+
+def parse_expiry(raw: str) -> Optional[str]:
+    """
+    An expiry label as an ISO day, or None.
+
+    None rather than a guess, for the reason the rest of this parser returns
+    nothing rather than half a row: a contract placed on the wrong month of a
+    term-structure curve does not look like missing data, it looks like a market
+    in backwardation.
+    """
+    match = _EXPIRY_RE.match((raw or "").strip())
+    if not match:
+        return None
+
+    day_text, month_text, year_text = match.groups()
+    month = _month_of(month_text)
+    if month is None:
+        return None
+
+    year = int(year_text)
+    if year < 100:
+        year += 2000
+
+    try:
+        return date(year, month, int(day_text)).isoformat()
+    except ValueError:
+        # `31 Nis 26` — a day the month does not have. The row is still a
+        # contract and still carries its quote; only its place on a time axis is
+        # unknown.
+        return None
+
+
 def parse_board(html: str) -> list[ViopContract]:
     """
     Contracts out of the broker's table.
@@ -164,6 +347,8 @@ def parse_board(html: str) -> list[ViopContract]:
                 settlement=_number(cells[7]),
                 previous_settlement=_number(cells[8]),
                 traded_at=cells[9],
+                expiry_date=parse_expiry(expiry),
+                kind=parse_kind(suffix),
             )
         )
     return contracts
@@ -204,32 +389,88 @@ async def fetch_viop_board() -> ViopBoard:
     return board
 
 
-def summarise(contracts: list[ViopContract]) -> dict:
+@dataclass(frozen=True)
+class UnderlyingRoll:
+    """One underlying's futures, summed across every expiry."""
+
+    underlying: str
+    contracts: int
+    """How many expiries. An underlying present in the roll always has at least one."""
+    open_interest: Optional[float]
     """
-    What the board says as a whole.
+    None rather than 0.0 when no expiry published a figure.
+
+    The distinction is the whole reason this type exists. "There are contracts
+    on this name but the column was empty" and "there is no position" look
+    identical once both collapse to zero, and a board that colours the first as
+    a measured nothing is stating something it does not know.
+    """
+    open_interest_change: Optional[float]
+
+
+def roll_by_underlying(
+    contracts: Optional[list[ViopContract]],
+) -> dict[str, UnderlyingRoll]:
+    """
+    Every contract folded onto its underlying.
 
     Open interest is summed per underlying rather than per contract: a reader
     asking "how big is the USDTRY position" means across every expiry, and the
     near month alone understates it by roughly half.
-    """
-    by_underlying: dict[str, dict] = {}
-    for contract in contracts:
-        entry = by_underlying.setdefault(
-            contract.underlying,
-            {
-                "underlying": contract.underlying,
-                "open_interest": 0.0,
-                "change": 0.0,
-                "contracts": 0,
-            },
-        )
-        entry["contracts"] += 1
-        if contract.open_interest is not None:
-            entry["open_interest"] += contract.open_interest
-        if contract.open_interest_change is not None:
-            entry["change"] += contract.open_interest_change
 
-    ranked = sorted(by_underlying.values(), key=lambda row: row["open_interest"], reverse=True)
+    Open interest and its change are summed independently — a row can publish
+    one and not the other, and pairing them would drop a reading that is there.
+    """
+    counts: dict[str, int] = {}
+    interest: dict[str, float] = {}
+    change: dict[str, float] = {}
+
+    for contract in contracts or []:
+        counts[contract.underlying] = counts.get(contract.underlying, 0) + 1
+        if contract.open_interest is not None:
+            interest[contract.underlying] = (
+                interest.get(contract.underlying, 0.0) + contract.open_interest
+            )
+        if contract.open_interest_change is not None:
+            change[contract.underlying] = (
+                change.get(contract.underlying, 0.0) + contract.open_interest_change
+            )
+
+    return {
+        underlying: UnderlyingRoll(
+            underlying=underlying,
+            contracts=count,
+            open_interest=interest.get(underlying),
+            open_interest_change=change.get(underlying),
+        )
+        for underlying, count in counts.items()
+    }
+
+
+def summarise(contracts: list[ViopContract]) -> dict:
+    """
+    What the board says as a whole.
+
+    The unreadable-versus-absent distinction `roll_by_underlying` keeps is
+    flattened back to 0.0 here on purpose: `/api/bist/viop` has published these
+    fields as numbers since it existed, and a null arriving where a client
+    expects a figure is a breaking change for a nuance this particular payload
+    never carried.
+    """
+    rolls = roll_by_underlying(contracts)
+    ranked = sorted(
+        (
+            {
+                "underlying": roll.underlying,
+                "open_interest": roll.open_interest or 0.0,
+                "change": roll.open_interest_change or 0.0,
+                "contracts": roll.contracts,
+            }
+            for roll in rolls.values()
+        ),
+        key=lambda row: row["open_interest"],
+        reverse=True,
+    )
     return {
         "total_open_interest": sum(row["open_interest"] for row in ranked),
         "by_underlying": ranked,
