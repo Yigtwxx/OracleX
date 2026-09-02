@@ -804,6 +804,28 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
+### `GET /api/bist/heatmap`
+
+Get Heatmap
+
+One index as a treemap: area is market capitalisation, colour is the
+reader's choice, and VİOP open interest rides along where it exists.
+
+The futures board is fetched inside its own `try`. It is a scrape of a
+broker page and it will break; when it does the answer is this board minus
+one column, not a 503. `has_futures_data` says which of the two happened, so
+a tile with no open interest can be drawn as unknown rather than as zero.
+
+Deliberately not `_equity_row`: that payload carries valuation ratios and
+framed real returns, none of which a tile draws, and at a thousand listings
+the unused half is most of the response.
+
+Parameters:
+- `index` (query, string, optional, default `'XU100'`) — One of ('XU100', 'XU030', 'XU050', 'XUTUM', 'XBANK', 'XKTUM', 'XK100')
+- `limit` (query, integer, optional, default `150`)
+
+Response shape is not declared on the route — inspect one call.
+
 ### `GET /api/bist/funds`
 
 Get Funds
@@ -934,6 +956,26 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
+### `GET /api/bist/kap/{index}/note`
+
+Get Kap Note
+
+What one filing means, narrated.
+
+Written on demand rather than with the tape: the board prints six hundred
+rows and a reader opens one, so generating a note per row would run a local
+model continuously to write text nobody asked for.
+
+The share behind the filing is looked up but never required. Around a fifth
+of the tape carries no ticker — the exchange files its own notices this way
+— and the equity board is a separate upstream that can be down, so a missing
+session is a stated gap in the prompt rather than a failed request.
+
+Parameters:
+- `index` (path, integer, required)
+
+Response shape is not declared on the route — inspect one call.
+
 ### `GET /api/bist/restrictions`
 
 Get Restrictions
@@ -976,6 +1018,62 @@ Futures and options, with the open interest behind each contract.
 
 Parameters:
 - `underlying` (query, string?, optional)
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/viop-note`
+
+Get Viop Note
+
+What the derivatives board says as a whole, above the panels that draw it.
+
+Its own endpoint rather than a field on `/viop`, for the reason
+`positioning-note` records: that board is cached for five minutes and the
+page polls it, and a note welded to the payload would either be recomputed
+on every poll or hold the board back to the note's cadence. Split, each
+keeps its own.
+
+`facts` is null when the board could not be read or came back too thin to
+describe. The client must render that as an absent panel rather than as a
+quiet session — this source is a scrape, and silence here is far more often
+an outage than a market.
+
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/viop-map/underlyings`
+
+Get Viop Map Underlyings
+
+The single-stock futures universe, ranked by the newest session's turnover.
+
+Derived rather than listed: which names carry futures, and which of them are
+worth opening first, both change without notice, and a hardcoded list is a
+list that silently goes stale. `default` is what the picker starts with.
+
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/viop-map/{ticker}`
+
+Get Viop Map
+
+One underlying's positioning, and the scan band each cohort sits behind.
+
+Two layers on one price axis: the VİOP book, modelled only in its direction,
+and the spot volume profile, modelled not at all. They share a grid because
+they are read against each other.
+
+The failure modes are deliberately unequal. Without the bulletin there is no
+book and without Takasbank's scan range there is no band, so either missing
+is a 503 — the distance is a published number and this endpoint will not
+substitute one. Losing Yahoo's intraday history costs the second layer only,
+and the map still answers.
+
+Parameters:
+- `ticker` (path, string, required)
+- `sessions` (query, integer, optional, default `120`)
+- `bins` (query, integer, optional, default `120`)
 
 Response shape is not declared on the route — inspect one call.
 
