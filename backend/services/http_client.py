@@ -195,6 +195,50 @@ async def get_text(
     return body.decode(encoding, errors="replace")
 
 
+class ResponseTooLarge(RuntimeError):
+    """The body outgrew the caller's limit, and truncating it would corrupt it."""
+
+
+@_observe
+async def get_bytes(
+    url: str,
+    *,
+    headers: Optional[dict] = None,
+    timeout: float = DEFAULT_TIMEOUT,
+    max_bytes: int = DEFAULT_MAX_BYTES,
+) -> bytes:
+    """
+    GET `url` and return the raw body, following redirects.
+
+    The twin of `get_text` for payloads that must not be decoded by httpx.
+    Two upstreams need it: a CSV published as UTF-8 with a BOM and no charset
+    header, where `response.encoding` guesses and either welds the BOM onto the
+    first column name or mangles every Turkish field; and a zip, where a
+    decode is meaningless.
+
+    **Oversize raises rather than truncates, and that is the whole difference
+    from `get_text`.** A half-read article is still useful, so `get_text`
+    returns what it got. A half-read zip is not a zip and a half-read CSV is a
+    file whose last row is a lie — both fail later, further from the cause.
+    Note `DEFAULT_MAX_BYTES` is 2 MB and one of these files sits within a
+    rounding error of it, so callers pass their own limit.
+    """
+    merged_headers = {**DEFAULT_HEADERS, **(headers or {})}
+    async with httpx.AsyncClient(
+        timeout=timeout, headers=merged_headers, follow_redirects=True
+    ) as client:
+        async with client.stream("GET", url) as response:
+            response.raise_for_status()
+            chunks: list[bytes] = []
+            total = 0
+            async for chunk in response.aiter_bytes():
+                total += len(chunk)
+                if total > max_bytes:
+                    raise ResponseTooLarge(f"{url} exceeded {max_bytes} bytes")
+                chunks.append(chunk)
+    return b"".join(chunks)
+
+
 @_observe
 async def get_text_impersonated(
     url: str,
