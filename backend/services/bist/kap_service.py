@@ -36,7 +36,7 @@ import logging
 import os
 import re
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime
 from typing import Optional
 
@@ -146,6 +146,23 @@ def _parse_published(raw: Optional[str]) -> Optional[str]:
         return None
 
 
+# Borsa İstanbul files its own measures under its own name, so `stockCode` is
+# empty on every circuit-breaker and VBTS notice — the share the measure hits is
+# named only in the summary, as the leading `SVGYO.E` token ("<code>.<market>").
+# Without this the whole radar reads `—` and the rows are indistinguishable.
+#
+# Anchored at the start on purpose: a ticker mentioned mid-sentence belongs to
+# the narrative, not to the filing, and a notice covering several shares names
+# the first one first. Only ever consulted when KAP left the field empty, so a
+# real `stockCode` always wins.
+_SUMMARY_TICKER = re.compile(r"^([A-Z0-9]{3,6})\.[A-Z]{1,2}\b")
+
+
+def _ticker_from_summary(summary: str) -> str:
+    match = _SUMMARY_TICKER.match(summary)
+    return match.group(1) if match else ""
+
+
 def parse_disclosure(html: str, index: int) -> Optional[Disclosure]:
     """
     One disclosure out of its detail page, or None if the page is not one.
@@ -172,15 +189,16 @@ def parse_disclosure(html: str, index: int) -> Optional[Disclosure]:
         return None
 
     category = (_field(window, "disclosureCategory") or "").upper()
+    summary = (_field(window, "summary") or "").strip()
     return Disclosure(
         index=index,
         title=title,
         company=company,
-        ticker=(_field(window, "stockCode") or "").strip().upper(),
+        ticker=(_field(window, "stockCode") or "").strip().upper() or _ticker_from_summary(summary),
         category=category,
         category_label=DISCLOSURE_CATEGORIES.get(category, category or "Bildirim"),
         published_at=_parse_published(_field(window, "publishDate")),
-        summary=(_field(window, "summary") or "").strip(),
+        summary=summary,
         is_late='"isLate":true' in window,
         url=f"{BASE}/{index}",
     )
@@ -389,6 +407,21 @@ TAPE_FILE = os.path.join(
 _disk_read = False
 
 
+def _restore(row: dict) -> Disclosure:
+    """
+    A stored row, with the summary ticker fallback re-applied.
+
+    Rehydration skips `parse_disclosure`, so a window written before the
+    fallback existed carries an empty ticker on every exchange measure. The
+    file is held for hours; without re-applying here the radar reads `—` until
+    the whole tape rolls over.
+    """
+    stored = Disclosure(**row)
+    if stored.ticker:
+        return stored
+    return replace(stored, ticker=_ticker_from_summary(stored.summary))
+
+
 def _read_tape_file() -> list[Disclosure]:
     """The last written window, or nothing if it is missing, stale or unreadable."""
     try:
@@ -396,7 +429,7 @@ def _read_tape_file() -> list[Disclosure]:
             payload = json.load(handle)
         if time.time() - float(payload["stored_at"]) > MAX_STALE_TAPE:
             return []
-        return [Disclosure(**row) for row in payload["rows"]]
+        return [_restore(row) for row in payload["rows"]]
     except FileNotFoundError:
         return []
     except Exception as e:  # noqa: BLE001
@@ -568,6 +601,25 @@ async def fetch_tape(
         rows = [d for d in rows if d.category in wanted_categories]
 
     return sorted(rows, key=lambda d: d.index, reverse=True)[:limit]
+
+
+async def fetch_disclosure(index: int) -> Optional[Disclosure]:
+    """
+    One filing by its index, from the buffer whenever the tape already holds it.
+
+    The buffer is checked before the per-index cache because the caller is
+    almost always a reader who clicked a row that is on screen: the parsed
+    disclosure is already in memory, and going to `_fetch_one` for it would
+    spend one of the very few requests this address is allowed on something it
+    already has.
+
+    Returns None for an index KAP does not serve, exactly as `_fetch_one` does —
+    a withdrawn or non-public index is an ordinary gap, not an error.
+    """
+    for row in _held_rows():
+        if row.index == index:
+            return row
+    return await _fetch_one(index)
 
 
 # ── Trading restrictions ───────────────────────────────────────────────────
