@@ -323,6 +323,10 @@ async def fetch_candles(ticker: str, *, range_: str = "1y", interval: str = "1d"
         candles.append(
             {
                 "date": datetime.fromtimestamp(stamp, tz=UTC).date().isoformat(),
+                # The epoch alongside the date, because on an intraday interval
+                # the date alone stops identifying a bar — eight of them share
+                # one. Daily consumers ignore it; the volume profile needs it.
+                "time": int(stamp),
                 "open": quote.get("open", [None] * len(stamps))[position],
                 "high": quote.get("high", [None] * len(stamps))[position],
                 "low": quote.get("low", [None] * len(stamps))[position],
