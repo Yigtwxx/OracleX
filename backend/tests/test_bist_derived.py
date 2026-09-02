@@ -94,6 +94,42 @@ class TestKapParsing:
         item = parse_disclosure(broken, 1655377)
         assert item is not None and item.published_at is None
 
+    def test_an_exchange_measure_takes_its_ticker_from_the_summary(self):
+        # Borsa İstanbul files its own circuit breakers, so `stockCode` is empty
+        # and the affected share is named only at the head of the summary.
+        measure = (
+            _PAGE.replace('"stockCode":"JCRAV"', '"stockCode":""')
+            .replace(
+                '"companyTitle":"JCR AVRASYA DERECELENDİRME A.Ş."',
+                '"companyTitle":"BORSA İSTANBUL BISTECH DEVRE KESİCİ UYGULAMASI"',
+            )
+            .replace(
+                '"summary":"KREDİ DERECELENDİRME BİLDİRİMİ"',
+                '"summary":"SVGYO.E işlem sırasında Pay Bazında Devre Kesici '
+                'Uygulaması devreye girmiştir"',
+            )
+        )
+        item = parse_disclosure(measure, 1655377)
+        assert item is not None and item.ticker == "SVGYO"
+
+    def test_a_real_stock_code_wins_over_the_summary(self):
+        shadowed = _PAGE.replace(
+            '"summary":"KREDİ DERECELENDİRME BİLDİRİMİ"',
+            '"summary":"SVGYO.E işlem sırasında"',
+        )
+        item = parse_disclosure(shadowed, 1655377)
+        assert item is not None and item.ticker == "JCRAV"
+
+    def test_a_ticker_mid_sentence_is_not_mistaken_for_the_filer(self):
+        # Anchored at the start: a code inside the narrative belongs to the
+        # story, not to the filing.
+        narrative = _PAGE.replace('"stockCode":"JCRAV"', '"stockCode":""').replace(
+            '"summary":"KREDİ DERECELENDİRME BİLDİRİMİ"',
+            '"summary":"Şirketimiz THYAO.E paylarını satın almıştır"',
+        )
+        item = parse_disclosure(narrative, 1655377)
+        assert item is not None and item.ticker == ""
+
 
 def _disclosure(title: str, summary: str = "") -> Disclosure:
     return Disclosure(
