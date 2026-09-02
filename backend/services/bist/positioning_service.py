@@ -34,7 +34,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from services.bist.tradingview_client import EquityRow
-from services.bist.viop_service import ViopContract
+from services.bist.viop_service import ViopContract, roll_by_underlying
 
 
 @dataclass(frozen=True)
@@ -106,38 +106,30 @@ def build_positioning(
     viop: Optional[list[ViopContract]] = None,
 ) -> list[PositioningRow]:
     """Join the equity board to the futures board and rank by crowding."""
-    open_interest: dict[str, float] = {}
-    open_interest_change: dict[str, float] = {}
-    for contract in viop or []:
-        if contract.open_interest is not None:
-            open_interest[contract.underlying] = (
-                open_interest.get(contract.underlying, 0.0) + contract.open_interest
-            )
-        if contract.open_interest_change is not None:
-            open_interest_change[contract.underlying] = (
-                open_interest_change.get(contract.underlying, 0.0) + contract.open_interest_change
-            )
+    rolls = roll_by_underlying(viop)
 
-    rows = [
-        PositioningRow(
-            ticker=row.ticker,
-            symbol=row.symbol,
-            name=row.name,
-            sector=row.sector,
-            price=row.price,
-            change_pct=row.change_pct,
-            market_cap=row.market_cap,
-            free_float_pct=row.free_float_pct,
-            relative_volume=row.relative_volume,
-            range_position=range_position(row),
-            beta=row.beta,
-            rsi=row.rsi,
-            open_interest=open_interest.get(row.ticker),
-            open_interest_change=open_interest_change.get(row.ticker),
-            crowding=_crowding(row.relative_volume, row.free_float_pct),
+    rows: list[PositioningRow] = []
+    for row in equities:
+        roll = rolls.get(row.ticker)
+        rows.append(
+            PositioningRow(
+                ticker=row.ticker,
+                symbol=row.symbol,
+                name=row.name,
+                sector=row.sector,
+                price=row.price,
+                change_pct=row.change_pct,
+                market_cap=row.market_cap,
+                free_float_pct=row.free_float_pct,
+                relative_volume=row.relative_volume,
+                range_position=range_position(row),
+                beta=row.beta,
+                rsi=row.rsi,
+                open_interest=roll.open_interest if roll else None,
+                open_interest_change=roll.open_interest_change if roll else None,
+                crowding=_crowding(row.relative_volume, row.free_float_pct),
+            )
         )
-        for row in equities
-    ]
 
     # Unmeasurable last, in both directions — same rule the equity screener
     # follows, and for the same reason.
