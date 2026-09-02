@@ -130,7 +130,12 @@ CATEGORIES: tuple[Category, ...] = (
     # Yahoo is deliberately absent from this list even though BIST quotes come
     # from it. It is already named under `stocks`, and one upstream reported in
     # two categories would show as two independent failures when it broke.
-    Category("bist", "BIST & TEFAS", False, ("TEFAS", "KAP", "Borsa İstanbul", "TCMB")),
+    Category(
+        "bist",
+        "BIST & TEFAS",
+        False,
+        ("TEFAS", "KAP", "Borsa İstanbul", "Takasbank", "TCMB"),
+    ),
 )
 
 _BY_KEY = {c.key: c for c in CATEGORIES}
@@ -170,6 +175,9 @@ _HOST_MAP: dict[str, str] = {
     "tefas.gov.tr": "bist",
     "kap.org.tr": "bist",
     "borsaistanbul.com": "bist",
+    # The clearing house, for the margin scan ranges the VİOP map draws its
+    # bands at. A separate host from the exchange and a separate outage.
+    "takasbank.com.tr": "bist",
     "isyatirim.com.tr": "bist",
     # The equity board's quote source. The specific subdomain, not
     # tradingview.com: the economic calendar above is a different host on the
