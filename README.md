@@ -62,10 +62,21 @@ environment variable switches it to Groq, Gemini, Anthropic, OpenAI or any other
 supported provider, behind an ordered fallback chain so one provider's outage or
 rate limit is not the terminal's outage.
 
-**Routes.** `/`, `/developers` and `/faq` are the public site. The terminal
-itself lives under `/home`, `/overview`, `/dashboard`, `/analysis`, `/chat`,
-`/heatmap`, `/live`, `/chains`, `/macro`, `/polymarket`, `/ownership`,
-`/social`, `/community`, `/profile` and `/admin`.
+**Two realms, one terminal.** The global board covers digital assets and US
+equities; a second one covers Borsa İstanbul, in Turkish, against Turkish
+inflation. They share the shell, the auth layer and the LLM chain and nothing
+else — different upstreams, different tab set, different language — and a
+switcher in the nav chrome moves between them. Which realm you are in is read
+off the path rather than held in a store, so a link lands on the tab set its URL
+asks for.
+
+**Routes.** `/`, `/borsa`, `/developers` and `/faq` are the public site. The
+global terminal lives under `/home`, `/overview`, `/dashboard`, `/analysis`,
+`/chat`, `/heatmap`, `/live`, `/derivatives`, `/chains`, `/macro`,
+`/polymarket`, `/ownership`, `/social`, `/community`, `/profile` and `/admin`;
+the BIST realm under `/bist`, `/bist/hisseler`, `/bist/isi-haritasi`,
+`/bist/fonlar`, `/bist/akilli-para`, `/bist/kap`, `/bist/viop`,
+`/bist/viop-haritasi` and `/bist/makro`.
 
 ---
 
@@ -89,6 +100,13 @@ integrations.
 * **Asset detail modal:** 30+ data points per asset in one view — an equity's
   debt-to-equity ratio or a protocol's trailing four-week GitHub commit volume,
   without leaving the chart.
+* **Followed-asset brief:** the top of `/home` is three reader-chosen slots, not
+  a wall of market-wide cards. Each carries a price, a sparkline, a liquidity
+  ladder placing the standing leverage above and below spot, and one grounded
+  sentence. The market-wide readings the old block spent a screen on are a
+  single line above it, in the same palette `/overview`'s stats bar uses — a
+  reader who learns the colours on one page should not have to relearn them on
+  the other.
 * **Market internals:** three panels below the overview table answer what an
   aggregate stats bar cannot — advancing versus declining counts and the A/D
   ratio, median against mean against cap-weighted change, volume concentration,
@@ -252,6 +270,18 @@ pipeline — `collecting → synthesis → drafting → review`.
 * **Liquidation map:** a heatmap rebuilt from free OKX endpoints (candles, open
   interest, long/short account ratio). It models where leveraged positions would
   be force-closed — a different thing from the realised-liquidation feed above.
+* **Derivatives board (`/derivatives`):** four views of the same leverage, kept
+  apart because they answer different questions. **Open interest against price**
+  is the input the other three model from — the pairing of the two directions is
+  what says whether a move was positions being opened or closed, and neither
+  column states it alone. The **standing liquidation book** is drawn against
+  *price* rather than against time, so the question it answers is how far spot
+  has to travel to reach a wall. **Historical lines** and the realised feed sit
+  beside it. And the **on-chain venue panels** name whose book it is: a
+  perpetual DEX publishes its open interest where a centralised venue reports
+  it. Those three rankings are drawn as three panels and never joined into a
+  table — a venue can lead one and be absent from another, and each names its
+  own provider.
 * **Funding rates and arbitrage:** perpetual funding rates on the home
   dashboard, plus a CCXT-backed multi-exchange price comparison and arbitrage
   scanner.
@@ -390,11 +420,128 @@ crowd-priced probability as evidence to be examined, not as an answer.
 * **Developer velocity and social graph:** GitHub commit/issue velocity and
   community growth surfaced in the asset detail modal.
 
-### 10. Grounded Notes
+### 10. Borsa İstanbul Realm
 
-Three boards — macro, chains and ownership — render deterministic figures and
-used to leave the reader to work out what they meant. `services/ai_notes.py`
-closes that gap without moving any arithmetic into the model.
+A second terminal on the same shell, in Turkish, for Borsa İstanbul, TEFAS and
+the Turkish macro series behind them. It is not the global board with the
+tickers swapped, because the question is not the same one: **a lira figure
+describes a number of lira, not what they bought**, and over the windows this
+realm reports on — a year, three, five — the difference between those two
+statements is most of the number.
+
+* **Every return carries a real one.** `real_return.py` deflates each nominal
+  figure in two frames, because they answer different questions: against TÜFE,
+  which says what the money bought, and against USDTRY, which says what it was
+  worth to someone who could have held dollars instead. Neither is "the" answer
+  and the board never picks one silently. A Sharpe ratio computed against a zero
+  risk-free rate is standard practice where the policy rate is 2%; against a TRY
+  policy rate it is arithmetic about a fund nobody could have bought, so the
+  rate is a parameter here rather than a constant.
+* **One request is the whole equity board.** TradingView's public market scanner
+  returns every listed BIST name with price, volume, market capitalisation, the
+  valuation multiples and the index memberships in a single POST — which is why
+  it is the source and not the four the plan originally called for. KAP's
+  company list moved behind an app that answers an empty array to every request
+  an ordinary client can construct, and borsaistanbul.com publishes constituents
+  as dated files. Sector performance is *derived from the constituents* rather
+  than read from XUSIN, XUTEK and XGIDA: those exist at the exchange but not in
+  the quote source, and deriving them is both available and closer to the board
+  the reader is looking at. Opening a company therefore costs nothing the
+  screener has not already paid for.
+* **The heatmap keeps size fixed.** Area is market capitalisation and colour is
+  whichever metric the reader picks — the same division the crypto board makes,
+  for the same reason: the one quantity that should not move when the reader
+  changes the question is size. The toolbar offers four indices of the seven the
+  API accepts; the other three are subsets a reader reaches for by name.
+* **Funds: TEFAS for how much, KAP for which.** The board is one request for
+  every fund TEFAS lists; a fund's risk statistics need its price series and
+  that endpoint has no bulk form, so they are computed per fund on open. TEFAS
+  publishes a portfolio across 54 instrument codes — drawn literally that is 54
+  hairline segments and a reader learns nothing — so `fund_allocation.py`
+  collapses them into a dozen buckets grouped by *economic exposure* where the
+  field names it and by wrapper where the wrapper is all it names, which is what
+  lets the bar answer the question it exists for: is this an equity fund, a bond
+  fund, or a money-market fund wearing a different name. Which equities a fund
+  holds appears only in its monthly KAP portfolio report, as a PDF whose JSON
+  body carries the cover sheet and not one holding row — so that read is lazy,
+  per fund, cached for a day, and written to refuse rather than to guess.
+* **KAP is the primary source, and it is walked, not queried.** The disclosure
+  tape has no usable public API: the documented endpoints were retired and the
+  query page streams its rows rather than fetching JSON, so `kap_service` walks
+  sequential `/tr/Bildirim/<index>` pages. Sixty rows all look alike — a title,
+  a company, a timestamp — and a capital increase is not close in consequence to
+  a weekly fund form, so `kap_materiality.py` puts a class and a band on every
+  row **without a model**: labelling sixty rows with an LLM would run it
+  continuously to produce a column, and the local model is the constraint here.
+  The model writes one thing, on demand — a note on the single filing a reader
+  opened. That note is the only one in the codebase narrating a *primary
+  source* rather than a board: not "what do these figures mean together" but
+  what a `pay geri alım` resolution actually does to the share count.
+* **Exchange measures come out of the same tape.** Circuit breakers, gross
+  settlement and short-selling bans are filed as ordinary disclosures with fixed
+  titles and there is no feed of measures on its own, so they are filtered out
+  of a deliberately over-wide window — a short one returns an empty radar on a
+  quiet morning that is not actually quiet.
+* **VİOP is read twice, on purpose.** A broker's public page is scraped during
+  the session for nineteen underlyings with no history; Borsa İstanbul's own
+  end-of-day bulletin carries forty-seven single-stock underlyings across three
+  expiries, one file per session, archived years back. Different cadence, shape
+  and failure mode, so they stay separate services. The open-interest column is
+  why the board exists at all: it is the one place in the Turkish market where
+  positioning is published rather than inferred.
+* **The margin map is the crypto liquidation map with its weakest joint
+  removed.** That model invents how leverage is distributed across users, because
+  no exchange publishes what leverage its users chose. Here the clearing house
+  publishes one Price Scan Range per underlying that binds everyone, every day —
+  so a cohort gets one band and that band sits where a published parameter puts
+  it. Exposure opened, entry price and open-interest change are all read rather
+  than inferred. Two details are load-bearing: the day's SPAN file lives on
+  `wwwdata.takasbank.com.tr`, a separate host from the bot-protected website, and
+  reading it costs two filters (`setlMeth == "DELIV"`, and a `pfCode` that does
+  not end in `_C`) or THYAO's scan range reads 14.0 instead of 13.4. Beside it,
+  `spot_volume_profile.py` draws where volume was *actually* traded, from hourly
+  bars over two years — the honest counterpart layer, with nothing modelled.
+* **It draws a scan range and says it is not a call level.** VİOP publishes no
+  maintenance margin rate: the CCP procedure leaves the level to a General Letter
+  and states maintenance is not applied at end of day, so the price at which a
+  margin call actually triggers cannot be computed from anything public. The
+  "75% of initial" figure that circulates appears only in an undated guide. The
+  page therefore draws the move a position's initial margin was sized for, and
+  says so in as many words.
+* **Positioning is narrower than it was meant to be, and says which part.** The
+  intent was a fund-to-stock cross index — the Turkish counterpart of the 13F
+  board on the global realm. TEFAS publishes a fund's split by *asset class* and
+  nothing public names the individual securities behind "hisse senedi %58", so
+  the board that shipped is crowding, futures quadrants, the 52-week range and
+  sector heat, with the gap named rather than approximated.
+* **Macro degrades to keyless.** With no configuration at all the realm reads
+  the inflation rate, the policy rate and the exchange rate from the same scanner
+  the equity board uses — enough for the figure that matters most, a one-year
+  return deflated by one-year inflation, and for dollar-based returns over any
+  window from a public USDTRY chart endpoint.
+* **Gece Mesaisi Endeksi.** This realm's answer to the Pentagon Pizza Index, and
+  the same class of claim: how hard the state is legislating today, read off the
+  Resmî Gazete, and whether anything was urgent enough to skip the queue. Like
+  the pizza gauge its endpoint cannot fail — it feeds a badge in the chrome of
+  every BIST page, so a government site that stops answering must not be able to
+  take those pages down with it, and the service answers `unavailable` for the
+  badge to render as its own state.
+* **Two Turkish details that fail silently if you get them wrong.**
+  `str.casefold` cannot know which language it is looking at, so `"KESİCİ"`
+  folds to an ASCII `i` followed by a combining dot while `"Kesici"` folds to
+  plain `kesici` — the two never match, and no error is raised; `text.py` does
+  the folding for the whole package. And `www.resmigazete.gov.tr` and
+  `www.tccb.gov.tr` send their leaf certificate and stop, omitting the
+  intermediate: browsers fetch the missing one from the leaf's AIA extension and
+  httpx does not, so every request failed while the same URL opened fine in a
+  browser.
+
+### 11. Grounded Notes
+
+Ten surfaces — the macro, chain and ownership boards, the followed-asset brief,
+and five on the BIST realm — render deterministic figures and used to leave the
+reader to work out what they meant. `services/ai_notes.py` closes that gap
+without moving any arithmetic into the model.
 
 * Each caller computes its own labels, thresholds and deltas in Python and hands
   the engine a finished set of facts. The model's only job is to say what they
@@ -406,8 +553,15 @@ closes that gap without moving any arithmetic into the model.
 * **A missing note is never an error state.** It is commentary on figures that
   are always present, so a page with no note is still complete. `lib/ai-note.ts`
   holds that branch on the frontend, where it is tested.
+* **Figures are quantized before they are fingerprinted**, and the prompt is
+  rendered from those same rounded values — so a cached note cannot cite a
+  number that has since moved a decimal place under it.
+* **One note is not commentary on a board.** `prompts/notes/kap_disclosure.md`
+  narrates a company's own filing, in its own words, which the tape prints as a
+  title and leaves unexplained. Every other note explains figures the reader can
+  already see; that one explains a mechanism they may not carry.
 
-### 11. Accounts, Community and Bring-Your-Own-Key
+### 12. Accounts, Community and Bring-Your-Own-Key
 
 * Supabase Auth (email/password and Google OAuth). **Authorization is enforced
   in the application layer** (`dependencies/auth.py`): the backend holds the
@@ -423,7 +577,7 @@ closes that gap without moving any arithmetic into the model.
   encrypted with Fernet before they reach Supabase (`services/secret_box.py`)
   and are returned to the UI only as a hint, never in plaintext.
 
-### 12. Alarm Centre
+### 13. Alarm Centre
 
 The bell in the nav chrome opens a workspace for watching twelve sources —
 price, 24h change, BTC dominance, funding, liquidations, Fear & Greed, the
@@ -459,7 +613,7 @@ threshold, a server-computed state, a keyword match, or a countdown to an event.
   alerts into the new model and deletes the dead key, because `persist` shallow-
   merges and would otherwise resurrect it forever.
 
-### 13. Boot Gate
+### 14. Boot Gate
 
 A cold start touches a dozen upstreams. Rather than assembling itself panel by
 panel over half a minute, the terminal holds its first paint on
@@ -469,11 +623,11 @@ optional ones only mark the session degraded. The endpoint is pure in-memory
 state — it is polled twice a second — and nothing in the startup path blocks the
 socket from binding.
 
-### 14. Public Site
+### 15. Public Site
 
-Three pages sit outside the terminal, in a route group with no navigation
-chrome, no query client and no boot gate — they share fonts and design tokens
-with the terminal and nothing else, and they render with the backend down.
+Four pages sit outside the terminal, in a route group with no navigation chrome
+and no boot gate — they share fonts and design tokens with the terminal and
+nothing else, and three of the four render with the backend down.
 
 * **`/` — the tour.** A scroll-driven page rendered on a single
   `position: fixed` 2D canvas. `lib/landing/stages.ts` is the one source of
@@ -481,6 +635,15 @@ with the terminal and nothing else, and they render with the backend down.
   window it maps to, so the copy and the chart it annotates cannot drift apart.
   The candle series is generated from a seed rather than `Math.random`, so the
   page draws identically on every mount.
+* **`/borsa` — the BIST realm's own page, and the one exception.** A light
+  Turkish document on cool paper where `/` is a dark scroll-driven scene in
+  English: the thesis is that a Turkish return is read twice, so the hero figure
+  physically turns over from a nominal gain into what it was worth and prints
+  the division under it. It is the only marketing page that reads live data —
+  BIST, the fund board, positioning and the KAP tape — so it brings its own
+  `QueryClientProvider` rather than pulling the whole marketing group into the
+  terminal's shell for one page, and it names its coverage where the figures
+  come from.
 * **`/developers` — building against it.** Eight documented sections, each with
   a generated margin figure: the provider chain, the health categories, the MCP
   tool surface, the test suites.
@@ -507,8 +670,8 @@ upstream, and the API never renders.
 ```mermaid
 graph TD;
     subgraph Client [Frontend - Next.js 14 App Router]
-    Landing["(marketing) - tour, developers, FAQ"]
-    Gate[BootGate + readiness poll] --> UI[React Interface]
+    Landing["(marketing) - tour, borsa, developers, FAQ"]
+    Gate[BootGate + readiness poll] --> UI[React Interface - 2 realms]
     UI --> Alarms[Alarm engine - client-side, 15s tick]
     UI --> RQ(React Query - server state)
     UI --> Zustand(Zustand - client state)
@@ -516,7 +679,7 @@ graph TD;
     end
 
     subgraph API [FastAPI Gateway - Python]
-    Router[23 API Routers] --> Manager[Service Layer]
+    Router[25 API Routers] --> Manager[Service Layer]
     Manager --> LLM[LLM provider chain]
     Manager --> RAG[(ChromaDB - RAG v1/v2)]
     Manager --> Cache[(TTL Cache + stale fallback)]
@@ -545,6 +708,9 @@ graph TD;
     CM[Coin Metrics Community]
     PM[Polymarket Gamma / CLOB / Data]
     WIKI[Wikipedia electoral calendars]
+    TR[TradingView scanner / TEFAS / KAP]
+    TB[Takasbank SPAN + VIOP bulletin]
+    RG[Resmi Gazete]
     SMTP[SMTP relay]
     end
 
@@ -588,22 +754,29 @@ backend/
 │   ├── chat/                   # system, turn, plan, plan_system, reflect, reflect_system
 │   ├── chains/anomaly.md       # what co-occurring chain flags mean
 │   ├── macro/regime.md         # the sentence behind the risk-on/off label
-│   ├── notes/rules.md          # shared grounding rules for every generated note
+│   ├── notes/                  # rules.md (shared grounding) + seven note prompts;
+│   │                           # the other three live beside their own domain:
+│   │                           # asset_brief, bist_brief, bist_market,
+│   │                           # bist_funds_market, bist_positioning, bist_viop,
+│   │                           # kap_disclosure — the only one over a primary source
 │   ├── ownership/flow.md       # last quarter's institutional moves, in prose
 │   ├── polymarket/             # forecaster system, rules, arguments, synthesis,
 │   │                           # synthesis_degraded, origin + six category overlays
 │   └── news/ detection/ generic/
 ├── templates/email/            # Jinja alarm + verification mail (table layout, escaped)
-├── routers/                    # 23 modules — full paths inline, no prefixes
+├── routers/                    # 25 modules — full paths inline, no prefixes
 │   ├── news.py                 # /api/news, /api/analyze, /api/symbols, /api/technical
 │   ├── llm.py                  # /api/llm/status
-│   ├── system.py               # /api/system/readiness
+│   ├── system.py               # /api/system/readiness, /api/system/health
 │   ├── market.py               # /api/fear-greed, /api/market-overview, /api/heatmap/data
-│   ├── liquidation.py          # /api/liquidations/*, /api/market/candles
+│   ├── liquidation.py          # /api/liquidations/* (heatmap, map, lines, profile,
+│   │                           # levels, history), /api/market/candles
+│   ├── derivatives.py          # /api/derivatives/open-interest, /dex-perps
 │   ├── home.py                 # /api/home/* (funding, onchain, macro calendar)
 │   ├── macro.py                # /api/macro/* (board, regime, pizza-index, neh-index,
 │   │                           # elections)
 │   ├── chains.py               # /api/chains/board, /api/chains/anomalies
+│   ├── bist.py                 # /api/bist/* — the whole Turkish realm, 22 routes
 │   ├── polymarket.py           # /api/polymarket/* (board, map, market, analysis, origin)
 │   ├── alarms.py               # /api/alarms/email/* — the mail relay a browser cannot be
 │   ├── watchlist.py            # /api/home/watchlist CRUD
@@ -619,9 +792,9 @@ backend/
 │   ├── admin.py                # /api/admin/* (moderation, audit log)
 │   ├── exchanges.py            # /api/exchanges, /api/multi-exchange, /api/arbitrage
 │   └── websocket.py            # /ws/prices, /api/websocket/status
-├── services/                   # business logic — 81 modules plus admin/, chains/,
-│   │                           # community/, elections/, llm/, ownership/,
-│   │                           # polymarket/ and social/ packages
+├── services/                   # business logic — 88 modules plus admin/, bist/,
+│   │                           # chains/, community/, elections/, llm/,
+│   │                           # ownership/, polymarket/ and social/ packages
 │   ├── llm/                    # provider abstraction
 │   │   ├── presets.py          # 14 provider rows (adapter, base_url, default model, key env)
 │   │   ├── providers.py        # openai_compat / anthropic / ollama adapters
@@ -674,6 +847,28 @@ backend/
 │   │   ├── evidence.py / feeds.py / synthesis.py / attribution.py
 │   │   ├── origin.py           # why this bet was opened — its own job, never chained
 │   │   └── map_service.py / jurisdictions.py / geography.py   # three labelled layers
+│   ├── bist/                   # Borsa İstanbul, TEFAS and the Turkish macro series
+│   │   ├── tradingview_client.py / tefas_client.py   # shape adapters, nothing else
+│   │   ├── equity_service.py   # the board; sectors derived from constituents
+│   │   ├── heatmap_service.py  # area is cap, colour is the reader's question
+│   │   ├── fund_service.py / fund_metrics.py / fund_allocation.py
+│   │   ├── kap_fund_client.py / fund_holdings.py / holdings_service.py
+│   │   │                       # which equities a fund holds — a monthly PDF
+│   │   ├── kap_service.py      # the disclosure tape, walked page by page
+│   │   ├── kap_materiality.py  # class and band on sixty rows, without a model
+│   │   ├── kap_note.py         # the one note written over a primary source
+│   │   ├── viop_service.py     # the in-session scrape: 19 underlyings, no history
+│   │   ├── viop_bulletin.py    # the exchange's own EOD file: 47, three expiries
+│   │   ├── takasbank_psr.py    # the published scan range the map's bands sit at
+│   │   ├── viop_margin_map.py  # accumulate-and-sweep, but every input is read
+│   │   ├── spot_volume_profile.py   # where volume actually traded — nothing modelled
+│   │   ├── positioning_service.py   # crowding, quadrants, range, sector heat
+│   │   ├── macro_service.py / real_return.py   # the deflators every return carries
+│   │   ├── night_shift_service.py   # Gece Mesaisi — the endpoint that cannot fail
+│   │   ├── sentiment_service.py / calendar_service.py
+│   │   ├── brief_note.py / market_note.py / positioning_note.py / viop_note.py
+│   │   ├── text.py             # Turkish folding — casefold gets İ/I wrong silently
+│   │   └── gov_tls.py          # the gov hosts omit their intermediate certificate
 │   ├── elections/              # wikipedia.py, odds.py, registry.py, join.py
 │   ├── neh_index_service.py    # Nothing Ever Happens — recomputed, not copied
 │   ├── alarm_email_service.py  # confirmation codes, HMAC tokens, per-address caps
@@ -700,7 +895,7 @@ backend/
 │   ├── eval_planner.py         # tool-selection recall and precision
 │   └── eval_refusal.py         # how often the chat declines a question it could answer
 ├── scripts/verify_migrations.py     # are the migrations in the repo actually live?
-├── tests/                      # 93 pytest modules — run in CI
+├── tests/                      # 124 pytest modules — run in CI
 └── data/                       # local JSON state + ChromaDB stores (gitignored)
 ```
 
@@ -721,6 +916,7 @@ frontend/
 │   ├── (marketing)/            # the public site — renders with the backend down
 │   │   ├── layout.tsx          # MarketingShell: header + tabs, so the underline persists
 │   │   ├── page.tsx            # / — the scroll-canvas tour
+│   │   ├── borsa/              # /borsa — the BIST page; the one that reads live data
 │   │   ├── developers/         # /developers — eight doc sections with generated figures
 │   │   ├── faq/                # /faq — eighteen deep-linkable entries
 │   │   └── error.tsx           # its own boundary; (app)'s uses h-full, which is 0 here
@@ -733,7 +929,11 @@ frontend/
 │       ├── chat/               # Oracle chat agent
 │       ├── heatmap/            # multi-metric heatmap
 │       ├── live/               # live streams and events
+│       ├── derivatives/        # open interest, liquidation book and on-chain venues
 │       ├── chains/             # eight-chain telemetry board
+│       ├── bist/               # the Turkish realm — its own tab set, read off the path
+│       │                       # hisseler/[ticker], isi-haritasi, fonlar/[kod],
+│       │                       # akilli-para, kap, viop, viop-haritasi, makro, admin
 │       ├── macro/              # macro calendar, regime read, elections and dashboard
 │       ├── polymarket/         # prediction-market board, map and bet analysis
 │       ├── ownership/          # institutional holdings
@@ -747,9 +947,14 @@ frontend/
 │   ├── ClientShell.tsx         # QueryClientProvider + Navigation + GlobalTicker + Toasts
 │   ├── HydrationBeacon.tsx     # proof of life for the chunk-recovery watchdog
 │   ├── BootGate.tsx / BootSplash.tsx   # holds first paint until the backend is ready
+│   ├── RealmSwitcher.tsx       # global ⇄ BIST; the same control on both sides of the app
 │   ├── landing/                # ScrollCanvas, TypedPoints, StageFigure, hero and sections,
 │   │                           # plus the doc shell (DocPage, DocRail, FaqList, figures/)
-│   ├── ui/                     # Panel, Modal, Logo, AssetTag, ShinyText, AiNote primitives
+│   ├── borsa/                  # /borsa — RealReturnHero, FlipFigure, LiveBlocks, SessionRail
+│   ├── bist/                   # the Turkish realm's pages, ribbon, notes and panels,
+│   │                           # plus heatmap/, positioning/ and viop/ subtrees
+│   ├── ui/                     # Panel, Modal, Logo, AssetTag, ShinyText, AiNote, DataTable,
+│   │                           # AssetLogo, ToggleGroup, StaleStrip, StatusMessage
 │   ├── chains/                 # ChainCard, BlockStream, FeeRacer, EconomicsPanel,
 │   │                           # FlowStrip, AnomalyBanner, DeviationBanner
 │   ├── analysis/               # ReportView, AnalysisProgress, StageChecklist, NotesPanel,
@@ -758,8 +963,11 @@ frontend/
 │   │                           # WorldMap (ECharts, dynamic — 370KB stays off first paint)
 │   ├── overview/               # AdvancedHeatmap, AssetDetailModal, AssetTable,
 │   │                           # MarketBreadthStrip, ChangeDistribution, DivergenceBoard
-│   ├── home/                   # FundingRates, LiquidationFeed, OnChainStats, Watchlist, ...
-│   ├── macro/ live/ ownership/ social/ admin/ chat/ charts/
+│   ├── home/                   # AssetBrief + BriefChart + LiquidityLadder, MarketRibbon,
+│   │                           # FundingRates, LiquidationFeed, Watchlist, ...
+│   ├── charts/                 # OpenInterestBoard, LiquidationProfile / Lines / Maps,
+│   │                           # DexPerpBoard — ECharts, all dynamic
+│   ├── macro/ live/ ownership/ social/ admin/ chat/
 │   ├── PizzaIndexBadge.tsx     # the novelty gauge, in the nav chrome
 │   ├── alarms/                 # AlarmBell in the nav chrome + the Alarm Centre dialog;
 │   │                           # entirely modal, there is no /alarms route
@@ -771,7 +979,8 @@ frontend/
 │   ├── queries.ts              # React Query keys + typed hooks (optimistic mutations)
 │   ├── useReadiness.ts         # /api/system/readiness poller for the boot gate
 │   ├── useWebSocketPrices.ts   # /ws/prices client, reconnect + flash animation
-│   └── useAlarmEngine.ts       # global alarm watcher — one tick, twelve sources
+│   ├── useAlarmEngine.ts       # global alarm watcher — one tick, twelve sources
+│   └── useBist.ts              # the BIST realm's bindings, kept off `queries.ts`
 ├── lib/
 │   ├── api.ts                  # fetch wrapper, ApiError, typed endpoint fetchers
 │   ├── queryClient.ts          # QueryClient + global error → toast wiring
@@ -782,6 +991,15 @@ frontend/
 │   ├── pizza-index.ts          # one set of thresholds for all three surfaces (tested)
 │   ├── alarms/                 # what can be watched, and when it fires (tested)
 │   ├── market-breadth.ts       # advance/decline, histogram, divergence (tested)
+│   ├── bist-*.ts               # format, brief, heatmap, kap, viop, positioning,
+│   │                           # market-note, fund-allocation, viop-map (all tested)
+│   ├── night-shift.ts          # Gece Mesaisi thresholds, shared by badge and page (tested)
+│   ├── nav-items.ts            # the two realms and their tab sets (tested)
+│   ├── chart-palette.ts        # ECharts paints to canvas and canvas ignores var()
+│   ├── open-interest.ts / liquidation-profile.ts / liquidation-lines.ts /
+│   │   dex-perps.ts            # the derivatives board's derivations (tested)
+│   ├── asset-brief.ts / asset-search.ts / asset-logo.ts   # the Home slots (tested)
+│   ├── borsa/                  # the /borsa page's deflation arithmetic (tested)
 │   ├── polymarket-format.ts    # probabilities, points, provenance labels (tested)
 │   ├── elections.ts            # UTC-anchored countdowns, both sides (tested)
 │   ├── marketing/              # the marketing prose — tested to carry no digits
@@ -839,8 +1057,13 @@ frontend/
 * **Styling (Tailwind CSS):** no component library — a token system and a small
   set of shared primitives in `components/ui`, for exact control over a dense
   dark interface.
-* **Charting:** Apache ECharts for the data-dense panels (liquidation heatmap,
-  treemaps) and embedded TradingView widgets for classic price action.
+* **Charting:** Apache ECharts for the data-dense panels — liquidation heatmap
+  and book, open interest, treemaps, the VİOP margin map — and embedded
+  TradingView widgets for classic price action. Every ECharts panel is a
+  `dynamic()` import with `ssr: false`: the library is ~350 kB, which put one
+  route's first load at 534 kB against 103–182 kB for every page that does not
+  chart, and the palette is resolved from the live document, so a server render
+  would paint the chart in fallback colours and then repaint it.
 
 ### API Engine (FastAPI, Python 3.11+)
 
@@ -861,7 +1084,10 @@ frontend/
 * **Transport realism:** a `curl_cffi` transport replays a browser TLS/HTTP2
   fingerprint for the few upstreams that fingerprint the handshake (CNN's Fear &
   Greed feed, Yahoo's chart API) and answer 418 to ordinary clients regardless
-  of User-Agent.
+  of User-Agent. A second, narrower case sits beside it: the Turkish government
+  hosts send their leaf certificate and stop, and where a browser repairs the
+  chain from the leaf's AIA extension, httpx does not — so `bist/gov_tls.py`
+  supplies the missing intermediate rather than disabling verification.
 * **Scheduling and jobs:** `APScheduler` drives periodic news ingestion and RAG
   re-indexing; `analysis_jobs` runs the long LLM pipelines out of the request
   path with pollable stage progress.
@@ -1157,6 +1383,25 @@ PERPLEXITY_API_KEY=
 # ── Optional external API keys ───────────────────────────────────────────────
 ETHERSCAN_API_KEY=          # on-chain exchange flows; empty disables the feature
 
+# Aggregated open interest for the derivatives board. Empty is fine: it falls
+# back to the Binance/OKX/Bybit endpoints, shows ~30 days instead of the full
+# daily series, and labels itself accordingly.
+COINALYZE_API_KEY=
+
+# ── BIST & TEFAS ─────────────────────────────────────────────────────────────
+# TEFAS, KAP, Takasbank and Borsa İstanbul need no key at all. This one is the
+# Turkish central bank's statistics service (EVDS), and it buys exactly one
+# thing: the CPI *series*, so a real return can be computed over any window
+# rather than only over the trailing year. Without it the realm still reads the
+# current inflation rate, policy rate and exchange rate from the same scanner
+# the equity board uses.
+#
+# The degradation is one-directional on purpose — a window with no deflator
+# reports its nominal figure and says the real one is unavailable. It never
+# borrows a nearby inflation number, because a real return computed against the
+# wrong window is a specific wrong answer rather than a missing one.
+TCMB_EVDS_API_KEY=
+
 # ── Market data ──────────────────────────────────────────────────────────────
 # CCXT exchange id for the live price socket. Binance is blocked in several
 # countries and fails on load_markets(); any CCXT Pro venue with watch_tickers
@@ -1311,6 +1556,11 @@ project. Exit code 1 means a table is missing.
 | Polymarket unreachable | `/polymarket` answers 503 rather than an empty board, and the elections panel drops its odds column and says so. |
 | Thin evidence for a bet analysis | A named `insufficient_evidence` refusal listing the searches that came back empty. This is a successful run: the measured facts and microstructure above it are unaffected. |
 | Wikipedia unreachable | The elections board serves its cached calendar for up to a week, then 503s — an empty board would claim no election is scheduled anywhere. |
+| `TCMB_EVDS_API_KEY` unset | The BIST realm still deflates the trailing year from the scanner's own inflation reading; longer windows report their nominal figure and say the real one is unavailable. No inflation number is ever borrowed from a neighbouring window. |
+| TEFAS, KAP or the BIST quote source unreachable | Only the BIST realm is affected, one board at a time, and the health badge marks `BIST & TEFAS` degraded. The global realm shares no upstream with it. |
+| Takasbank's parameter file missing | `/api/bist/viop-map/{ticker}` walks back through a lookback window and renders the last published figure **with its date on the screen**; past that it 503s. The distance a band sits at is a published number and the endpoint will not substitute one. |
+| Yahoo intraday history unavailable | The VİOP map loses its spot volume-profile layer and still answers. The two layers fail unequally on purpose: one is measured, the other is published. |
+| Resmî Gazete unreachable | The Gece Mesaisi badge renders an `unavailable` state. The endpoint cannot fail, because it sits in the chrome of every BIST page. |
 | Upstream market API down | Last good cached payload is served (stale fallback) instead of an error. |
 
 ---
@@ -1378,8 +1628,13 @@ use the FastAPI endpoints directly without opening the UI. All payloads return
 | `/api/liquidations/map/{symbol}` | `GET` | Modelled liquidation map — where leveraged positions would be force-closed. |
 | `/api/liquidations/levels/{symbol}` | `GET` | Per-symbol liquidation levels. |
 | `/api/liquidations/history/{symbol}` | `GET` | Rolling 24h realised-liquidation history. |
+| `/api/liquidations/lines/{symbol}` | `GET` | The modelled book over time — where clusters formed and how long they survived. |
+| `/api/liquidations/profile/{symbol}` | `GET` | The standing book against price rather than time, binned and tiered, with spot's own bin marked. |
+| `/api/derivatives/open-interest/{symbol}` | `GET` | Open interest against price per venue — the input the three liquidation views model from. Carries the aggregate change and the OI-to-market-cap ratio. |
+| `/api/derivatives/dex-perps` | `GET` | On-chain perpetual venues in three independent rankings, each naming its own provider. Never joined into one table. |
 | `/api/home/funding-rates` | `GET` | Perpetual funding rates across major pairs. |
 | `/api/home/onchain` | `GET` | Whale transfers and exchange in/outflows. |
+| `/api/home/asset-brief/{symbol}` | `GET` | One followed asset's card: price, sparkline series, the liquidity ladder around spot and a grounded sentence. |
 | `/api/macro/board` | `GET` | Indices, commodities, currencies and the macro calendar in one payload. |
 | `/api/macro/regime` | `GET` | The risk-on / risk-off / neutral label, its three component votes, and the model's sentence explaining them. |
 | `/api/macro/pizza-index` | `GET` | Pentagon Pizza Index reading, its per-venue baselines, and the source's own figures for cross-checking. |
@@ -1401,6 +1656,35 @@ use the FastAPI endpoints directly without opening the UI. All payloads return
 | `/api/polymarket/markets/{slug}/analysis/jobs` | `POST` | Starts the bet analysis; joins an in-flight run for the same market. `GET /api/polymarket/analysis/jobs/{job_id}` polls it. May finish as an explicit `insufficient_evidence` refusal. |
 | `/api/polymarket/markets/{slug}/origin/jobs` | `POST` | Starts the origin trace — why the bet was opened — as a separate job that never feeds the analysis. `GET /api/polymarket/origin/jobs/{job_id}` polls it. |
 
+### Borsa İstanbul
+
+The Turkish realm's surface, all under `/api/bist`. Every return in these
+payloads carries its deflated counterpart beside the nominal one, and every
+board names the upstream it could not reach rather than serving a shorter list.
+
+| Endpoint | Method | Response payload and logic |
+|----------|--------|-----------------|
+| `/api/bist/overview` | `GET` | The realm's landing board: indices, derived sector heat, breadth and the macro strip in one payload. |
+| `/api/bist/stocks` | `GET` | The equity screener — one scanner request covers the whole listing, with each company's one-year return in three frames (nominal, TÜFE-deflated, USD). |
+| `/api/bist/stocks/{ticker}` | `GET` | One company: quote, fundamentals, index membership and a price history. Costs nothing the screener has not already paid for. |
+| `/api/bist/heatmap` | `GET` | One index as a treemap — area is market capitalisation, colour is the reader's chosen metric, and VİOP open interest rides along where a contract exists. |
+| `/api/bist/market-note` | `GET` | What the equity board says as a *set* — whether the index and the breadth agree, which no row can show. |
+| `/api/bist/funds` | `GET` | The TEFAS screener: every fund the platform lists with its period returns. `/funds/compare` puts several on one axis. |
+| `/api/bist/funds/{code}` | `GET` | One fund's NAV history and the risk statistics derived from it, computed against a TRY policy rate rather than against zero. |
+| `/api/bist/funds/{code}/holdings` | `GET` | Which companies the fund owns, parsed from its monthly KAP portfolio report. Lazy, per fund, and written to refuse rather than guess. |
+| `/api/bist/funds/market-note` | `GET` | The fund universe narrated — whether the median fund beat inflation, and how far apart the ends of the board are. |
+| `/api/bist/kap` | `GET` | The disclosure tape, each row carrying a class and a materiality band computed in Python. |
+| `/api/bist/kap/{index}/note` | `GET` | One filing explained — the only generated note in the codebase written over a primary source rather than over a board. |
+| `/api/bist/restrictions` | `GET` | Exchange measures — circuit breakers, gross settlement, short-selling bans — filtered out of the same tape, since no feed of them exists on its own. |
+| `/api/bist/viop` | `GET` | Futures and options with the open interest behind each contract: the one place in this market where positioning is published rather than inferred. |
+| `/api/bist/viop-note` | `GET` | Whether the day's move was positions being opened or closed — the pairing of price and open interest, which neither column states alone. |
+| `/api/bist/viop-map/underlyings` | `GET` | The single-stock futures universe, ranked by the newest session's turnover. |
+| `/api/bist/viop-map/{ticker}` | `GET` | One underlying's positioning against Takasbank's published scan range, plus the observed spot volume profile. 503 without the bulletin or the parameter — the distance is a published number and this endpoint will not substitute one. |
+| `/api/bist/positioning` | `GET` | Free float, unusual volume, position in the 52-week range and futures open interest. `/positioning-note` narrates what they say together. |
+| `/api/bist/macro` | `GET` | Inflation, the policy rate and the exchange rate, plus the deflators the rest of the realm measures against. Answers with no key configured. |
+| `/api/bist/calendar` | `GET` | Results announcements and ex-dividend dates, derived from the same scanner response the screener already paid for. |
+| `/api/bist/night-shift` | `GET` | Gece Mesaisi Endeksi — how hard the state is legislating today, from the Resmî Gazete. Cannot fail: it answers `unavailable` rather than erroring, because it feeds a badge in every BIST page's chrome. |
+
 ### Alarms
 
 Alarms themselves live in the browser; these routes exist only because a browser
@@ -1419,6 +1703,7 @@ cannot send mail.
 | Endpoint | Method | Response payload and logic |
 |----------|--------|-----------------|
 | `/api/system/readiness` | `GET` | Startup progress for the boot gate — per-step state, `ready`, `degraded`, `blocked`. No I/O. |
+| `/api/system/health` | `GET` | The eleven upstream categories and what each last did. Passive — the HTTP helpers report what they already ran, so this is cheap enough for the frontend's ten-second poll. |
 | `/api/home/watchlist` | `GET/POST/DELETE` | Watchlist CRUD with live prices merged in. |
 | `/api/analysis/notes` | `GET/POST/DELETE` | Personal research notes. |
 | `/api/profile` | `GET/PUT` | Profile, subscription, connected accounts, settings. Identity comes from the token. |
@@ -1507,12 +1792,16 @@ in four jobs:
 | **Generated files** | `python scripts/build_agent_skill.py --check` → `python scripts/build_repo_facts.py --check` |
 | **MCP server** | `ruff check .` → `ruff format --check .` → `pytest` |
 
-The backend suite is **93 pytest modules, roughly 1,950 tests** covering the LLM
+The backend suite is **124 pytest modules, roughly 2,700 tests** covering the LLM
 chain and rate-limit behaviour, per-user settings and key encryption, auth
 enforcement, prompt rendering, RAG scoring and outcomes, symbol detection, news
 attribution, the analysis pipelines, chat intent/focus/memory/budget, the chain
 adapters and their anomaly detection, the technical zone builder, the Polymarket
-boundary and its sufficiency gate, the elections registry, and alarm mail.
+boundary and its sufficiency gate, the elections registry, alarm mail, and the
+BIST realm end to end — the TEFAS and scanner shape adapters, the KAP tape and
+its materiality classes, Turkish text folding, the real-return frames, the VİOP
+bulletin parser and the margin map, with the Takasbank SPAN archive and the
+bulletin CSV committed as fixtures so none of it reaches the network.
 `requirements-dev.txt` deliberately excludes torch and chromadb so CI installs
 only what the tests import.
 
@@ -1539,15 +1828,16 @@ saw the parametrised tables. They now come from the collectors: `pytest
 --collect-only` and `vitest list` for the suites, an AST walk for the MCP tools,
 the imported `CATEGORIES` and `PRESETS` for health and providers.
 
-The frontend suite is **30 vitest modules, roughly 460 tests**, concentrated on
+The frontend suite is **50 vitest modules, roughly 920 tests**, concentrated on
 the pure logic where a failure would be silent rather than loud — the scroll
 canvas stage schedule, the seeded candle series, the note anchors, the alarm
-predicates, the market-breadth derivations, and the formatting rules shared
-between panels (`chain-format`, `technical-format`, `ai-note`, `pizza-index`,
-`polymarket-format`). Components are deliberately not tested; anything with a
-branch in it is expected to live in `lib/`. `lib/marketing/` is tested for one
-extra rule: the prose carries no digits, so every figure on a marketing page has
-to come from the generated facts.
+predicates, the market-breadth derivations, the derivatives board's binning and
+venue shares, the two realms' tab sets, and the formatting rules shared between
+panels (`chain-format`, `technical-format`, `ai-note`, `pizza-index`,
+`polymarket-format`, and the nine `bist-*` modules). Components are deliberately
+not tested; anything with a branch in it is expected to live in `lib/`.
+`lib/marketing/` is tested for one extra rule: the prose carries no digits, so
+every figure on a marketing page has to come from the generated facts.
 
 `.pre-commit-config.yaml` wires the same tools locally:
 
@@ -1649,6 +1939,31 @@ Unreleased (on `main`, ahead of the last tag):
 - [x] **Generated repository facts** — `/developers` and `/faq`, and the numbers
       on them measured by collectors and gated in CI, so a figure that stops
       being true fails the build instead of quietly ageing.
+- [x] **Borsa İstanbul realm** — a second terminal on the same shell, in
+      Turkish, behind a realm switcher that reads its state off the path: the
+      equity screener and heatmap off one scanner request, the TEFAS fund board
+      with holdings parsed out of monthly KAP portfolio PDFs, the KAP tape with
+      materiality classified in Python and one filing explained by the model,
+      VİOP read twice (an in-session scrape and the exchange's own end-of-day
+      bulletin), positioning, and the Turkish macro backdrop. Every return is
+      served with its TÜFE- and USD-deflated counterpart, because a lira figure
+      alone answers a question nobody asked.
+- [x] **VİOP margin map** — the crypto liquidation map with its invented
+      leverage distribution replaced by Takasbank's published Price Scan Range,
+      drawn beside an observed spot volume profile, and labelled as a scan range
+      rather than a margin-call level because VİOP publishes no maintenance
+      rate.
+- [x] **Gece Mesaisi Endeksi** — the realm's counterpart to the Pentagon Pizza
+      Index, read off the Resmî Gazete, on an endpoint that cannot take the
+      chrome down with it.
+- [x] **Derivatives board** — open interest against price, the standing
+      liquidation book drawn against price rather than time, historical lines,
+      and on-chain perpetual venues as three rankings that are never joined.
+- [x] **Home rebuilt around what the reader follows** — three chosen slots with
+      a liquidity ladder and a grounded sentence each, over a one-line market
+      ribbon, in place of a screen of market-wide on-chain cards.
+- [x] **`/borsa`** — a fourth public page, a light Turkish document that reads
+      live figures, where the other three render with the backend down.
 
 Planned:
 
