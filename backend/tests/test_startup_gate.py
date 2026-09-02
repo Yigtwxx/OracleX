@@ -138,6 +138,7 @@ async def test_readiness_reports_every_step_as_soon_as_startup_yields(stubbed_st
         "macro",
         "ownership",
         "kap",
+        "viop_bulletin",
         "llm",
         "rag",
     ], "Every step must be listed before any of them has finished"
