@@ -281,6 +281,25 @@ async def lifespan(app: FastAPI):
 
     _spawn(_warm_kap())
 
+    # Backfill the VİOP bulletin archive once at boot. Cold, this is around a
+    # hundred and sixty daily files from Borsa İstanbul; warm, it is the handful
+    # of sessions published since the last write, because the parsed window and
+    # the set of known holidays both survive on disk. Optional and backgrounded
+    # for the same reason as KAP: a slow public archive must not hold the splash
+    # open, and the margin map degrades to a short window rather than to nothing.
+    async def _warm_viop_bulletin():
+        readiness.start("viop_bulletin")
+        try:
+            from services.bist.viop_bulletin import ensure_history
+
+            await ensure_history()
+            readiness.succeed("viop_bulletin")
+        except Exception as e:
+            logger.warning("VİOP bulletin warm-up failed: %s", e)
+            readiness.fail("viop_bulletin", e)
+
+    _spawn(_warm_viop_bulletin())
+
     # Warm the RAG embedding model in a background thread so the first AI
     # request never blocks the event loop downloading/loading it. Non-fatal:
     # if it fails (e.g. offline), RAG simply degrades to empty context.
