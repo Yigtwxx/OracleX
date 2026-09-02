@@ -188,5 +188,6 @@ def register_startup_steps() -> None:
     readiness.register("macro", "Makro panosu", OPTIONAL)
     readiness.register("ownership", "Varlık sahiplikleri", OPTIONAL)
     readiness.register("kap", "KAP bildirim akışı", OPTIONAL)
+    readiness.register("viop_bulletin", "VİOP bülteni", OPTIONAL)
     readiness.register("llm", "Yerel model", OPTIONAL)
     readiness.register("rag", "RAG embedding modeli", OPTIONAL)
