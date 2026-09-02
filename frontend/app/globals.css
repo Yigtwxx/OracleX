@@ -210,10 +210,18 @@
      clears 4.5:1 on --surface, same rule the global set is held to. */
   --nav-bist-overview: #e8b34a;
   --nav-bist-stocks: #5bd6a0;
+  /* Teal, the one wide gap left in this set: it sits between the stocks green
+     (~155deg) and the funds blue (~215deg) and is separable from both at 14px,
+     which is the size these labels are actually read at. */
+  --nav-bist-heatmap: #4fd3d8;
   --nav-bist-funds: #6aa9f5;
   --nav-bist-smart-money: #c99bff;
   --nav-bist-kap: #f07fa8;
   --nav-bist-viop: #ff9f5a;
+  /* Warm red, the last clear gap in this set: far enough from the VİOP
+     orange it sits beside (#ff9f5a) and the KAP pink (#f07fa8) to be told
+     apart at 14px, which is the size these labels are read at. */
+  --nav-bist-viop-map: #f2685c;
   --nav-bist-macro: #b8d95c;
 
   /* Heatmap is the one tab that cannot be a single stop: the board it opens is
