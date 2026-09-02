@@ -105,6 +105,25 @@ answer 404 when a symbol cannot be resolved instead of emitting a placeholder.
 Preserve that. A plausible wrong number in a trading terminal is worse than an
 error.
 
+**Takasbank's parameters are open; its website is not.** `www.takasbank.com.tr`
+sits behind bot protection and will not answer a script, which makes the risk
+parameters look unavailable. They are not: `wwwdata.takasbank.com.tr` is a
+separate host with an open directory listing and no protection at all, and
+`pardosya/Prod/YYMMDD/TAKASEOD_…-001.zip` is the day's SPAN file. Do not use
+`wwwdata.takasbank.com.tr/viop/SPAN/` — it is a legacy archive frozen in March
+2017 that still serves 200s. Reading it costs two filters: `setlMeth == "DELIV"`
+and a `pfCode` that does not end in `_C`, because the file carries a portfolio
+per broker and a rights-issue portfolio beside each contract. Skip either and
+THYAO's scan range reads 14.0 instead of 13.4.
+
+**VİOP publishes no maintenance margin rate.** The CCP procedure leaves the
+level to a General Letter and states maintenance is not applied at end of day,
+so the price at which a margin call actually triggers cannot be computed from
+anything public. The "75% of initial" figure that circulates appears only in an
+undated guide. `viop_margin_map` therefore draws the *scan range* — the move a
+position's initial margin was sized for — and the page says in as many words
+that this is not a call level. Do not "improve" it by adopting the 75%.
+
 **Polymarket has no trader geography, and its arrays are strings.** Two facts
 about the prediction-market surface that look like bugs if you assume otherwise.
 The exchange settles on Polygon and identifies a counterparty only by
