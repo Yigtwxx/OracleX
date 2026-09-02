@@ -16,6 +16,7 @@ Two conventions this surface holds to, both inherited from the rest of the API:
   it could not.
 """
 
+import logging
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
@@ -54,6 +55,7 @@ from services.bist.equity_service import (
     screen_equities,
     sector_performance,
 )
+from services.bist.tradingview_client import HEADLINE_INDICES, VENUE
 from services.bist.macro_service import (
     WINDOW_MONTHS,
     MacroSnapshot,
@@ -64,13 +66,22 @@ from services.bist.macro_service import (
     fetch_usdtry_series,
 )
 from services.bist.calendar_service import CalendarEvent, build_calendar, group_by_day
+from services.bist.kap_materiality import classify
+from services.bist.kap_note import note_for_disclosure
 from services.bist.kap_service import (
     SIGNAL_CATEGORIES,
     Disclosure,
     KapUnavailable,
+    fetch_disclosure,
     fetch_tape,
     filter_restrictions,
     is_rate_limited,
+)
+from services.bist.heatmap_service import (
+    HeatmapBoard,
+    HeatmapSectorGroup,
+    HeatmapTile,
+    build_heatmap,
 )
 from services.bist.positioning_note import build_positioning_facts, positioning_note
 from services.bist.positioning_service import (
@@ -79,10 +90,17 @@ from services.bist.positioning_service import (
     futures_positioning,
 )
 from services.bist.real_return import enrich_returns, summarise_real_losses
+from services.bist.viop_note import build_viop_facts, viop_note
 from services.bist.viop_service import ViopContract, ViopUnavailable, fetch_viop_board, summarise
+from services.bist.viop_bulletin import BulletinUnavailable, get_history as get_bulletin_history
+from services.bist.takasbank_psr import PSR_SOURCE_HOST, PsrUnavailable, fetch_psr
+from services.bist.viop_margin_map import MIN_OPEN_INTEREST_CONTRACTS, build_margin_map
+from services.bist.spot_volume_profile import fetch_profile
 from services.bist.tefas_client import FUND_TYPES, FundRow
 
 router = APIRouter(prefix="/api/bist", tags=["bist"])
+
+logger = logging.getLogger(__name__)
 
 
 def _unavailable(error: Exception) -> HTTPException:
@@ -610,6 +628,107 @@ async def get_stock(
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# Heatmap
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def _heat_tile(tile: HeatmapTile) -> dict:
+    return {
+        "ticker": tile.ticker,
+        "symbol": tile.symbol,
+        "name": tile.name,
+        "sector": tile.sector,
+        "price": tile.price,
+        "change_pct": tile.change_pct,
+        "traded_value": tile.traded_value,
+        "volume": tile.volume,
+        "market_cap": tile.market_cap,
+        "indices": list(tile.indices),
+        "has_futures": tile.has_futures,
+        "contracts": tile.contracts,
+        "open_interest": tile.open_interest,
+        "open_interest_change": tile.open_interest_change,
+        "open_interest_change_pct": tile.open_interest_change_pct,
+    }
+
+
+def _heat_sector(group: HeatmapSectorGroup) -> dict:
+    return {
+        "sector": group.sector,
+        "count": group.count,
+        "market_cap": group.market_cap,
+        "weight": group.weight,
+        "change_pct": group.change_pct,
+        "advancers": group.advancers,
+        "decliners": group.decliners,
+    }
+
+
+@router.get("/heatmap")
+async def get_heatmap(
+    index: str = Query("XU100", description=f"One of {HEADLINE_INDICES}"),
+    limit: int = Query(150, ge=10, le=1000),
+):
+    """
+    One index as a treemap: area is market capitalisation, colour is the
+    reader's choice, and VİOP open interest rides along where it exists.
+
+    The futures board is fetched inside its own `try`. It is a scrape of a
+    broker page and it will break; when it does the answer is this board minus
+    one column, not a 503. `has_futures_data` says which of the two happened, so
+    a tile with no open interest can be drawn as unknown rather than as zero.
+
+    Deliberately not `_equity_row`: that payload carries valuation ratios and
+    framed real returns, none of which a tile draws, and at a thousand listings
+    the unused half is most of the response.
+    """
+    wanted = index.strip().upper()
+    if wanted not in HEADLINE_INDICES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"index must be one of {', '.join(HEADLINE_INDICES)}, got {index!r}",
+        )
+
+    try:
+        board = await fetch_equity_board()
+    except EquityDataUnavailable as e:
+        raise _unavailable(e) from e
+
+    futures = None
+    try:
+        futures = await fetch_viop_board()
+    except ViopUnavailable:
+        futures = None
+
+    heat: HeatmapBoard = build_heatmap(
+        board.equities,
+        futures.contracts if futures else None,
+        index=wanted,
+        limit=limit,
+    )
+
+    return {
+        "as_of": board.as_of,
+        "stale": board.stale,
+        "delay_minutes": DELAY_MINUTES,
+        "index": heat.index,
+        "available_indices": list(HEADLINE_INDICES),
+        "total": heat.total,
+        "shown": len(heat.tiles),
+        "total_market_cap": heat.total_market_cap,
+        "has_futures_data": heat.has_futures_data,
+        "futures_covered": heat.futures_covered,
+        # Separate from the equity board's own staleness: the futures scrape has
+        # its own cache and can be replaying a days-old copy while the quotes
+        # are current.
+        "viop_as_of": futures.as_of if futures else None,
+        "viop_stale": futures.stale if futures else None,
+        "sectors": [_heat_sector(group) for group in heat.sectors],
+        "tiles": [_heat_tile(tile) for tile in heat.tiles],
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════
 # Overview
 # ══════════════════════════════════════════════════════════════════════════
 
@@ -801,6 +920,11 @@ async def get_macro(fx_range: str = Query("5y", description="Yahoo range for the
 
 
 def _disclosure(item: Disclosure) -> dict:
+    # Classified here rather than in `kap_service` so the tape's cache and its
+    # on-disk buffer keep holding exactly what KAP filed. A rule edit then takes
+    # effect on the next read instead of waiting out a week-long item cache, and
+    # a `Disclosure` restored from disk never carries a stale label.
+    materiality = classify(item.title, item.summary, item.category)
     return {
         "index": item.index,
         "title": item.title,
@@ -812,6 +936,15 @@ def _disclosure(item: Disclosure) -> dict:
         "summary": item.summary,
         "is_late": item.is_late,
         "url": item.url,
+        # What kind of filing this is, computed without a model so it can be on
+        # every row. `score` is 1-10 and `band` is derived from it, so the bar
+        # and the badge cannot disagree; both are null/"unclassified" for the
+        # free-text forms, which the board must draw as an absent reading rather
+        # than as a low one.
+        "event": materiality.event,
+        "event_label": materiality.label,
+        "score": materiality.score,
+        "band": materiality.band,
     }
 
 
@@ -859,6 +992,37 @@ async def get_kap(
     }
 
 
+@router.get("/kap/{index}/note")
+async def get_kap_note(index: int):
+    """
+    What one filing means, narrated.
+
+    Written on demand rather than with the tape: the board prints six hundred
+    rows and a reader opens one, so generating a note per row would run a local
+    model continuously to write text nobody asked for.
+
+    The share behind the filing is looked up but never required. Around a fifth
+    of the tape carries no ticker — the exchange files its own notices this way
+    — and the equity board is a separate upstream that can be down, so a missing
+    session is a stated gap in the prompt rather than a failed request.
+    """
+    disclosure = await fetch_disclosure(index)
+    if disclosure is None:
+        raise HTTPException(status_code=404, detail=f"KAP disclosure {index} not found")
+
+    equity = None
+    if disclosure.ticker:
+        try:
+            equity = await fetch_equity(disclosure.ticker)
+        except (ValueError, EquityDataUnavailable) as e:
+            logger.info("No equity row for KAP filing %s (%s): %s", index, disclosure.ticker, e)
+
+    return {
+        "disclosure": _disclosure(disclosure),
+        "note": await note_for_disclosure(disclosure, equity),
+    }
+
+
 @router.get("/restrictions")
 async def get_restrictions(limit: int = Query(30, ge=1, le=100)):
     """
@@ -894,6 +1058,15 @@ def _contract(item: ViopContract) -> dict:
         "contract": item.contract,
         "underlying": item.underlying,
         "expiry": item.expiry,
+        # The label as an ISO day, or null when it could not be read. Parsed
+        # once here rather than in the client because two panels order contracts
+        # by time, and `31 Ağu 26` sorts alphabetically into nonsense.
+        "expiry_date": item.expiry_date,
+        # `future`, `call` or `put`. The board is not futures-only: a put on the
+        # same underlying and expiry settles at its premium, so a client that
+        # drew both on one axis would be reading 0.13 against 13.16 as a term
+        # structure rather than as two different instruments.
+        "kind": item.kind,
         "physical": item.physical,
         "last": item.last,
         "change_pct": item.change_pct,
@@ -926,6 +1099,231 @@ async def get_viop(underlying: Optional[str] = Query(None)):
         "count": len(contracts),
         "summary": summarise(board.contracts),
         "contracts": [_contract(item) for item in contracts],
+    }
+
+
+@router.get("/viop-note")
+async def get_viop_note():
+    """
+    What the derivatives board says as a whole, above the panels that draw it.
+
+    Its own endpoint rather than a field on `/viop`, for the reason
+    `positioning-note` records: that board is cached for five minutes and the
+    page polls it, and a note welded to the payload would either be recomputed
+    on every poll or hold the board back to the note's cadence. Split, each
+    keeps its own.
+
+    `facts` is null when the board could not be read or came back too thin to
+    describe. The client must render that as an absent panel rather than as a
+    quiet session — this source is a scrape, and silence here is far more often
+    an outage than a market.
+    """
+    facts = await build_viop_facts()
+    return {"facts": facts, "note": await viop_note(facts)}
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# VİOP margin scan bands
+# ══════════════════════════════════════════════════════════════════════════
+
+# How many daily closes the basis conversion needs behind it. A year covers the
+# longest window the map offers with room for holidays.
+_SPOT_RANGE = "1y"
+
+# Named because it also decides how many names the picker opens with.
+_DEFAULT_UNDERLYINGS = 8
+
+
+@router.get("/viop-map/underlyings")
+async def get_viop_map_underlyings():
+    """
+    The single-stock futures universe, ranked by the newest session's turnover.
+
+    Derived rather than listed: which names carry futures, and which of them are
+    worth opening first, both change without notice, and a hardcoded list is a
+    list that silently goes stale. `default` is what the picker starts with.
+    """
+    try:
+        history = await get_bulletin_history()
+    except BulletinUnavailable as e:
+        raise _unavailable(e) from e
+
+    sessions = history.sessions()
+    if not sessions:
+        raise _unavailable(BulletinUnavailable("no VİOP bulletin sessions held"))
+    latest = sessions[-1]
+
+    totals: dict[str, dict] = {}
+    for row in history.rows:
+        if row.day != latest:
+            continue
+        entry = totals.setdefault(
+            row.underlying,
+            {"ticker": row.underlying, "volume_try": 0.0, "open_interest": 0.0, "expiries": 0},
+        )
+        entry["volume_try"] += row.volume_try or 0.0
+        entry["open_interest"] += row.open_interest
+        entry["expiries"] += 1
+
+    ranked = sorted(totals.values(), key=lambda row: row["volume_try"], reverse=True)
+    for row in ranked:
+        row["thin"] = row["open_interest"] < MIN_OPEN_INTEREST_CONTRACTS
+
+    return {
+        "as_of": latest,
+        "sessions_held": len(sessions),
+        "count": len(ranked),
+        "underlyings": ranked,
+        "default": [row["ticker"] for row in ranked[:_DEFAULT_UNDERLYINGS]],
+    }
+
+
+@router.get("/viop-map/{ticker}")
+async def get_viop_map(
+    ticker: str,
+    sessions: int = Query(120, ge=30, le=160),
+    bins: int = Query(120, ge=40, le=200),
+):
+    """
+    One underlying's positioning, and the scan band each cohort sits behind.
+
+    Two layers on one price axis: the VİOP book, modelled only in its direction,
+    and the spot volume profile, modelled not at all. They share a grid because
+    they are read against each other.
+
+    The failure modes are deliberately unequal. Without the bulletin there is no
+    book and without Takasbank's scan range there is no band, so either missing
+    is a 503 — the distance is a published number and this endpoint will not
+    substitute one. Losing Yahoo's intraday history costs the second layer only,
+    and the map still answers.
+    """
+    wanted = ticker.strip().upper()
+    if not wanted:
+        raise HTTPException(status_code=400, detail="ticker is required")
+
+    try:
+        history = await get_bulletin_history()
+    except BulletinUnavailable as e:
+        raise _unavailable(e) from e
+
+    rows = history.for_underlying(wanted)
+    if not rows:
+        raise HTTPException(
+            status_code=404,
+            detail=f"{wanted} has no single-stock futures on VİOP",
+        )
+
+    held = sorted({row.day for row in rows})
+    window = set(held[-sessions:])
+    rows = [row for row in rows if row.day in window]
+
+    try:
+        psr_snapshot = await fetch_psr()
+    except PsrUnavailable as e:
+        raise _unavailable(e) from e
+
+    candles = await fetch_candles(wanted, range_=_SPOT_RANGE)
+    spot_closes = {
+        candle["date"]: candle["close"] for candle in candles if candle.get("close") is not None
+    }
+
+    board = build_margin_map(rows, psr_snapshot, spot_closes, underlying=wanted, bins=bins)
+    if board is None:
+        raise _unavailable(
+            PsrUnavailable(f"no scan range published for {wanted}"),
+        )
+
+    warnings: list[str] = []
+    profile = None
+    if not board.thin:
+        profile = await fetch_profile(
+            wanted,
+            price_min=board.price_min,
+            bin_size=board.bin_size,
+            bins=board.bins,
+            first_day=board.sessions[0] if board.sessions else None,
+            last_day=board.sessions[-1] if board.sessions else None,
+        )
+        if profile is None:
+            warnings.append("spot_intraday_unavailable")
+
+    # OHLC, not just the close: the field is read against candles the way the
+    # crypto board reads its own, and a single line hides the range each session
+    # actually swept — which is the mechanism that spends a level.
+    spot_bars = {candle["date"]: candle for candle in candles}
+    session_rows = []
+    for day in board.sessions:
+        bar = spot_bars.get(day)
+        session_rows.append(
+            {
+                "day": day,
+                "open": bar.get("open") if bar else None,
+                "high": bar.get("high") if bar else None,
+                "low": bar.get("low") if bar else None,
+                "close": bar.get("close") if bar else None,
+            }
+        )
+
+    return {
+        "ticker": wanted,
+        "symbol": f"{VENUE}:{wanted}",
+        "as_of": board.sessions[-1] if board.sessions else None,
+        "stale": history.stale(),
+        "delay_minutes": DELAY_MINUTES,
+        "thin": board.thin,
+        "sessions": session_rows,
+        "grid": {
+            "price_min": round(board.price_min, 4),
+            "price_max": round(board.price_max, 4),
+            "bin_size": round(board.bin_size, 6),
+            "bins": board.bins,
+        },
+        # `[column, bin, long, short]` — a snapshot per surviving level per
+        # session, which is what makes the map a field rather than a set of
+        # bars. Packed positionally: the grid is sent once and there are
+        # thousands of these.
+        "cells": [
+            [cell.column, cell.bin_index, round(cell.long_try), round(cell.short_try)]
+            for cell in board.cells
+        ],
+        "max_value": round(board.max_value),
+        "volume_profile": (
+            None
+            if profile is None
+            else {
+                "bins": [round(value) for value in profile.bins],
+                "total": round(profile.total),
+                "bars": profile.bars,
+                "interval": profile.interval,
+                "from": profile.first_day,
+                "to": profile.last_day,
+            }
+        ),
+        "expiries": board.expiries,
+        "open_interest": board.open_interest,
+        "model": {
+            "psr": board.psr,
+            "psr_source": PSR_SOURCE_HOST,
+            "psr_as_of": psr_snapshot.as_of,
+            "psr_run": psr_snapshot.run,
+            "psr_file": psr_snapshot.source_file,
+            # Takasbank leaves the maintenance level to a General Letter and does
+            # not apply it at end of day, so the price a call actually triggers
+            # at cannot be computed. Named as absent rather than omitted, so the
+            # page can say why it is not drawing one.
+            "maintenance_margin_rate": None,
+            "maintenance_source": "unpublished",
+            "contract_multiplier": board.contract_multiplier,
+            "direction_rule": "quadrant",
+            "undirected_sessions": board.undirected_sessions,
+            "undirected_notional": round(board.undirected_notional),
+            "basis_adjusted": True,
+            "basis_carried_sessions": board.basis_carried_sessions,
+            "dropped_sessions": board.dropped_sessions,
+            "sessions_covered": len(board.sessions),
+            "sessions_requested": sessions,
+        },
+        "warnings": warnings,
     }
 
 
