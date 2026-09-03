@@ -14,13 +14,21 @@ the market means what Bitcoin's does — so the components here are drawn from
 what this exchange actually publishes, and one of them (the daily price limit)
 has no equivalent anywhere else.
 
+The components are grouped by the horizon they measure, and the index gives
+each horizon the same weight rather than each component. The first version
+weighted components equally, and three of its five were read off today's
+change column — so a red morning after a green afternoon moved the index thirty
+points, which is not a mood, it is a tape. A session is now one third of the
+reading whatever it does; the rest is what the board did over the past weeks
+and where it sits in its year, and those do not reset at 10:00.
+
 Nothing here raises. A component that cannot be measured says so and is left out
 of the average rather than defaulted to fifty, and a board too thin to measure
 at all answers `None` — the same refusal `/api/price` makes rather than emitting
 a plausible placeholder.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from statistics import median
 from typing import Optional, Sequence
 
@@ -35,9 +43,22 @@ LIMIT_TOLERANCE = 0.995
 # Below this the board is not a market, it is a handful of quotes.
 MIN_MEASURED = 20
 
-# A reading needs most of its components; three of five is the floor at which
-# the average still describes the board rather than whichever two survived.
-MIN_COMPONENTS = 3
+# A reading needs most of its components: four of nine is the floor at which
+# the average still describes the board rather than whichever few survived.
+MIN_COMPONENTS = 4
+
+# And it needs more than one horizon. An index made only of today's tape is
+# today's tape, and an index made only of the yearly range is a chart.
+MIN_HORIZONS = 2
+
+# Ordered from fastest to slowest. Each present horizon takes an equal share
+# of the index, and the components inside a horizon share that share equally.
+HORIZONS: tuple[tuple[str, str], ...] = (
+    ("session", "Seans"),
+    ("trend", "Trend"),
+    ("year", "Yıl"),
+)
+HORIZON_LABEL: dict[str, str] = dict(HORIZONS)
 
 
 @dataclass(frozen=True)
@@ -51,7 +72,10 @@ class Component:
     """0 = maximum fear, 100 = maximum greed."""
     reading: str
     """What was measured, in the units it was measured in."""
-    weight: float
+    horizon: str
+    """`session`, `trend` or `year` — which share of the index it competes for."""
+    weight: float = 0.0
+    """Share of the index, assigned when the index is assembled. Sums to one."""
 
 
 @dataclass(frozen=True)
@@ -104,7 +128,15 @@ def _ratio(value: float) -> str:
     return f"{value:.1f}".replace(".", ",")
 
 
-# ── Components ───────────────────────────────────────────────────────────────
+def _share_up(values: Sequence[Optional[float]]) -> tuple[int, int]:
+    """Advancers and decliners over whatever horizon `values` was measured on."""
+    finite = _finite(values)
+    up = sum(1 for v in finite if v > 0)
+    down = sum(1 for v in finite if v < 0)
+    return up, down
+
+
+# ── Components: the session ──────────────────────────────────────────────────
 
 
 def breadth_component(rows: Sequence[EquityRow]) -> Optional[Component]:
@@ -120,13 +152,163 @@ def breadth_component(rows: Sequence[EquityRow]) -> Optional[Component]:
         label="Piyasa genişliği",
         score=share * 100.0,
         reading=f"{up} yükselen / {down} düşen",
-        weight=1.0,
+        horizon="session",
+    )
+
+
+def limit_component(rows: Sequence[EquityRow]) -> Component:
+    """
+    Shares pinned at the daily limit, both ways.
+
+    This one has no analogue on an unbounded market and it is the sharpest
+    signal here: a session with thirty limit-downs and no limit-ups is not a
+    market drifting lower, it is one where sellers could not find a price. A
+    session with neither is genuinely neutral rather than unmeasured, which is
+    why this component never returns None.
+    """
+    floor = DAILY_LIMIT * LIMIT_TOLERANCE
+    up = sum(1 for row in rows if (row.change_pct or 0) >= floor)
+    down = sum(1 for row in rows if (row.change_pct or 0) <= -floor)
+    total = up + down
+
+    if total == 0:
+        return Component(
+            key="limit",
+            label="Tavan / taban",
+            score=50.0,
+            reading="limit hareketi yok",
+            horizon="session",
+        )
+
+    return Component(
+        key="limit",
+        label="Tavan / taban",
+        score=(up / total) * 100.0,
+        reading=f"{up} tavan / {down} taban",
+        horizon="session",
+    )
+
+
+def flow_component(rows: Sequence[EquityRow]) -> Optional[Component]:
+    """
+    Which side of the market the volume is on.
+
+    Breadth counts shares; this weighs them. Turnover running above average on
+    the risers and below it on the fallers is a different session from the same
+    advance-decline line with the volume the other way round, and the difference
+    is the one thing breadth alone cannot say.
+    """
+    up = _finite([row.relative_volume for row in rows if (row.change_pct or 0) > 0])
+    down = _finite([row.relative_volume for row in rows if (row.change_pct or 0) < 0])
+    if len(up) < 5 or len(down) < 5:
+        return None
+
+    up_median, down_median = median(up), median(down)
+    total = up_median + down_median
+    if total <= 0:
+        return None
+
+    tilt = (up_median - down_median) / total
+    return Component(
+        key="flow",
+        label="Para akışı",
+        score=_clamp(50.0 + tilt * 50.0),
+        reading=f"yükselende {_ratio(up_median)}× / düşende {_ratio(down_median)}× hacim",
+        horizon="session",
+    )
+
+
+# ── Components: the trend ────────────────────────────────────────────────────
+
+
+def _period_breadth(
+    values: Sequence[Optional[float]], *, key: str, label: str, period: str
+) -> Optional[Component]:
+    """
+    Breadth over a longer window than today.
+
+    Same arithmetic as the session's advance-decline line, read off a column
+    that does not reset every morning. A board where most names are up on the
+    week is in a different mood from one where most are down, whatever today's
+    tape says — and it stays in that mood for more than a session.
+    """
+    up, down = _share_up(values)
+    moved = up + down
+    if moved < MIN_MEASURED:
+        return None
+    return Component(
+        key=key,
+        label=label,
+        score=(up / moved) * 100.0,
+        reading=f"{period} {up} yükselen / {down} düşen",
+        horizon="trend",
+    )
+
+
+def weekly_breadth_component(rows: Sequence[EquityRow]) -> Optional[Component]:
+    return _period_breadth(
+        [row.perf_1w for row in rows],
+        key="breadth_1w",
+        label="Haftalık genişlik",
+        period="haftalık",
+    )
+
+
+def monthly_breadth_component(rows: Sequence[EquityRow]) -> Optional[Component]:
+    return _period_breadth(
+        [row.perf_1m for row in rows],
+        key="breadth_1m",
+        label="Aylık genişlik",
+        period="aylık",
+    )
+
+
+def _above_average(
+    rows: Sequence[EquityRow], *, average: str, key: str, label: str, days: int, horizon: str
+) -> Optional[Component]:
+    """
+    Share of the board trading above one of its own moving averages.
+
+    The oldest trend-participation measure there is, and self-calibrating: a
+    share is either above its average or it is not, so the score needs no band
+    that somebody would have to justify. A quote equal to its average counts
+    as below — a board sitting exactly on the line has not broken out.
+    """
+    above = below = 0
+    for row in rows:
+        level = getattr(row, average)
+        if row.price is None or level is None or level <= 0:
+            continue
+        if row.price > level:
+            above += 1
+        else:
+            below += 1
+    measured = above + below
+    if measured < MIN_MEASURED:
+        return None
+    return Component(
+        key=key,
+        label=label,
+        score=(above / measured) * 100.0,
+        reading=f"{above} hisse {days} günlük ortalamanın üstünde / {below} altında",
+        horizon=horizon,
+    )
+
+
+def trend_component(rows: Sequence[EquityRow]) -> Optional[Component]:
+    return _above_average(
+        rows,
+        average="sma50",
+        key="above_sma50",
+        label="50 günlük ortalamanın üstündekiler",
+        days=50,
+        horizon="trend",
     )
 
 
 def momentum_component(rows: Sequence[EquityRow]) -> Optional[Component]:
     """
-    The board's median RSI.
+    The board's median RSI. Fourteen sessions, so it belongs to the trend.
 
     Median rather than mean: a handful of shares pinned at 90 after a bid pulls
     an average far enough to describe a market that is not there. The band is
@@ -142,7 +324,28 @@ def momentum_component(rows: Sequence[EquityRow]) -> Optional[Component]:
         label="Momentum",
         score=_scale(mid, 30.0, 70.0),
         reading=f"medyan RSI {mid:.0f}",
-        weight=1.0,
+        horizon="trend",
+    )
+
+
+# ── Components: the year ─────────────────────────────────────────────────────
+
+
+def long_trend_component(rows: Sequence[EquityRow]) -> Optional[Component]:
+    """
+    The two-hundred-day line, which on this exchange is most of a year.
+
+    Sits beside the 52-week position rather than beside the 50-day average
+    because it answers the year's question — is the board still in the move it
+    made — and not the month's.
+    """
+    return _above_average(
+        rows,
+        average="sma200",
+        key="above_sma200",
+        label="200 günlük ortalamanın üstündekiler",
+        days=200,
+        horizon="year",
     )
 
 
@@ -172,69 +375,7 @@ def range_component(rows: Sequence[EquityRow]) -> Optional[Component]:
         label="Yıllık aralıktaki konum",
         score=mid * 100.0,
         reading=f"medyan {_pct(mid)} noktasında",
-        weight=1.0,
-    )
-
-
-def limit_component(rows: Sequence[EquityRow]) -> Component:
-    """
-    Shares pinned at the daily limit, both ways.
-
-    This one has no analogue on an unbounded market and it is the sharpest
-    signal here: a session with thirty limit-downs and no limit-ups is not a
-    market drifting lower, it is one where sellers could not find a price. A
-    session with neither is genuinely neutral rather than unmeasured, which is
-    why this component never returns None.
-    """
-    floor = DAILY_LIMIT * LIMIT_TOLERANCE
-    up = sum(1 for row in rows if (row.change_pct or 0) >= floor)
-    down = sum(1 for row in rows if (row.change_pct or 0) <= -floor)
-    total = up + down
-
-    if total == 0:
-        return Component(
-            key="limit",
-            label="Tavan / taban",
-            score=50.0,
-            reading="limit hareketi yok",
-            weight=1.0,
-        )
-
-    return Component(
-        key="limit",
-        label="Tavan / taban",
-        score=(up / total) * 100.0,
-        reading=f"{up} tavan / {down} taban",
-        weight=1.0,
-    )
-
-
-def flow_component(rows: Sequence[EquityRow]) -> Optional[Component]:
-    """
-    Which side of the market the volume is on.
-
-    Breadth counts shares; this weighs them. Turnover running above average on
-    the risers and below it on the fallers is a different session from the same
-    advance-decline line with the volume the other way round, and the difference
-    is the one thing breadth alone cannot say.
-    """
-    up = _finite([row.relative_volume for row in rows if (row.change_pct or 0) > 0])
-    down = _finite([row.relative_volume for row in rows if (row.change_pct or 0) < 0])
-    if len(up) < 5 or len(down) < 5:
-        return None
-
-    up_median, down_median = median(up), median(down)
-    total = up_median + down_median
-    if total <= 0:
-        return None
-
-    tilt = (up_median - down_median) / total
-    return Component(
-        key="flow",
-        label="Para akışı",
-        score=_clamp(50.0 + tilt * 50.0),
-        reading=f"yükselende {_ratio(up_median)}× / düşende {_ratio(down_median)}× hacim",
-        weight=1.0,
+        horizon="year",
     )
 
 
@@ -260,32 +401,56 @@ def band_label(score: int) -> str:
 # ── Entry points ─────────────────────────────────────────────────────────────
 
 
-def compute_sentiment(rows: Sequence[EquityRow]) -> Optional[Sentiment]:
+def _weighted(components: Sequence[Component]) -> list[Component]:
     """
-    The index, or nothing.
+    Hand out the index's weight: equal per horizon, then equal within it.
 
-    Equal weights on purpose. A weighting would have to come from somewhere —
-    a backtest this project has no ground truth for, or a preference dressed as
-    one — and an unexplainable weight in a number whose whole claim is that the
-    reader can check it would be the wrong trade.
+    Equal weights *per horizon* rather than per component, on purpose. A
+    weighting between components would have to come from somewhere — a
+    backtest this project has no ground truth for, or a preference dressed as
+    one. A weighting between horizons needs no backtest: it is the statement
+    that what the board did today, what it did this month and where it sits in
+    its year are three questions of the same size, and that one of them is not
+    allowed to answer for the other two. It also happens to be what stops the
+    index swinging with every session.
     """
+    present = [code for code, _ in HORIZONS if any(c.horizon == code for c in components)]
+    per_horizon = 1.0 / len(present)
+    weighted: list[Component] = []
+    for code in present:
+        members = [c for c in components if c.horizon == code]
+        share = per_horizon / len(members)
+        weighted.extend(replace(c, weight=share) for c in members)
+    return weighted
+
+
+def compute_sentiment(rows: Sequence[EquityRow]) -> Optional[Sentiment]:
+    """The index, or nothing."""
     if len(rows) < MIN_MEASURED:
         return None
 
     candidates = [
+        # Today.
         breadth_component(rows),
-        momentum_component(rows),
-        range_component(rows),
         limit_component(rows),
         flow_component(rows),
+        # The past weeks.
+        weekly_breadth_component(rows),
+        monthly_breadth_component(rows),
+        trend_component(rows),
+        momentum_component(rows),
+        # The year.
+        range_component(rows),
+        long_trend_component(rows),
     ]
     components = [c for c in candidates if c is not None]
     if len(components) < MIN_COMPONENTS:
         return None
+    if len({c.horizon for c in components}) < MIN_HORIZONS:
+        return None
 
-    total_weight = sum(c.weight for c in components)
-    score = round(sum(c.score * c.weight for c in components) / total_weight)
-    score = int(_clamp(score))
+    components = _weighted(components)
+    score = int(_clamp(round(sum(c.score * c.weight for c in components))))
 
     return Sentiment(
         score=score,
