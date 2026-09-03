@@ -28,7 +28,7 @@ export interface TestSuite {
   readonly files: number;
 }
 
-export const VERSION = '1.3.0';
+export const VERSION = '1.4.0';
 
 export const API = {
   paths: 174,
@@ -152,7 +152,7 @@ export const MCP = {
 export const SKILLS = [
   {
     name: 'oracle-x-api',
-    version: '1.3.0',
+    version: '1.4.0',
     references: 3,
     examples: 4,
     generated: {
@@ -164,7 +164,7 @@ export const SKILLS = [
   },
   {
     name: 'oracle-x-bist',
-    version: '1.3.0',
+    version: '1.4.0',
     references: 2,
     examples: 0,
     generated: {
@@ -176,7 +176,7 @@ export const SKILLS = [
   },
   {
     name: 'oracle-x-dev',
-    version: '1.3.0',
+    version: '1.4.0',
     references: 5,
     examples: 0,
     generated: null,

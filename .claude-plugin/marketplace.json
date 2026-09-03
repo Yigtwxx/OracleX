@@ -7,13 +7,13 @@
   },
   "metadata": {
     "description": "Oracle-X, a self-hosted financial intelligence terminal, packaged for Claude Code: 36 MCP tools over a running instance and the AgentSkills that document it.",
-    "version": "1.3.0"
+    "version": "1.4.0"
   },
   "plugins": [
     {
       "name": "oracle-x",
       "description": "Read a running Oracle-X terminal from Claude Code — 36 MCP tools for crypto and US equity prices, technical levels, news analysis, macro regime, chain metrics, liquidations, funding, prediction markets and the vector memory, plus the skill that documents the HTTP API behind them. Six of the tools cover Borsa İstanbul, so this is also the plugin that gives oracle-x-bist its MCP surface. Needs an instance at ORACLE_X_URL.",
-      "version": "1.3.0",
+      "version": "1.4.0",
       "author": {
         "name": "Yiğit ERDOĞAN",
         "url": "https://github.com/Yigtwxx"
@@ -47,7 +47,7 @@
     {
       "name": "oracle-x-bist",
       "description": "Borsa İstanbul for Claude Code — BIST equities, TEFAS funds, KAP disclosures, VİOP margins and positioning, and the Turkish macro series. Install oracle-x alongside it for the six BIST MCP tools. Half of it needs no instance at all: how a lira return becomes a real one, and why a VİOP margin-call price cannot be computed from anything public.",
-      "version": "1.3.0",
+      "version": "1.4.0",
       "author": {
         "name": "Yiğit ERDOĞAN",
         "url": "https://github.com/Yigtwxx"
@@ -71,7 +71,7 @@
     {
       "name": "oracle-x-dev",
       "description": "Conventions for extending the Oracle-X codebase — one-service routers, the health registry, duck-typed chain adapters, prompts as files, and the four quality gates a change has to clear. Install only when working in that repository.",
-      "version": "1.3.0",
+      "version": "1.4.0",
       "author": {
         "name": "Yiğit ERDOĞAN",
         "url": "https://github.com/Yigtwxx"

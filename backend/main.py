@@ -414,7 +414,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Oracle-X API",
         description="Financial Intelligence Terminal Backend",
-        version="1.3.0",
+        version="1.4.0",
         lifespan=lifespan,
     )
 

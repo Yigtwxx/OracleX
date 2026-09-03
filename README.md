@@ -14,7 +14,7 @@
     <a href="#the-reasoning-layer"><img src="https://img.shields.io/badge/AI_Engine-14_providers%20%7C%20local_first-000000?style=flat-square&logo=ollama&logoColor=white" alt="AI Engine" /></a>
     <a href="#core-capabilities"><img src="https://img.shields.io/badge/Memory-ChromaDB_RAG_v5-FF6F00?style=flat-square&logo=databricks&logoColor=white" alt="RAG" /></a>
     <br/>
-    <a href="https://github.com/Yigtwxx/OracleX/releases/latest"><img src="https://img.shields.io/badge/Release-v1.3.0-brightgreen?style=flat-square" alt="Release" /></a>
+    <a href="https://github.com/Yigtwxx/OracleX/releases/latest"><img src="https://img.shields.io/badge/Release-v1.4.0-brightgreen?style=flat-square" alt="Release" /></a>
     <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey?style=flat-square" alt="Platform" />
     <a href="#quality-gates"><img src="https://img.shields.io/badge/CI-ruff%20%7C%20pytest%20%7C%20tsc%20%7C%20vitest-2088FF?style=flat-square&logo=githubactions&logoColor=white" alt="CI" /></a>
     <img src="https://img.shields.io/badge/Keys-encrypted_at_rest-success?style=flat-square" alt="Encrypted keys" />
@@ -1945,7 +1945,7 @@ Shipped in **v1.2.0** – **v1.3.0**:
 - [x] Rendered OpenGraph link-preview card, and `scripts/verify_migrations.py`
       for checking that the repo's migrations are actually live.
 
-Unreleased (on `main`, ahead of the last tag):
+Shipped in **v1.4.0**:
 
 - [x] **Prediction markets** — the `/polymarket` board, model-free market facts,
       sharp moves measured in probability points, an origin trace, a three-layer
@@ -1990,6 +1990,18 @@ Unreleased (on `main`, ahead of the last tag):
       ribbon, in place of a screen of market-wide on-chain cards.
 - [x] **`/borsa`** — a fourth public page, a light Turkish document that reads
       live figures, where the other three render with the backend down.
+- [x] **Three AgentSkills instead of two** — Borsa İstanbul split out of the API
+      skill, because it was a third of the allowlist and most installs are not
+      in Turkey. It is the first skill here that is useful without an instance:
+      how a lira return becomes a real one, and where Takasbank actually
+      publishes the scan range, are facts about the market rather than about any
+      server.
+- [x] **Claude Code plugins** — the same three skills and the MCP server behind
+      `claude plugin marketplace add`, with slash commands, and no virtualenv to
+      create by hand.
+- [x] **Six VİOP and BIST MCP tools** — the Turkish surface had a skill and no
+      tools, which made the least-covered market the one a model would never
+      consult unprompted.
 
 Planned:
 

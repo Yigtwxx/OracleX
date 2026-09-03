@@ -1,7 +1,7 @@
 ---
 name: oracle-x-bist
 description: Read and reason about Borsa İstanbul — BIST equities and the XU100, TEFAS funds and their holdings, KAP disclosures, VİOP futures margins, open interest and positioning, foreign ownership, short-sale restrictions, and the Turkish macro series (TÜFE inflation, policy rate, USDTRY) the rest is measured against. Use this whenever a question names a Turkish ticker such as THYAO, ASELS, GARAN or EREGL, a BIST index, a TEFAS fund code, KAP, VİOP or Takasbank, or asks what a lira return was actually worth. Half of it needs no server at all: how a nominal return is turned into a real one, where Takasbank publishes the price scan range and the two filters that make it read correctly, and why a margin-call price for VİOP cannot be computed from anything public. The other half calls a running Oracle-X instance when ORACLE_X_URL is set. Consult it before quoting any Turkish figure, because a lira number over a year of ~32% inflation reports inflation as performance.
-version: "1.3.0"
+version: "1.4.0"
 license: Complete terms in LICENSE.txt
 metadata:
   homepage: "https://github.com/Yigtwxx/OracleX"

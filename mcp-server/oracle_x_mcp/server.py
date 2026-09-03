@@ -24,7 +24,7 @@ from oracle_x_mcp.client import NotFound, OracleXError
 
 server = MCPServer(
     name="oracle-x",
-    version="1.3.0",
+    version="1.4.0",
     instructions=(
         "Tools for a self-hosted Oracle-X financial terminal. Every tool reads "
         "a live instance at $ORACLE_X_URL (default http://localhost:8000).\n\n"
