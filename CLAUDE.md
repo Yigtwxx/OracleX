@@ -164,13 +164,24 @@ rejected is the reason the file is maintainable. Write in English, always.
 Two things wrap this API for outside agents, and both need updating when a
 route in their surface changes.
 
-`agent-skill/` holds two AgentSkills. `oracle-x-api/SKILL.md` is hand-written;
-its `references/endpoints.md` is generated from the app's OpenAPI schema, so
-adding or renaming a route in the allowlist (`ENDPOINT_GROUPS` in
-`scripts/build_agent_skill.py`) means regenerating it — CI fails otherwise.
-`oracle-x-dev/` documents these conventions for agents working on the code.
+`agent-skill/` holds three AgentSkills. `oracle-x-api/SKILL.md` and
+`oracle-x-bist/SKILL.md` are hand-written; the `references/endpoints.md` beside
+each is generated from the app's OpenAPI schema, so adding or renaming a route
+in the allowlist (`ENDPOINT_GROUPS` in `scripts/build_agent_skill.py`) means
+regenerating both — CI fails otherwise. The allowlist is *partitioned* between
+those two by `BIST_GROUP_TITLES`, not copied into both: Borsa İstanbul is a
+third of the surface and most installs are not in Turkey, so an agent that will
+never ask about VİOP should not carry it. `oracle-x-dev/` documents these
+conventions for agents working on the code.
 
-`mcp-server/` exposes the same instance as 30 MCP tools. It talks HTTP to a
+`.claude-plugin/marketplace.json` packages the same three skills plus the MCP
+server as Claude Code plugins. Its entries point at `agent-skill/` rather than
+copying it, so there is one copy of each skill. Three things about that format
+bite silently and are recorded in `plugins/README.md`: component specs must
+live in exactly one place, `skills` paths resolve against the entry's `source`,
+and `mcpServers` is honoured inline but ignored as a path.
+
+`mcp-server/` exposes the same instance as 36 MCP tools. It talks HTTP to a
 running backend and imports nothing from it, so it needs no backend changes —
 but a route it calls that changes shape breaks it silently, since its tests
 never touch the network. Its own gates are `ruff` and `pytest` from

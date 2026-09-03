@@ -1018,11 +1018,13 @@ frontend/
 ├── docker-compose.yml          # production-shaped stack
 ├── docker-compose.override.yml # dev overrides (bind mounts, --reload, next dev)
 ├── supabase/migrations/        # 001_initial_schema → 014_chat_memory
-├── agent-skill/                # AgentSkills for external coding agents
+├── .claude-plugin/             # Claude Code marketplace: three installable plugins
+├── agent-skill/                # three AgentSkills for external coding agents
 │   ├── oracle-x-api/           # reading a running instance
 │   ├── oracle-x-dev/           # extending this codebase
 │   └── *.zip                   # generated, for direct download
-├── mcp-server/                 # the same API as 30 MCP tools
+├── plugins/                    # slash commands for the Claude Code plugins
+├── mcp-server/                 # the same API as 36 MCP tools
 │   └── oracle_x_mcp/           # stdio server; talks HTTP to a live instance
 ├── scripts/
 │   ├── build_agent_skill.py         # regenerates the skill's endpoint reference
@@ -1728,25 +1730,68 @@ print(f"Target High: {data['target_high_price']}")
 print(f"Analyst Rec: {data['recommendation']}")
 ```
 
+### Claude Code plugin
+
+The skills and the MCP server also ship as three Claude Code plugins, declared
+in [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json). This is
+the shortest install: one command adds the marketplace, and each plugin brings
+its skill, its slash commands and — for `oracle-x` — the MCP server, with no
+virtualenv to create by hand.
+
+```bash
+claude plugin marketplace add Yigtwxx/OracleX
+claude plugin install oracle-x@oracle-x         # MCP tools, API skill, /levels /brief /health
+claude plugin install oracle-x-bist@oracle-x    # Borsa İstanbul, /bist /viop
+claude plugin install oracle-x-dev@oracle-x     # working on this codebase
+```
+
+The entries point at `agent-skill/` rather than copying it, so there is one
+copy of each skill in the repository. [`plugins/README.md`](plugins/README.md)
+holds the format's sharp edges — the ones that pass `claude plugin validate`
+and still refuse to load.
+
+### MCP server
+
+[`mcp-server/`](mcp-server/) exposes the same instance to any MCP client as 36
+tools, and it is the one to install first. A tool list is already in the
+model's context, so the only decision left is which tool to call:
+
+```bash
+cd mcp-server && python3.11 -m venv .venv && .venv/bin/pip install -e .
+claude mcp add oracle-x -e ORACLE_X_URL=http://localhost:8000 \
+  -- "$PWD/.venv/bin/python" -m oracle_x_mcp
+```
+
+Tools summarize where the raw payload is a rendering artifact: the liquidation
+map answers with ~8,000 heatmap cells (214 KB), and the tool returns the
+largest clusters per side anchored to spot in 1.1 KB.
+
 ### Agent skills
 
-Two [AgentSkills](https://agentskills.io/specification) live under
+Three [AgentSkills](https://agentskills.io/specification) live under
 [`agent-skill/`](agent-skill/), so a coding agent — Claude Code, OpenClaw, or
 anything else that reads the specification — can work with Oracle-X without a
 bespoke integration:
 
 ```bash
-npx skills add Yigtwxx/OracleX --skill oracle-x-api    # query a running instance
-npx skills add Yigtwxx/OracleX --skill oracle-x-dev    # work on this codebase
+npx skills add Yigtwxx/OracleX --skill oracle-x-api     # crypto, US equities, macro
+npx skills add Yigtwxx/OracleX --skill oracle-x-bist    # Borsa İstanbul
+npx skills add Yigtwxx/OracleX --skill oracle-x-dev     # work on this codebase
 export ORACLE_X_URL=http://localhost:8000
 ```
 
-One thing to know before installing: a skill has to be *consulted*, and
-measurement showed `oracle-x-api` triggering on almost nothing — a model asked
-"what is BTC doing" answers from its own knowledge instead of going to look.
-Ask for it by name, or install it for writing code against the API, where an
-agent reaches for documentation anyway. To have the numbers reach a model
-unprompted, use the MCP server below.
+The market split is on purpose: BIST is 32 endpoints and most installs are not
+in Turkey, so an agent that will never ask about TEFAS or VİOP should not carry
+them in context on every question. `oracle-x-bist` is also the one that works
+before there is a server — how a lira return becomes a real one, and where
+Takasbank actually publishes the scan range, are facts about the market rather
+than about any instance.
+
+They sit beside the MCP server rather than replacing it, because a skill has to
+be *consulted* and measurement showed `oracle-x-api` triggering on almost
+nothing — a model asked "what is BTC doing" answers from its own knowledge
+instead of going to look. Ask for it by name, or install it for writing code
+against the API, where an agent reaches for documentation anyway.
 [`agent-skill/README.md`](agent-skill/README.md) carries the measurement.
 
 `SKILL.md` is hand-written and carries the part no generator can produce: which
@@ -1758,25 +1803,6 @@ committed copy has drifted from the routes:
 ```bash
 python scripts/build_agent_skill.py --check
 ```
-
-### MCP server
-
-[`mcp-server/`](mcp-server/) exposes the same instance to any MCP client as 30
-tools. Both exist on purpose. A skill has to be *consulted*, and measurement
-showed the API skill triggering on almost nothing — a model asked "what is BTC
-doing" answers from its own knowledge rather than going to look for a skill.
-Tools are already in the model's context, so the only decision left is which
-one to call.
-
-```bash
-cd mcp-server && python3.11 -m venv .venv && .venv/bin/pip install -e .
-claude mcp add oracle-x -e ORACLE_X_URL=http://localhost:8000 \
-  -- "$PWD/.venv/bin/python" -m oracle_x_mcp
-```
-
-Tools summarize where the raw payload is a rendering artifact: the liquidation
-map answers with ~8,000 heatmap cells (214 KB), and the tool returns the
-largest clusters per side anchored to spot in 1.1 KB.
 
 ---
 
