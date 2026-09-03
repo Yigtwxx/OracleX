@@ -31,18 +31,26 @@ from typing import Any
 
 from _openapi import REPO_ROOT, load_spec
 
-SKILL_DIR = REPO_ROOT / "agent-skill" / "oracle-x-api"
-REFERENCE = SKILL_DIR / "references" / "endpoints.md"
+API_SKILL_DIR = REPO_ROOT / "agent-skill" / "oracle-x-api"
+BIST_SKILL_DIR = REPO_ROOT / "agent-skill" / "oracle-x-bist"
+DEV_SKILL_DIR = REPO_ROOT / "agent-skill" / "oracle-x-dev"
+
+# The Turkish market is a separate skill rather than a section of the API one.
+# Its 32 endpoints are a third of the allowlist and are dead weight in the
+# context of anyone trading anything else, which is most installs — a reader in
+# Frankfurt pays for BIST on every query and gets nothing back. Splitting also
+# lets the BIST skill carry the parts that need no instance at all (how a real
+# return is computed, where the scan range comes from), so it is worth
+# installing before there is a server to point it at.
+BIST_GROUP_TITLES = frozenset({"Borsa İstanbul (BIST)"})
 
 # Distribution archives, one per skill. The API skill's filename predates the
-# second skill and is linked from published release notes, so it keeps its name
+# other two and is linked from published release notes, so it keeps its name
 # rather than gaining a suffix for symmetry.
 ZIP_TARGETS: tuple[tuple[Path, Path], ...] = (
-    (SKILL_DIR, REPO_ROOT / "agent-skill" / "Oracle-X-Skill.zip"),
-    (
-        REPO_ROOT / "agent-skill" / "oracle-x-dev",
-        REPO_ROOT / "agent-skill" / "Oracle-X-Dev-Skill.zip",
-    ),
+    (API_SKILL_DIR, REPO_ROOT / "agent-skill" / "Oracle-X-Skill.zip"),
+    (BIST_SKILL_DIR, REPO_ROOT / "agent-skill" / "Oracle-X-BIST-Skill.zip"),
+    (DEV_SKILL_DIR, REPO_ROOT / "agent-skill" / "Oracle-X-Dev-Skill.zip"),
 )
 
 # The allowlist, grouped the way the skill's decision table groups them. Order
@@ -150,7 +158,8 @@ ENDPOINT_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
         "The Turkish market: equities, TEFAS funds, KAP filings and the macro "
         "series they are measured against.\n\n"
         "Two things about this surface differ from the rest of the API and will "
-        "produce wrong answers if assumed away. **Every return is quoted twice.** "
+        "produce wrong answers if assumed away. **Every return is quoted three "
+        "ways.** "
         "A lira figure over a year in which consumer prices rose ~32% is not a "
         "result, so `returns`/`framed_returns` carry `nominal`, `real` "
         "(inflation-adjusted) and `usd` side by side; a null `real` means the "
@@ -255,11 +264,11 @@ ENDPOINT_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
     ),
 ]
 
-HEADER = """<!-- GENERATED FILE — do not edit by hand.
+_PREAMBLE = """<!-- GENERATED FILE — do not edit by hand.
      Regenerate with: python scripts/build_agent_skill.py
      Source of truth: the FastAPI route definitions in backend/routers/. -->
 
-# Oracle-X endpoint reference
+# {title}
 
 Every path below is relative to the instance base URL (`$ORACLE_X_URL`,
 default `http://localhost:8000`). Endpoints marked **auth** require
@@ -270,7 +279,32 @@ Request and response bodies are described by their field names and types. When
 a response shape is not declared on the route, the entry says so — call it once
 and read the actual JSON rather than guessing.
 
+{note}
 """
+
+API_HEADER = _PREAMBLE.format(
+    title="Oracle-X endpoint reference",
+    note=(
+        "The Turkish market is not here. It is a third of the surface and "
+        "belongs to a separate skill, `oracle-x-bist`, so that an install that "
+        "will never ask about Borsa İstanbul does not carry it. If a question "
+        "names a BIST ticker, a TEFAS fund, KAP or VİOP, say the skill for it "
+        "exists rather than reaching for `/api/price` — a bare Turkish ticker "
+        "does not resolve on this surface by design.\n"
+    ),
+)
+
+BIST_HEADER = _PREAMBLE.replace(
+    "Endpoints marked **auth** require\n`Authorization: Bearer <supabase-jwt>`; see `auth.md`. Everything else is open\non a default instance.",
+    "Nothing here is scoped to a person, so none of it needs a token.",
+).format(
+    title="Oracle-X Borsa İstanbul endpoint reference",
+    note=(
+        "Only the Turkish market is here. Crypto, US equities, macro, chains, "
+        "derivatives, prediction markets and the vector memory are the sibling "
+        "skill `oracle-x-api`, on the same instance and the same base URL.\n"
+    ),
+)
 
 
 def resolve_ref(spec: dict[str, Any], ref: str) -> dict[str, Any]:
@@ -353,11 +387,11 @@ def render_response(operation: dict[str, Any], spec: dict[str, Any]) -> list[str
     return ["", "Response shape is not declared on the route — inspect one call."]
 
 
-def render(spec: dict[str, Any]) -> str:
-    out: list[str] = [HEADER.rstrip(), ""]
+def render(spec: dict[str, Any], groups: list, header: str) -> str:
+    out: list[str] = [header.rstrip(), ""]
     missing: list[str] = []
 
-    for title, blurb, endpoints in ENDPOINT_GROUPS:
+    for title, blurb, endpoints in groups:
         out += [f"## {title}", "", blurb, ""]
         for method, path in endpoints:
             operation = spec.get("paths", {}).get(path, {}).get(method.lower())
@@ -423,30 +457,51 @@ def main() -> int:
     parser.add_argument("--zip", action="store_true", help="also rebuild the .zip")
     args = parser.parse_args()
 
-    rendered = render(load_spec())
+    spec = load_spec()
+    bist = [g for g in ENDPOINT_GROUPS if g[0] in BIST_GROUP_TITLES]
+    if not bist:
+        raise SystemExit(
+            "No group in ENDPOINT_GROUPS matches BIST_GROUP_TITLES — the split "
+            "would silently ship an empty BIST reference."
+        )
+    targets = (
+        (
+            API_SKILL_DIR / "references" / "endpoints.md",
+            [g for g in ENDPOINT_GROUPS if g[0] not in BIST_GROUP_TITLES],
+            API_HEADER,
+        ),
+        (BIST_SKILL_DIR / "references" / "endpoints.md", bist, BIST_HEADER),
+    )
 
     if args.check:
-        current = REFERENCE.read_text() if REFERENCE.exists() else ""
-        if current != rendered:
-            diff = difflib.unified_diff(
-                current.splitlines(keepends=True),
-                rendered.splitlines(keepends=True),
-                fromfile="committed",
-                tofile="generated",
-            )
-            sys.stdout.writelines(diff)
+        stale = False
+        for reference, groups, header in targets:
+            rendered = render(spec, groups, header)
+            current = reference.read_text() if reference.exists() else ""
+            if current != rendered:
+                stale = True
+                sys.stdout.writelines(
+                    difflib.unified_diff(
+                        current.splitlines(keepends=True),
+                        rendered.splitlines(keepends=True),
+                        fromfile=f"committed {reference.name}",
+                        tofile="generated",
+                    )
+                )
+        if stale:
             print(
                 "\nagent-skill endpoint reference is stale. "
                 "Run: python scripts/build_agent_skill.py",
                 file=sys.stderr,
             )
             return 1
-        print("agent-skill endpoint reference is up to date")
+        print("agent-skill endpoint references are up to date")
         return 0
 
-    REFERENCE.parent.mkdir(parents=True, exist_ok=True)
-    REFERENCE.write_text(rendered)
-    print(f"wrote {REFERENCE.relative_to(REPO_ROOT)}")
+    for reference, groups, header in targets:
+        reference.parent.mkdir(parents=True, exist_ok=True)
+        reference.write_text(render(spec, groups, header))
+        print(f"wrote {reference.relative_to(REPO_ROOT)}")
     if args.zip:
         build_zip()
     return 0

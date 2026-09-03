@@ -226,17 +226,34 @@ def read_mcp_tools() -> dict[str, Any]:
 
 def read_skills() -> list[dict[str, Any]]:
     """What each AgentSkill ships, counted off the filesystem."""
-    from build_agent_skill import ENDPOINT_GROUPS, REFERENCE
+    from build_agent_skill import BIST_GROUP_TITLES, ENDPOINT_GROUPS
+
+    # The allowlist is split across two skills, so each one counts only its own
+    # groups. Summing all of ENDPOINT_GROUPS here would report the API skill as
+    # carrying the BIST endpoints it was deliberately relieved of.
+    def _generated(name: str, groups: list) -> dict[str, Any]:
+        root = SKILL_ROOT / name
+        reference = root / "references" / "endpoints.md"
+        return {
+            "file": str(reference.relative_to(root)),
+            "lines": len(reference.read_text().splitlines()),
+            "endpoints": sum(len(entries) for _, _, entries in groups),
+            "groups": len(groups),
+        }
 
     generated = {
-        "file": str(REFERENCE.relative_to(SKILL_ROOT / "oracle-x-api")),
-        "lines": len(REFERENCE.read_text().splitlines()),
-        "endpoints": sum(len(entries) for _, _, entries in ENDPOINT_GROUPS),
-        "groups": len(ENDPOINT_GROUPS),
+        "oracle-x-api": _generated(
+            "oracle-x-api",
+            [g for g in ENDPOINT_GROUPS if g[0] not in BIST_GROUP_TITLES],
+        ),
+        "oracle-x-bist": _generated(
+            "oracle-x-bist",
+            [g for g in ENDPOINT_GROUPS if g[0] in BIST_GROUP_TITLES],
+        ),
     }
 
     skills: list[dict[str, Any]] = []
-    for name in ("oracle-x-api", "oracle-x-dev"):
+    for name in ("oracle-x-api", "oracle-x-bist", "oracle-x-dev"):
         root = SKILL_ROOT / name
         skills.append(
             {
@@ -246,9 +263,9 @@ def read_skills() -> list[dict[str, Any]]:
                 "examples": len(list((root / "examples").glob("*.py")))
                 if (root / "examples").is_dir()
                 else 0,
-                # Only the API skill has a generated half; the dev skill is
-                # judgement all the way down and there is nothing to derive.
-                "generated": generated if name == "oracle-x-api" else None,
+                # The two market skills have a generated half; the dev skill
+                # is judgement all the way down and there is nothing to derive.
+                "generated": generated.get(name),
             }
         )
     return skills
