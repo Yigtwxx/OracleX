@@ -1,0 +1,1250 @@
+{
+  "version": 1,
+  "_comment": "Holders tracked on the BIST ownership board. Hand-maintained. `aliases` are the spellings İş Yatırım's company card prints for this holder — copy them verbatim, including title-cased foreign names with dotless ı and rows clipped at fifty characters. A `shareholders` source fills the entity from every XU100 card whose row matches an alias; a `kap_fund` source fills it from the fund's own monthly KAP portfolio report. Rows that match no alias stay on the company page as untracked holders and never become a card.",
+  "entities": [
+    {
+      "id": "tvf",
+      "name": "Türkiye Varlık Fonu",
+      "subtitle": "TVF",
+      "category": "state",
+      "order": 10,
+      "coverage_note": "Doğrudan pay sahipliği ile TVF Bilgi Teknolojileri ve TVF Finansal Yatırımlar üzerinden tutulan paylar. Hazine'nin ayrı tuttuğu paylar Hazine kartındadır.",
+      "aliases": [
+        "Türkiye Varlık Fonu",
+        "Türkiye Varlık Fonu Yönetimi A.Ş.",
+        "Tvf Bilgi Teknolojileri Iletişim Hizmetleri Yatırı",
+        "TVF Bilgi Teknolojileri İletişim Hizmetleri Yatırım Sanayi ve Ticaret A.Ş.",
+        "Tvf Finansal Yatırımlar Anonim Şirketi",
+        "TVF Finansal Yatırımlar A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "hazine",
+      "name": "T.C. Hazine ve Maliye Bakanlığı",
+      "subtitle": "Hazine",
+      "category": "state",
+      "order": 20,
+      "coverage_note": "Hazine'nin doğrudan pay sahipliği. Varlık Fonu'na devredilen paylar TVF kartındadır.",
+      "aliases": [
+        "T.C. Hazine Ve Maliye Bakanlığı",
+        "T.C. Hazine ve Maliye Bakanlığı",
+        "Hazine Ve Maliye Bakanlığı",
+        "T.C. Başbakanlık Hazine Müsteşarlığı"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "toki",
+      "name": "Toplu Konut İdaresi",
+      "subtitle": "TOKİ",
+      "category": "state",
+      "order": 30,
+      "aliases": [
+        "T.C.Çevre Ve Şehircilik Bakanlığı Toplu Konut Idar",
+        "T.C. Çevre, Şehircilik ve İklim Değişikliği Bakanlığı Toplu Konut İdaresi Başkanlığı",
+        "Toplu Konut İdaresi Başkanlığı"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "tskgv",
+      "name": "Türk Silahlı Kuvvetlerini Güçlendirme Vakfı",
+      "subtitle": "TSKGV · Vakıf",
+      "category": "state",
+      "order": 40,
+      "aliases": [
+        "Türk Silahlı Kuvvetlerini Güçlendirme Vakfı",
+        "TSKGV"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "tarim-kredi",
+      "name": "Tarım Kredi Kooperatifleri",
+      "subtitle": "Merkez Birliği · GUBRF",
+      "category": "state",
+      "order": 50,
+      "aliases": [
+        "Tarım Kredi Koop. Merkez Birliği Genel Müdürlüğü",
+        "Türkiye Tarım Kredi Kooperatifleri Merkez Birliği"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "koc-holding",
+      "name": "Koç Holding",
+      "subtitle": "KCHOL",
+      "category": "holding",
+      "order": 100,
+      "coverage_note": "Koç Holding'in doğrudan pay sahipliği. Koç Finansal Hizmetler ve Enerji Yatırımları üzerinden tutulan paylar kendi kartlarındadır; toplanmamıştır.",
+      "aliases": [
+        "Koç Holding Anonim Şirketi",
+        "Koç Holding A.Ş.",
+        "Koç Holding Aş"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "koc-ailesi",
+      "name": "Koç Ailesi (Family Danışmanlık)",
+      "subtitle": "Aile şirketi · KCHOL",
+      "category": "holding",
+      "order": 105,
+      "coverage_note": "Koç ailesinin Koç Holding'i tuttuğu aile şirketi. Koç Holding'in kendi iştirakleri ayrı karttadır.",
+      "aliases": [
+        "Family Danışmanlık Gayrimenkul Ve Ticaret Anonim Ş",
+        "Family Danışmanlık Gayrimenkul ve Ticaret A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "teknosan",
+      "name": "Teknosan",
+      "subtitle": "Koç ailesi · ARCLK",
+      "category": "holding",
+      "order": 106,
+      "aliases": [
+        "Teknosan Büro Makine Ve Levazımı Ticaret Ve Sanayi",
+        "Teknosan Büro Makine ve Levazımı Ticaret ve Sanayi A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "burla",
+      "name": "Burla Ticaret ve Yatırım",
+      "subtitle": "Koç ailesi · ARCLK",
+      "category": "holding",
+      "order": 107,
+      "aliases": [
+        "Burla Ticaret Ve Yatırım Anonim Şirketi",
+        "Burla Ticaret ve Yatırım A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "koc-finansal",
+      "name": "Koç Finansal Hizmetler",
+      "subtitle": "Koç Holding iştiraki · YKBNK",
+      "category": "holding",
+      "order": 110,
+      "aliases": [
+        "Koç Finansal Hizmetler Aş",
+        "Koç Finansal Hizmetler A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "enerji-yatirimlari",
+      "name": "Enerji Yatırımları",
+      "subtitle": "Koç Holding liderliğindeki ortak girişim · TUPRS",
+      "category": "holding",
+      "order": 120,
+      "aliases": [
+        "Enerji Yatırımları Aş",
+        "Enerji Yatırımları A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "sabanci-holding",
+      "name": "Sabancı Holding",
+      "subtitle": "SAHOL",
+      "category": "holding",
+      "order": 130,
+      "aliases": [
+        "Hacı Ömer Sabancı Holding Anonim Şirketi",
+        "Hacı Ömer Sabancı Holding A.Ş.",
+        "H.Ö. Sabancı Holding A.Ş.",
+        "Sabancı Holding"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "sakip-sabanci-holding",
+      "name": "Sakıp Sabancı Holding",
+      "subtitle": "Aile holdingi · SAHOL",
+      "category": "holding",
+      "order": 140,
+      "aliases": [
+        "Sakıp Sabancı Holding Anonim Şirketi",
+        "Sakıp Sabancı Holding A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "is-bankasi",
+      "name": "Türkiye İş Bankası",
+      "subtitle": "ISCTR",
+      "category": "holding",
+      "order": 150,
+      "coverage_note": "Bankanın doğrudan iştirak payları. Mensupları Munzam Vakfı'nın banka üzerindeki payı ayrı karttadır.",
+      "aliases": [
+        "Türkiye Iş Bankası A.Ş.",
+        "Türkiye İş Bankası A.Ş.",
+        "T. İş Bankası A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "oyak",
+      "name": "OYAK",
+      "subtitle": "Ordu Yardımlaşma Kurumu",
+      "category": "holding",
+      "order": 160,
+      "coverage_note": "OYAK'ın doğrudan payları ve tamamına sahip olduğu Ataer Holding üzerinden tuttuğu Ereğli payı. TCC OYAK Amsterdam bir ortak girişimdir ve ayrı karttadır.",
+      "aliases": [
+        "Ordu Yardımlaşma Kurumu Oyak Genel Müdürlüğü",
+        "Ordu Yardımlaşma Kurumu",
+        "Oyak",
+        "Ataer Holding A.Ş.",
+        "Ataer Holding Anonim Şirketi"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "anadolu-grubu",
+      "name": "Anadolu Grubu",
+      "subtitle": "AGHOL · MGROS",
+      "category": "holding",
+      "order": 170,
+      "aliases": [
+        "Ag Anadolu Grubu Holding Anonim Şirketi",
+        "AG Anadolu Grubu Holding A.Ş.",
+        "Anadolu Endüstri Holding A.Ş.",
+        "Mh Perakendecilik Veticaret Anonim Şirketi",
+        "MH Perakendecilik ve Ticaret A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      },
+      "coverage_note": "Doğrudan paylar ve tamamına sahip olduğu MH Perakendecilik üzerinden tutulan Migros payı. Anadolu Efes'in kendi iştirakleri Anadolu Efes kartındadır."
+    },
+    {
+      "id": "anadolu-efes",
+      "name": "Anadolu Efes",
+      "subtitle": "AEFES · CCOLA",
+      "category": "holding",
+      "order": 175,
+      "coverage_note": "Anadolu Efes'in doğrudan ve Efes Pazarlama üzerinden tuttuğu Coca-Cola İçecek payı.",
+      "aliases": [
+        "Anadolu Efes Biracılık Ve Malt San Aş",
+        "Anadolu Efes Biracılık ve Malt Sanayii A.Ş.",
+        "Efes Pazarlama Ve Dağıtım Ticaret A.Ş.",
+        "Efes Pazarlama ve Dağıtım Ticaret A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "esas-holding",
+      "name": "Esas Holding",
+      "subtitle": "Sabancı ailesi · PGSUS",
+      "category": "holding",
+      "order": 180,
+      "aliases": [
+        "Esas Holding A.Ş.",
+        "Esas Holding Anonim Şirketi"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "milli-reasurans",
+      "name": "Milli Reasürans",
+      "subtitle": "İş Bankası grubu · ANSGR",
+      "category": "holding",
+      "order": 185,
+      "aliases": [
+        "Milli Reasürans Türk Anonim Şirketi",
+        "Milli Reasürans T.A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "tara-holding",
+      "name": "Tara Holding",
+      "subtitle": "ENKAI",
+      "category": "holding",
+      "order": 190,
+      "aliases": [
+        "Tara Holding Anonim Şirketi",
+        "Tara Holding A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "vakifbank",
+      "name": "VakıfBank",
+      "subtitle": "VAKBN · TSKB",
+      "category": "holding",
+      "order": 195,
+      "aliases": [
+        "Türkiye Vakıflar Bankası T.A.O.",
+        "Türkiye Vakıflar Bankası Türk Anonim Ortaklığı"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "erdemoglu-holding",
+      "name": "Erdemoğlu Holding",
+      "subtitle": "SASA",
+      "category": "holding",
+      "order": 200,
+      "aliases": [
+        "Erdemoğlu Holding A.Ş.",
+        "Erdemoğlu Holding Anonim Şirketi"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "borusan-holding",
+      "name": "Borusan Holding",
+      "subtitle": "BRSAN · BRYAT",
+      "category": "holding",
+      "order": 210,
+      "aliases": [
+        "Borusan Holding Anonim Şirketi",
+        "Borusan Holding A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "dogus-holding",
+      "name": "Doğuş Holding",
+      "subtitle": "DOAS",
+      "category": "holding",
+      "order": 220,
+      "aliases": [
+        "Doğuş Holding Anonim Şirketi",
+        "Doğuş Holding A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "zorlu-holding",
+      "name": "Zorlu Holding",
+      "subtitle": "VESTL · ZOREN",
+      "category": "holding",
+      "order": 230,
+      "aliases": [
+        "Zorlu Holding A.Ş.",
+        "Zorlu Holding Anonim Şirketi",
+        "Korteks Mensucat San Ve Tic Aş",
+        "Korteks Mensucat Sanayi ve Ticaret A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      },
+      "coverage_note": "Zorlu Holding'in doğrudan payları ve tamamına sahip olduğu Korteks üzerinden tutulan Zorlu Enerji payı."
+    },
+    {
+      "id": "eczacibasi-holding",
+      "name": "Eczacıbaşı Holding",
+      "subtitle": "ECILC",
+      "category": "holding",
+      "order": 240,
+      "aliases": [
+        "Eczacıbaşı Holding Anonim Şirketi",
+        "Eczacıbaşı Holding A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "eczacibasi-yatirim",
+      "name": "Eczacıbaşı Yatırım Holding",
+      "subtitle": "ECZYT · ECILC",
+      "category": "holding",
+      "order": 245,
+      "aliases": [
+        "Eczacıbaşı Yatırım Holding Ortaklığı Anonim Şirket",
+        "Eczacıbaşı Yatırım Holding Ortaklığı A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "akkok-holding",
+      "name": "Akkök Holding",
+      "subtitle": "AKSA",
+      "category": "holding",
+      "order": 250,
+      "aliases": [
+        "Akkök Holding A.Ş.",
+        "Akkök Holding Anonim Şirketi"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "kazanci-holding",
+      "name": "Kazancı Holding",
+      "subtitle": "AKSEN",
+      "category": "holding",
+      "order": 260,
+      "aliases": [
+        "Kazancı Holding Anonim Şirketi",
+        "Kazancı Holding A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "pasifik-holding",
+      "name": "Pasifik Holding",
+      "subtitle": "PATEK · PASEU · PSGYO",
+      "category": "holding",
+      "order": 270,
+      "aliases": [
+        "Pasifik Holding Anonim Şirketi",
+        "Pasifik Holding A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "turk-altin-holding",
+      "name": "Türk Altın Holding",
+      "subtitle": "TRALT · TRENJ",
+      "category": "holding",
+      "order": 280,
+      "aliases": [
+        "Türk Altın Holding Anonim Şirketi",
+        "Türk Altın Holding A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "baticim",
+      "name": "Batıçim",
+      "subtitle": "BTCIM · BSOKE",
+      "category": "holding",
+      "order": 290,
+      "aliases": [
+        "Batıçim Batı Anadolu Sanayi Ve Ticaret Anonim Şirk",
+        "Batıçim Batı Anadolu Çimento Sanayi A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "ciftay",
+      "name": "Çiftay Gayrimenkul",
+      "subtitle": "BTCIM",
+      "category": "holding",
+      "order": 291,
+      "aliases": [
+        "Çiftay Gayrimenkul Yatırımları Anonim Şirketi",
+        "Çiftay Gayrimenkul Yatırımları A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "destek-holding",
+      "name": "Destek Holding",
+      "subtitle": "DSTKF",
+      "category": "holding",
+      "order": 292,
+      "aliases": [
+        "Destek Holding A.Ş.",
+        "Destek Holding Anonim Şirketi"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "ahlatci",
+      "name": "Ahlatcı",
+      "subtitle": "ENERY",
+      "category": "holding",
+      "order": 293,
+      "aliases": [
+        "Ahlatcı Doğal Gaz Dağıtım Enerji Ve Yatırım Aş.",
+        "Ahlatcı Doğal Gaz Dağıtım Enerji ve Yatırım A.Ş.",
+        "Ahlatcı Holding A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "esenboga-elektrik",
+      "name": "Esenboğa Elektrik",
+      "subtitle": "ESEN · MAGEN",
+      "category": "holding",
+      "order": 294,
+      "aliases": [
+        "Esenboğa Elektrik Üretim Anonim Şirketi",
+        "Esenboğa Elektrik Üretim A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "naturel-enerji",
+      "name": "Naturel Yenilenebilir Enerji",
+      "subtitle": "NATEN · ESEN",
+      "category": "holding",
+      "order": 295,
+      "aliases": [
+        "Naturel Yenilenebilir Enerji Ticaret Anonim Şirket",
+        "Naturel Yenilenebilir Enerji Ticaret A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "izmir-demir-celik",
+      "name": "İzmir Demir Çelik",
+      "subtitle": "IZMDC · IZENR",
+      "category": "holding",
+      "order": 296,
+      "aliases": [
+        "Izmir Demir Çelik Sanayi Anonim Şirketi",
+        "İzmir Demir Çelik Sanayi A.Ş.",
+        "Idç Liman Işletmeleri A Ş"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "tr-dogal-enerji",
+      "name": "TR Doğal Enerji",
+      "subtitle": "TRMET",
+      "category": "holding",
+      "order": 297,
+      "aliases": [
+        "Tr Doğal Enerji Kaynakları Araştırma Ve Üretim Ano",
+        "TR Doğal Enerji Kaynakları Araştırma ve Üretim A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "tr-anadolu-insaat",
+      "name": "TR Anadolu İnşaat",
+      "subtitle": "TRALT",
+      "category": "holding",
+      "order": 298,
+      "aliases": [
+        "Tr Anadolu Inşaat Ve Ticaret Anonim Şirketi",
+        "TR Anadolu İnşaat ve Ticaret A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "girisim-elektrik",
+      "name": "Girişim Elektrik",
+      "subtitle": "GESAN · EUPWR",
+      "category": "holding",
+      "order": 299,
+      "aliases": [
+        "Girişim Elektrik Sanayi Taahhüt Ve Ticaret Anonim",
+        "Girişim Elektrik Sanayi Taahhüt ve Ticaret A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "bbva",
+      "name": "BBVA",
+      "subtitle": "Banco Bilbao Vizcaya Argentaria · GARAN",
+      "category": "foreign",
+      "order": 300,
+      "aliases": [
+        "Banco Bılbao Vızcaya Argentarıa",
+        "Banco Bilbao Vizcaya Argentaria S.A."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "gulermak",
+      "name": "Gülermak",
+      "subtitle": "GLRMK",
+      "category": "holding",
+      "order": 300,
+      "coverage_note": "Gülermak grubunun iki aile şirketi üzerinden tuttuğu paylar, toplanmıştır.",
+      "aliases": [
+        "Gülermak Emlak Yapı Inşaat Yatırım Anonim Şirketi",
+        "Gülermak Turizm Işletme Yatırım Anonim Şirketi",
+        "Gülermak Ağır Sanayi İnşaat ve Taahhüt A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "odas-elektrik",
+      "name": "Odaş Elektrik",
+      "subtitle": "ODAS · CANTE",
+      "category": "holding",
+      "order": 301,
+      "aliases": [
+        "Odaş Elektrik Üretim Sanayi Ticaret Anonim Şirketi",
+        "Odaş Elektrik Üretim Sanayi Ticaret A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "gozde-girisim",
+      "name": "Gözde Girişim Sermayesi",
+      "subtitle": "Yıldız Holding · GOZDE · SOKM",
+      "category": "holding",
+      "order": 302,
+      "aliases": [
+        "Gözde Girişim Sermayesi Yatırım Ortaklığı Anonim Ş",
+        "Gözde Girişim Sermayesi Yatırım Ortaklığı A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "alpinvest",
+      "name": "Alpinvest Yatırım",
+      "subtitle": "OBAMS",
+      "category": "holding",
+      "order": 303,
+      "aliases": [
+        "Alpinvest Yatırım Gıda Sanayi Ve Ticaret Anonim Şi",
+        "Alpinvest Yatırım Gıda Sanayi ve Ticaret A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "merkez-bereket",
+      "name": "Merkez Bereket Gıda",
+      "subtitle": "BİM kurucu ortağı · BIMAS",
+      "category": "holding",
+      "order": 304,
+      "aliases": [
+        "Merkez Bereket Gıda Sanayi Ve Ticaret Anonim Şirke",
+        "Merkez Bereket Gıda Sanayi ve Ticaret A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "naspak",
+      "name": "Naspak Gıda",
+      "subtitle": "BİM kurucu ortağı · BIMAS",
+      "category": "holding",
+      "order": 305,
+      "aliases": [
+        "Naspak Gıda Sanayi Ve Ticaret Anonim Şirketi",
+        "Naspak Gıda Sanayi ve Ticaret A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "libco",
+      "name": "Libco İnşaat",
+      "subtitle": "TKFEN",
+      "category": "holding",
+      "order": 306,
+      "aliases": [
+        "Libco Inşaat Sanayi Ve Ticaret Anonim Şirketi",
+        "Libco İnşaat Sanayi ve Ticaret A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "sancak-yatirim",
+      "name": "Sancak Yatırım",
+      "subtitle": "MPARK",
+      "category": "holding",
+      "order": 307,
+      "aliases": [
+        "Sancak Yatırım Iç Ve Dış Ticaret Anonim Şirketi",
+        "Sancak Yatırım İç ve Dış Ticaret A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "bg-holding",
+      "name": "BG Holding",
+      "subtitle": "BALSU",
+      "category": "holding",
+      "order": 308,
+      "aliases": [
+        "Bg Holding A.Ş.",
+        "BG Holding Anonim Şirketi"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "adra-holding",
+      "name": "Adra Holding",
+      "subtitle": "TUKAS",
+      "category": "holding",
+      "order": 309,
+      "aliases": [
+        "Adra Holding Anonim Şirketi",
+        "Adra Holding A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "ford",
+      "name": "Ford Motor Company",
+      "subtitle": "FROTO",
+      "category": "foreign",
+      "order": 310,
+      "aliases": [
+        "Ford Deutschland Engıneerıng Gmbh",
+        "Ford Deutschland Engineering GmbH",
+        "Ford Motor Company"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "unver-holding",
+      "name": "Ünver Holding",
+      "subtitle": "OTKAR",
+      "category": "holding",
+      "order": 310,
+      "aliases": [
+        "Ünver Holding Anonim Şirketi",
+        "Ünver Holding A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "pusula-finans",
+      "name": "Pusula Finans Holding",
+      "subtitle": "KTLEV",
+      "category": "holding",
+      "order": 311,
+      "aliases": [
+        "Pusula Finans Holding Anonim Şirketi",
+        "Pusula Finans Holding A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "q-yatirim",
+      "name": "Q Yatırım Holding",
+      "subtitle": "QUAGR",
+      "category": "holding",
+      "order": 312,
+      "aliases": [
+        "Q Yatırım Holding Anonim Şirketi",
+        "Q Yatırım Holding A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "efor-holding",
+      "name": "Efor Holding",
+      "subtitle": "EFOR",
+      "category": "holding",
+      "order": 313,
+      "aliases": [
+        "Efor Holding Anonim Şirketi",
+        "Efor Holding A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "stellantis",
+      "name": "Stellantis",
+      "subtitle": "TOASO",
+      "category": "foreign",
+      "order": 320,
+      "aliases": [
+        "Stellantis Europe Spa",
+        "Stellantis Europe S.p.A."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "groupe-adp",
+      "name": "Groupe ADP",
+      "subtitle": "Aéroports de Paris · TAVHL",
+      "category": "foreign",
+      "order": 330,
+      "aliases": [
+        "Aeroports De Parıs Sa",
+        "Aeroports De Paris SA"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "socar",
+      "name": "SOCAR",
+      "subtitle": "PETKM",
+      "category": "foreign",
+      "order": 340,
+      "aliases": [
+        "Socar Turkey Petrokimya A.Ş.",
+        "SOCAR Türkiye Petrokimya A.Ş."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "ab-inbev",
+      "name": "AB InBev",
+      "subtitle": "AEFES",
+      "category": "foreign",
+      "order": 350,
+      "aliases": [
+        "Ab Inbev Harmony Limited",
+        "AB InBev Harmony Ltd."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "pladis",
+      "name": "pladis",
+      "subtitle": "Yıldız Holding · ULKER",
+      "category": "foreign",
+      "order": 360,
+      "aliases": [
+        "Pladıs Foods Lımıted",
+        "Pladis Foods Limited"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "tcc-oyak",
+      "name": "TCC OYAK Amsterdam",
+      "subtitle": "Taiwan Cement · OYAK ortak girişimi · OYAKC",
+      "category": "foreign",
+      "order": 370,
+      "aliases": [
+        "Tcc Oyak Amsterdam Holdıngs B.V.",
+        "TCC OYAK Amsterdam Holdings B.V."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "letterone",
+      "name": "LetterOne",
+      "subtitle": "IMTIS Holdings · TCELL",
+      "category": "foreign",
+      "order": 380,
+      "aliases": [
+        "Imtıs Holdıngs S.A.R.L.",
+        "IMTIS Holdings S.à r.l."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "eon",
+      "name": "E.ON",
+      "subtitle": "ENJSA",
+      "category": "foreign",
+      "order": 390,
+      "aliases": [
+        "E.On Internatıonal Partıcıpatıons N.V.",
+        "E.ON International Participations N.V."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "coca-cola",
+      "name": "The Coca-Cola Company",
+      "subtitle": "Coca-Cola Export Corporation · CCOLA",
+      "category": "foreign",
+      "order": 400,
+      "aliases": [
+        "The Coca-Cola Export Corporatıon",
+        "The Coca-Cola Export Corporation"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "samruk-kazyna",
+      "name": "Samruk-Kazyna",
+      "subtitle": "Kazakistan varlık fonu · SKBNK",
+      "category": "foreign",
+      "order": 401,
+      "aliases": [
+        "Samruk-Kazyna Invest Llp",
+        "Samruk-Kazyna Invest LLP"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "wren-house",
+      "name": "Wren House Infrastructure",
+      "subtitle": "Kuveyt Yatırım Otoritesi · ZOREN",
+      "category": "foreign",
+      "order": 402,
+      "aliases": [
+        "Wren House Infrastructure Lp",
+        "Wren House Infrastructure LP"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "ebrd",
+      "name": "EBRD",
+      "subtitle": "Avrupa İmar ve Kalkınma Bankası · SOKM",
+      "category": "foreign",
+      "order": 403,
+      "aliases": [
+        "European Bank For Reconsrtructıon And Development",
+        "European Bank for Reconstruction and Development"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "turkish-retail-investments",
+      "name": "Turkish Retail Investments",
+      "subtitle": "SOKM",
+      "category": "foreign",
+      "order": 404,
+      "aliases": [
+        "Turkısh Retaıl Investments B.V.",
+        "Turkish Retail Investments B.V."
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "fund-ak3",
+      "name": "Ak Portföy Hisse Senedi Fonu",
+      "subtitle": "AK3",
+      "category": "fund",
+      "order": 500,
+      "sources": {
+        "kap_fund": {
+          "code": "AK3",
+          "fund_type": "YAT"
+        }
+      }
+    },
+    {
+      "id": "fund-ghs",
+      "name": "Garanti Portföy Hisse Senedi Fonu",
+      "subtitle": "GHS",
+      "category": "fund",
+      "order": 510,
+      "sources": {
+        "kap_fund": {
+          "code": "GHS",
+          "fund_type": "YAT"
+        }
+      }
+    },
+    {
+      "id": "fund-yhs",
+      "name": "Yapı Kredi Portföy Birinci Hisse Senedi Fonu",
+      "subtitle": "YHS",
+      "category": "fund",
+      "order": 520,
+      "sources": {
+        "kap_fund": {
+          "code": "YHS",
+          "fund_type": "YAT"
+        }
+      }
+    },
+    {
+      "id": "fund-tzd",
+      "name": "Ziraat Portföy Hisse Senedi Fonu",
+      "subtitle": "TZD",
+      "category": "fund",
+      "order": 530,
+      "sources": {
+        "kap_fund": {
+          "code": "TZD",
+          "fund_type": "YAT"
+        }
+      }
+    },
+    {
+      "id": "fund-hvs",
+      "name": "HSBC Portföy Hisse Senedi Fonu",
+      "subtitle": "HVS",
+      "category": "fund",
+      "order": 540,
+      "sources": {
+        "kap_fund": {
+          "code": "HVS",
+          "fund_type": "YAT"
+        }
+      }
+    },
+    {
+      "id": "fund-tyh",
+      "name": "TEB Portföy Hisse Senedi Fonu",
+      "subtitle": "TYH",
+      "category": "fund",
+      "order": 550,
+      "sources": {
+        "kap_fund": {
+          "code": "TYH",
+          "fund_type": "YAT"
+        }
+      }
+    },
+    {
+      "id": "fund-dah",
+      "name": "Deniz Portföy Hisse Senedi Fonu",
+      "subtitle": "DAH",
+      "category": "fund",
+      "order": 560,
+      "sources": {
+        "kap_fund": {
+          "code": "DAH",
+          "fund_type": "YAT"
+        }
+      }
+    },
+    {
+      "id": "fund-fyd",
+      "name": "QNB Portföy Birinci Hisse Senedi Fonu",
+      "subtitle": "FYD",
+      "category": "fund",
+      "order": 570,
+      "sources": {
+        "kap_fund": {
+          "code": "FYD",
+          "fund_type": "YAT"
+        }
+      }
+    },
+    {
+      "id": "fund-kot",
+      "name": "Azimut Portföy Koç Topluluğu Şirketleri Hisse Senedi Fonu",
+      "subtitle": "KOT",
+      "category": "fund",
+      "order": 580,
+      "sources": {
+        "kap_fund": {
+          "code": "KOT",
+          "fund_type": "YAT"
+        }
+      }
+    },
+    {
+      "id": "fund-ohb",
+      "name": "OYAK Portföy Birinci Hisse Senedi Fonu",
+      "subtitle": "OHB",
+      "category": "fund",
+      "order": 590,
+      "sources": {
+        "kap_fund": {
+          "code": "OHB",
+          "fund_type": "YAT"
+        }
+      }
+    },
+    {
+      "id": "chp",
+      "name": "Cumhuriyet Halk Partisi",
+      "subtitle": "Atatürk'ün vasiyeti · ISCTR",
+      "category": "other",
+      "order": 900,
+      "coverage_note": "Atatürk'ün vasiyetiyle partiye bırakılan İş Bankası payları. Kâr payı hakkı vasiyet gereği Türk Dil ve Türk Tarih Kurumlarınındır.",
+      "aliases": [
+        "Cumhuriyet Halk Partisi Genel Başkanlığı",
+        "Cumhuriyet Halk Partisi"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "is-bankasi-munzam-vakfi",
+      "name": "İş Bankası Mensupları Munzam Vakfı",
+      "subtitle": "ISCTR",
+      "category": "other",
+      "order": 910,
+      "aliases": [
+        "T.Iş Bankası A.Ş.Mens.Munz.Sos.Güv.Ve Yar.San.Vakf",
+        "Türkiye İş Bankası A.Ş. Mensupları Munzam Sosyal Güvenlik ve Yardımlaşma Sandığı Vakfı"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "vehbi-koc-vakfi",
+      "name": "Vehbi Koç Vakfı",
+      "subtitle": "KCHOL",
+      "category": "other",
+      "order": 920,
+      "aliases": [
+        "Vehbi Koç Vakfı"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "fenerbahce",
+      "name": "Fenerbahçe Spor Kulübü",
+      "subtitle": "FENER",
+      "category": "other",
+      "order": 930,
+      "aliases": [
+        "Fenerbahçe Spor Kulübü",
+        "Fenerbahçe Spor Kulübü Derneği"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "galatasaray",
+      "name": "Galatasaray Spor Kulübü",
+      "subtitle": "GSRAY",
+      "category": "other",
+      "order": 931,
+      "aliases": [
+        "Galatasaray Spor Kulübü Derneği",
+        "Galatasaray Spor Kulübü"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "sekerbank-vakiflari",
+      "name": "Şekerbank Personel Vakıfları",
+      "subtitle": "SKBNK",
+      "category": "other",
+      "order": 932,
+      "coverage_note": "Şekerbank'ın iki personel vakfının payları, toplanmıştır.",
+      "aliases": [
+        "Şekerbank Taş Pers Mun Sos Güv Yard San Vakfı",
+        "Şekerbank Türk Anonim.Şirket Pers.Sos.Sig.San.Vakf"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    },
+    {
+      "id": "enka-vakfi",
+      "name": "ENKA Vakfı",
+      "subtitle": "ENKAI",
+      "category": "other",
+      "order": 933,
+      "aliases": [
+        "Enka Spor Eğitim Vesosyal Yardım Vakfı",
+        "ENKA Spor Eğitim ve Sosyal Yardım Vakfı"
+      ],
+      "sources": {
+        "shareholders": {}
+      }
+    }
+  ]
+}
