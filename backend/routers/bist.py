@@ -19,7 +19,10 @@ Two conventions this surface holds to, both inherited from the rest of the API:
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response, status
+
+from services import analysis_jobs
+from services.analysis_jobs import KIND_RADAR
 
 from services.bist import fund_allocation, holdings_service
 from services.bist.brief_note import note_for_fund, note_for_stock
@@ -83,6 +86,7 @@ from services.bist.heatmap_service import (
     HeatmapTile,
     build_heatmap,
 )
+from services.bist.macro_note import build_macro_facts, macro_note
 from services.bist.positioning_note import build_positioning_facts, positioning_note
 from services.bist.positioning_service import (
     PositioningRow,
@@ -90,6 +94,7 @@ from services.bist.positioning_service import (
     futures_positioning,
 )
 from services.bist.real_return import enrich_returns, summarise_real_losses
+from services.bist.viop_map_note import build_viop_map_facts, viop_map_note
 from services.bist.viop_note import build_viop_facts, viop_note
 from services.bist.viop_service import ViopContract, ViopUnavailable, fetch_viop_board, summarise
 from services.bist.viop_bulletin import BulletinUnavailable, get_history as get_bulletin_history
@@ -97,6 +102,8 @@ from services.bist.takasbank_psr import PSR_SOURCE_HOST, PsrUnavailable, fetch_p
 from services.bist.viop_margin_map import MIN_OPEN_INTEREST_CONTRACTS, build_margin_map
 from services.bist.spot_volume_profile import fetch_profile
 from services.bist.tefas_client import FUND_TYPES, FundRow
+from services.bist.radar import scan as radar_scan
+from services.bist.radar.profiles import PROFILES as RADAR_PROFILES
 
 router = APIRouter(prefix="/api/bist", tags=["bist"])
 
@@ -818,6 +825,8 @@ async def get_overview():
                         "label": component.label,
                         "score": round(component.score, 1),
                         "reading": component.reading,
+                        "horizon": component.horizon,
+                        "weight": round(component.weight, 4),
                     }
                     for component in sentiment.components
                 ],
@@ -912,6 +921,24 @@ async def get_macro(fx_range: str = Query("5y", description="Yahoo range for the
         "usdtry_series": fx,
         "deflators": deflators,
     }
+
+
+@router.get("/macro-note")
+async def get_macro_note():
+    """
+    What the backdrop as a whole says, narrated above the tiles that draw it.
+
+    Its own route rather than a field on `/macro`, for the reason every note
+    here is: the snapshot is cached for half an hour and the page refetches it
+    on demand, and a paragraph welded to the payload would either be recomputed
+    on every refresh or hold the tiles back to the model's cadence.
+
+    `facts` is null when the policy rate or the inflation print could not be
+    read — the two figures every other reading hangs off. The client renders
+    that as an absent panel rather than as a quiet backdrop.
+    """
+    facts = await build_macro_facts()
+    return {"facts": facts, "note": await macro_note(facts)}
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -1327,6 +1354,28 @@ async def get_viop_map(
     }
 
 
+@router.get("/viop-map/{ticker}/note")
+async def get_viop_map_note(
+    ticker: str,
+    sessions: int = Query(120, ge=30, le=160),
+):
+    """
+    Where this underlying's book stands against its scan range, narrated.
+
+    Scoped the way the map is — one underlying, one window — and fingerprinted
+    on both plus the newest session day, so a note about one name over one
+    window is never served for another. Split from `/viop-map/{ticker}` for
+    the reason every note here is: the field is polled at the equity cadence
+    and the paragraph is written once a session.
+
+    `facts` is null when the book is too thin to draw or one of its three
+    upstreams did not answer. Never a 404 or a 503: the page has already drawn
+    or declined the field on its own, and a note's absence is a paragraph.
+    """
+    facts = await build_viop_map_facts(ticker, sessions)
+    return {"facts": facts, "note": await viop_map_note(facts)}
+
+
 # ══════════════════════════════════════════════════════════════════════════
 # Calendar
 # ══════════════════════════════════════════════════════════════════════════
@@ -1486,3 +1535,72 @@ async def get_night_shift():
     `status: "unavailable"` instead, which the badge renders as its own state.
     """
     return await fetch_night_shift_index()
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Radar
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def _radar_horizon(horizon: str) -> str:
+    if horizon not in RADAR_PROFILES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown horizon '{horizon}'. One of: {', '.join(RADAR_PROFILES)}",
+        )
+    return horizon
+
+
+@router.post("/radar/scan", status_code=status.HTTP_202_ACCEPTED)
+async def start_radar_scan(response: Response, horizon: str = Query("swing")):
+    """
+    Scan the XU100 for pullbacks inside uptrends, in the background.
+
+    Returns the job to poll. A scan already running for this horizon is joined
+    rather than duplicated; a scan that just finished is returned with a 200 so
+    the client can read its result straight away.
+    """
+    job = await radar_scan.start_scan(_radar_horizon(horizon))
+    if not job.is_active:
+        response.status_code = status.HTTP_200_OK
+    return job.to_dict()
+
+
+@router.get("/radar/jobs/{job_id}")
+async def get_radar_job(job_id: str):
+    """Poll a scan for its stage, its progress and — once done — its result."""
+    job = await analysis_jobs.get_job(job_id)
+    if job is None or job.kind != KIND_RADAR:
+        raise HTTPException(status_code=404, detail="Job not found or expired")
+    return job.to_dict()
+
+
+@router.get("/radar")
+async def get_radar(horizon: str = Query("swing")):
+    """
+    The last finished scan for a horizon.
+
+    404 rather than an empty board when none has ever run: the page then shows
+    the button and says so, instead of a result that reads as "nothing passed".
+    """
+    result = radar_scan.last_result(_radar_horizon(horizon))
+    if result is None:
+        raise HTTPException(status_code=404, detail="No scan has run for this horizon yet")
+    return result
+
+
+@router.delete("/radar/jobs/{job_id}")
+async def cancel_radar_scan(job_id: str):
+    """
+    Stop a running scan.
+
+    A scan started on the wrong horizon, or by a stray click, should not have to
+    run its minute out. The settled job is returned so the button that asked
+    sees the outcome without another poll; the last persisted result is left
+    untouched, since a cancelled scan wrote nothing.
+    """
+    job = await analysis_jobs.get_job(job_id)
+    if job is None or job.kind != KIND_RADAR:
+        raise HTTPException(status_code=404, detail="Job not found or expired")
+    settled = await analysis_jobs.cancel_job(job_id)
+    return (settled or job).to_dict()
