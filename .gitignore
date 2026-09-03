@@ -93,6 +93,9 @@ backend/data/crypto_symbol_map.json
 backend/data/kap_tape.json
 backend/data/viop_bulletin.json
 backend/data/takasbank_psr.json
+backend/data/bist_fundamentals/
+backend/data/bist_voices/
+backend/data/bist_radar_last_*.json
 backend/data/registry/coin_metrics.json
 backend/data/registry/coin_sectors.json
 backend/data/registry/crypto_universe.json
@@ -101,6 +104,8 @@ backend/data/registry/listed_bases.json
 backend/data/registry/okx_swaps.json
 backend/data/registry/ownership_board.json
 backend/data/registry/ownership_snapshots.json
+backend/data/registry/bist_ownership_board.json
+backend/data/registry/bist_ownership_snapshots.json
 backend/data/registry/spot_pairs.json
 backend/data/registry/stock_quotes.json
 backend/data/registry/stock_universe.json
