@@ -134,7 +134,7 @@ CATEGORIES: tuple[Category, ...] = (
         "bist",
         "BIST & TEFAS",
         False,
-        ("TEFAS", "KAP", "Borsa İstanbul", "Takasbank", "TCMB"),
+        ("TEFAS", "KAP", "Borsa İstanbul", "Takasbank", "İş Yatırım", "TCMB", "YouTube"),
     ),
 )
 
@@ -188,6 +188,10 @@ _HOST_MAP: dict[str, str] = {
     # The central bank's statistical service — policy rate, CPI, USDTRY. The
     # specific host rather than tcmb.gov.tr, which also serves the public site.
     "evds3.tcmb.gov.tr": "bist",
+    # The Radar's commentator check reads channel RSS feeds from YouTube. The
+    # transcripts come through a library with its own HTTP stack and are not
+    # observed; the feed request is the canary for the whole step.
+    "youtube.com": "bist",
     # On-chain
     "mempool.space": "onchain",
     "llamarpc.com": "onchain",
