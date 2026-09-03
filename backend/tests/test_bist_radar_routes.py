@@ -10,9 +10,10 @@ page shows the button rather than a result that reads as "nothing passed".
 import asyncio
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from main import app
+from routers import bist as bist_router
 from services import analysis_jobs
 from services.bist.radar import scan as radar_scan
 
@@ -28,6 +29,17 @@ def _clean_jobs():
 
 @pytest.fixture
 def client() -> TestClient:
+    """A bare app with just this router.
+
+    Three of these tests need `with client:` — a scan is a background task, so
+    the event loop has to survive between the request that starts it and the
+    one that polls it. Entering the real app that way would run its whole
+    lifespan, which fails fast on missing Supabase credentials and then warms
+    up a model chain and a websocket feed. None of that is what these tests
+    pin, and all of it is absent on a CI runner.
+    """
+    app = FastAPI()
+    app.include_router(bist_router.router)
     return TestClient(app)
 
 
