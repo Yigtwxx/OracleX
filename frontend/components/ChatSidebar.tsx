@@ -81,7 +81,7 @@ export default function ChatSidebar({
         </div>
 
         {/* Session List */}
-        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3 space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-3 space-y-4">
           {Object.entries(groupedSessions).map(
             ([group, groupSessions]) =>
               groupSessions.length > 0 && (

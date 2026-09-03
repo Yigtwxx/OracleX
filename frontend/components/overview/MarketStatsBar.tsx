@@ -122,6 +122,23 @@ export default function MarketStatsBar({
                     <DominanceBar percent={marketData.eth_dominance} color="var(--data-eth)" />
                   )}
                 </Stat>
+
+                <Divider />
+                <Stat label="USDT Dom">
+                  {/* Stablecoin share, on the same scale as the two beside it.
+                      The one dominance reading here that is about intent rather
+                      than about a coin: it rises when capital steps out of risk
+                      without leaving the asset class, which is why it earns a
+                      place next to BTC and ETH rather than a footnote. */}
+                  <span className="text-base font-mono tabnum text-fg">
+                    {marketData?.usdt_dominance != null
+                      ? `${marketData.usdt_dominance.toFixed(1)}%`
+                      : '--'}
+                  </span>
+                  {marketData?.usdt_dominance != null && (
+                    <DominanceBar percent={marketData.usdt_dominance} color="var(--data-usdt)" />
+                  )}
+                </Stat>
               </>
             )}
 

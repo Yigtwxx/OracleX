@@ -5,16 +5,34 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { aiNotePollInterval } from '@/lib/ai-note';
 import { useOptionalAuth } from '@/contexts/AuthContext';
 import {
-  fetchOnChainData,
+  fetchAssetBrief,
   fetchFundingRates,
   fetchLiquidations,
+  fetchLiquidationLines,
+  fetchLiquidationProfile,
+  type LiquidationExchange,
+  type LiquidationVenue,
   fetchLiquidationMap,
+  fetchOpenInterest,
+  fetchDexPerps,
   fetchHeatmapData,
   fetchMacroCalendar,
   fetchMacroBoard,
+  fetchElections,
   fetchMacroRegime,
   fetchNehIndex,
   fetchPizzaIndex,
+  fetchPolymarketAnalysisJob,
+  fetchPolymarketOriginJob,
+  fetchPolymarketBoard,
+  fetchPolymarketMap,
+  fetchPolymarketMarket,
+  startPolymarketAnalysis,
+  startPolymarketOrigin,
+  type PolymarketAnalysisJob,
+  type PolymarketOriginJob,
+  type PolymarketOriginReport,
+  type PolymarketVerdict,
   fetchLiveEvents,
   fetchLiveStreams,
   fetchLiveStreamers,
@@ -58,17 +76,26 @@ import {
 // Query Keys — centralized for consistency
 // ==========================================
 export const queryKeys = {
-  onChainData: ['onChainData'] as const,
+  assetBrief: (symbol: string) => ['assetBrief', symbol] as const,
   fundingRates: ['fundingRates'] as const,
   liquidations: ['liquidations'] as const,
-  liquidationMap: (symbol: string, interval: string) =>
-    ['liquidationMap', symbol, interval] as const,
+  liquidationMap: (symbol: string, interval: string, venue: string) =>
+    ['liquidationMap', symbol, interval, venue] as const,
+  // Keyed by columns as well: the levels view picks its window by trading
+  // interval against column count, so two ranges can share an interval.
+  liquidationLines: (symbol: string, interval: string, columns: number, venue: string) =>
+    ['liquidationLines', symbol, interval, columns, venue] as const,
+  liquidationProfile: (symbol: string, interval: string, columns: number, venue: string) =>
+    ['liquidationProfile', symbol, interval, columns, venue] as const,
+  openInterest: (symbol: string, interval: string) => ['openInterest', symbol, interval] as const,
+  dexPerps: () => ['dexPerps'] as const,
   heatmap: (limit: number, includePegged: boolean) => ['heatmap', limit, includePegged] as const,
   macroCalendar: ['macroCalendar'] as const,
   macroBoard: ['macroBoard'] as const,
   // Named `macroRegime`, not `regimeNote`: `notes` below already means the notes
   // a user writes on a report, and the two must not read as the same thing.
   macroRegime: ['macroRegime'] as const,
+  elections: ['elections'] as const,
   pizzaIndex: ['pizzaIndex'] as const,
   nehIndex: ['nehIndex'] as const,
   liveEvents: ['liveEvents'] as const,
@@ -78,6 +105,9 @@ export const queryKeys = {
   chainsBoard: ['chainsBoard'] as const,
   chainAnomalies: ['chainAnomalies'] as const,
   marketOverview: ['marketOverview'] as const,
+  // One symbol's price. Used only by the alarm engine — the board reads prices
+  // from the overview and the websocket feed instead.
+  symbolPrice: (symbol: string) => ['symbolPrice', symbol] as const,
   fearGreedIndex: ['fearGreedIndex'] as const,
   nasdaqOverview: ['nasdaqOverview'] as const,
   news: (assetType?: string) => ['news', assetType] as const,
@@ -137,6 +167,60 @@ export const queryKeys = {
   socialEligibility: ['socialEligibility'] as const,
   socialActivity: ['socialActivity'] as const,
   socialBlocks: ['socialBlocks'] as const,
+  // Polymarket. Keyed by slug for the reason the news panel is keyed by news
+  // id: a detail panel reads one key and never knows whether a fetch is in
+  // flight, so a late response for a deselected market is physically unable to
+  // render under the one now on screen.
+  polymarketBoard: ['polymarketBoard'] as const,
+  polymarketMarket: (slug: string) => ['polymarketMarket', slug] as const,
+  polymarketMap: ['polymarketMap'] as const,
+  polymarketAnalysis: (slug: string) => ['polymarketAnalysis', slug] as const,
+  polymarketAnalysisJob: (jobId: string) => ['polymarketAnalysisJob', jobId] as const,
+  polymarketOrigin: (slug: string) => ['polymarketOrigin', slug] as const,
+  polymarketOriginJob: (jobId: string) => ['polymarketOriginJob', jobId] as const,
+  // Borsa İstanbul. The hooks live in hooks/useBist.ts; the keys stay here for
+  // the reason the social and polymarket blocks above give — one list to read
+  // when invalidating across features.
+  //
+  // The screener keys carry their whole query object rather than a positional
+  // list of filters. There are six of them and they are optional, so a
+  // positional key would be six `?? null` slots that nobody could read at a
+  // glance and that would silently collide the day a seventh is added.
+  bistOverview: ['bistOverview'] as const,
+  bistMarketNote: ['bistMarketNote'] as const,
+  bistFundsMarketNote: (fundType: string) => ['bistFundsMarketNote', fundType] as const,
+  bistStocks: (query: Record<string, unknown>) => ['bistStocks', query] as const,
+  bistStock: (ticker: string, range: string) => ['bistStock', ticker, range] as const,
+  bistHeatmap: (index: string, limit: number) => ['bistHeatmap', index, limit] as const,
+  bistFunds: (query: Record<string, unknown>) => ['bistFunds', query] as const,
+  bistFund: (code: string, months: number) => ['bistFund', code, months] as const,
+  bistFundHoldings: (code: string) => ['bistFundHoldings', code] as const,
+  bistFundComparison: (codes: string[], months: number) =>
+    ['bistFundComparison', codes.join(','), months] as const,
+  bistMacro: (fxRange: string) => ['bistMacro', fxRange] as const,
+  bistMacroNote: ['bistMacroNote'] as const,
+  bistKap: (query: Record<string, unknown>) => ['bistKap', query] as const,
+  bistKapNote: (index: number) => ['bistKapNote', index] as const,
+  bistRestrictions: (limit: number) => ['bistRestrictions', limit] as const,
+  bistViop: (underlying?: string) => ['bistViop', underlying ?? null] as const,
+  bistViopMap: (ticker: string, sessions: number) => ['bistViopMap', ticker, sessions] as const,
+  bistViopMapNote: (ticker: string, sessions: number) =>
+    ['bistViopMapNote', ticker, sessions] as const,
+  bistViopUnderlyings: ['bistViopUnderlyings'] as const,
+  bistViopNote: ['bistViopNote'] as const,
+  bistCalendar: (daysAhead: number, daysBack: number) =>
+    ['bistCalendar', daysAhead, daysBack] as const,
+  bistPositioning: (limit: number) => ['bistPositioning', limit] as const,
+  bistPositioningNote: ['bistPositioningNote'] as const,
+  bistNightShift: ['bistNightShift'] as const,
+  bistOwnershipBoard: ['bistOwnershipBoard'] as const,
+  bistOwnershipEntity: (entityId: string) => ['bistOwnershipEntity', entityId] as const,
+  bistOwnershipMoves: (limit: number, ticker?: string) =>
+    ['bistOwnershipMoves', limit, ticker ?? null] as const,
+  bistAssetOwners: (ticker: string) => ['bistAssetOwners', ticker] as const,
+  bistOwnershipNote: ['bistOwnershipNote'] as const,
+  bistRadar: (horizon: string) => ['bistRadar', horizon] as const,
+  bistRadarJob: (jobId: string) => ['bistRadarJob', jobId] as const,
   userSettings: ['userSettings'] as const,
 };
 
@@ -144,12 +228,23 @@ export const queryKeys = {
 // HOME PAGE HOOKS
 // ==========================================
 
-export function useOnChainData() {
+/**
+ * One symbol's daily read.
+ *
+ * Per symbol rather than one call for all three slots: swapping one asset then
+ * costs one request instead of three, and a symbol the backend cannot resolve
+ * fails inside its own card rather than emptying the strip. `retry: false`
+ * because the failure this hook actually sees is a 404 for an unknown ticker,
+ * and retrying that three times only delays the message.
+ */
+export function useAssetBrief(symbol: string | null) {
   return useQuery({
-    queryKey: queryKeys.onChainData,
-    queryFn: fetchOnChainData,
-    staleTime: 30 * 1000, // 30s
-    refetchInterval: 60 * 1000, // 60s auto-refresh
+    queryKey: queryKeys.assetBrief(symbol ?? ''),
+    queryFn: () => fetchAssetBrief(symbol as string),
+    enabled: !!symbol,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+    retry: false,
   });
 }
 
@@ -177,10 +272,96 @@ export function useLiquidations() {
  * The backend replays the whole window on a cache miss, so this is polled
  * gently — a new candle only lands once per interval anyway.
  */
-export function useLiquidationMap(symbol: string, interval: string) {
+/**
+ * Open interest per exchange against price.
+ *
+ * Same cadence as the liquidation views because it is backed by the same
+ * upstreams and the same 120s server cache — polling harder would spend the
+ * Coinalyze budget without changing a bar. `placeholderData` keeps the board
+ * drawn while the user switches symbol or interval; a chart that blanks on
+ * every toolbar click reads as a failure. The component renders its own error
+ * state, so the global toast stays out of it.
+ */
+export function useOpenInterest(symbol: string, interval: string) {
   return useQuery({
-    queryKey: queryKeys.liquidationMap(symbol, interval),
-    queryFn: () => fetchLiquidationMap(symbol, interval),
+    queryKey: queryKeys.openInterest(symbol, interval),
+    queryFn: () => fetchOpenInterest(symbol, interval),
+    staleTime: 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
+    enabled: Boolean(symbol),
+    placeholderData: (previous) => previous,
+    meta: { silentError: true },
+  });
+}
+
+export function useDexPerps() {
+  return useQuery({
+    queryKey: queryKeys.dexPerps(),
+    queryFn: fetchDexPerps,
+    // The backend caches for 120s; polling faster only re-serves its cache.
+    staleTime: 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
+    placeholderData: (previous) => previous,
+    meta: { silentError: true },
+  });
+}
+
+export function useLiquidationMap(
+  symbol: string,
+  interval: string,
+  venue: LiquidationExchange = 'okx'
+) {
+  return useQuery({
+    queryKey: queryKeys.liquidationMap(symbol, interval, venue),
+    queryFn: () => fetchLiquidationMap(symbol, interval, undefined, venue),
+    staleTime: 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
+    enabled: Boolean(symbol),
+    // The venues answer with the same shape at slightly different depths, so
+    // holding the previous one keeps the chart up while the next arrives
+    // instead of blanking the page on every switch.
+    placeholderData: (previous) => previous,
+  });
+}
+
+/**
+ * The same model as `useLiquidationMap`, emitted as spans.
+ *
+ * Polled on the same gentle cadence and for the same reason. The leverage
+ * filter deliberately does not enter the key — the payload already carries
+ * every tier, so toggling a band is a client-side filter rather than a refetch.
+ */
+export function useLiquidationLines(
+  symbol: string,
+  interval: string,
+  columns: number,
+  venue: LiquidationExchange = 'okx'
+) {
+  return useQuery({
+    queryKey: queryKeys.liquidationLines(symbol, interval, columns, venue),
+    queryFn: () => fetchLiquidationLines(symbol, interval, columns, venue),
+    staleTime: 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
+    enabled: Boolean(symbol),
+    placeholderData: (previous) => previous,
+  });
+}
+
+/**
+ * The standing liquidation book as a price profile.
+ *
+ * Same cadence as its two siblings, and for the same reason: the model replays
+ * the whole window on a miss, and the answer moves at the speed of one candle.
+ */
+export function useLiquidationProfile(
+  symbol: string,
+  interval: string,
+  columns: number,
+  venue: LiquidationVenue
+) {
+  return useQuery({
+    queryKey: queryKeys.liquidationProfile(symbol, interval, columns, venue),
+    queryFn: () => fetchLiquidationProfile(symbol, interval, columns, venue),
     staleTime: 60 * 1000,
     refetchInterval: 2 * 60 * 1000,
     enabled: Boolean(symbol),
@@ -250,6 +431,24 @@ export function useMacroRegime() {
       const generating = aiNotePollInterval(query.state.data?.note);
       return generating === false ? MACRO_REFRESH_MS : generating;
     },
+  });
+}
+
+/**
+ * The elections board.
+ *
+ * Five minutes against a server that caches the odds for fifteen and rebuilds
+ * the calendar once a day by cron, so a tighter interval would only re-read the
+ * same board — and the odds fetch behind it is a multi-megabyte Gamma payload.
+ * Slower than the macro board beside it on purpose: an election calendar is not
+ * a tape, and nothing on it changes between two ticks of a price panel.
+ */
+export function useElections() {
+  return useQuery({
+    queryKey: queryKeys.elections,
+    queryFn: fetchElections,
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 10 * 60 * 1000,
   });
 }
 
@@ -865,5 +1064,172 @@ export function useWatchlistOverlap() {
     staleTime: OWNERSHIP_STALE_TIME,
     refetchOnWindowFocus: false,
     meta: { silentError: true },
+  });
+}
+
+// ===== POLYMARKET PAGE HOOKS =====
+
+/**
+ * The prediction-market board.
+ *
+ * Ten seconds, matching the chains board. Odds can move in a second, but the
+ * server caches for fifteen and a client polling faster than the server
+ * refreshes only spends requests re-reading the same payload.
+ */
+export function usePolymarketBoard() {
+  return useQuery({
+    queryKey: queryKeys.polymarketBoard,
+    queryFn: fetchPolymarketBoard,
+    staleTime: 10 * 1000,
+    refetchInterval: 10 * 1000,
+  });
+}
+
+/**
+ * One market's facts and microstructure. No model is consulted server-side.
+ *
+ * `enabled` on the slug, so nothing is fetched until a market is actually
+ * selected. Not silenced: this fires because the reader clicked something, and
+ * a failure they caused is one they should be told about.
+ */
+export function usePolymarketMarket(slug: string | null) {
+  return useQuery({
+    queryKey: queryKeys.polymarketMarket(slug ?? 'none'),
+    queryFn: () => fetchPolymarketMarket(slug as string),
+    enabled: Boolean(slug),
+    staleTime: 10 * 1000,
+  });
+}
+
+/**
+ * Kick off the bet analysis for one market.
+ *
+ * A run that ends in a refusal is a successful run: the pipeline declines when
+ * the evidence it gathered does not support a judgement. Nothing here treats
+ * that as an error.
+ */
+export function useStartPolymarketAnalysis() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (slug: string) => startPolymarketAnalysis(slug),
+    onSuccess: (job: PolymarketAnalysisJob) => {
+      queryClient.setQueryData(queryKeys.polymarketAnalysisJob(job.jobId), job);
+      // A finished job carries its verdict straight away — publishing it here
+      // saves the panel a poll interval of looking like it is still working.
+      if (job.result) {
+        queryClient.setQueryData(queryKeys.polymarketAnalysis(job.slug), job.result);
+      }
+    },
+  });
+}
+
+/**
+ * Poll a running analysis, publishing the verdict under the market's own key.
+ *
+ * The panel reads `polymarketAnalysis(slug)` and never learns whether a job is
+ * in flight. Because everything is keyed by slug, a verdict that arrives after
+ * the reader has closed one market and opened another is physically unable to
+ * render under the wrong question.
+ */
+export function usePolymarketAnalysisJob(jobId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: queryKeys.polymarketAnalysisJob(jobId ?? ''),
+    queryFn: async () => {
+      const job = await fetchPolymarketAnalysisJob(jobId!);
+      if (job.result) {
+        queryClient.setQueryData(queryKeys.polymarketAnalysis(job.slug), job.result);
+      }
+      return job;
+    },
+    enabled: !!jobId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === 'queued' || status === 'running' ? JOB_POLL_INTERVAL_MS : false;
+    },
+    // An expired job is gone for good server-side; retrying only delays the error.
+    retry: false,
+    gcTime: 0,
+  });
+}
+
+/** The verdict for a market, once a job has published one. */
+export function usePolymarketAnalysis(slug: string | null) {
+  return useQuery<PolymarketVerdict | null>({
+    queryKey: queryKeys.polymarketAnalysis(slug ?? ''),
+    queryFn: async () => null,
+    enabled: Boolean(slug),
+    staleTime: Infinity,
+  });
+}
+
+/**
+ * Kick off the "why was this bet opened" trace for one market.
+ *
+ * Started alongside the verdict by the same click, and deliberately not chained
+ * to it. This run is the shorter of the two — three searches and one model call
+ * against a sweep, two synthesis calls and an attribution pass — so making the
+ * reader wait for the verdict to publish it would hide an answer that was ready
+ * a minute earlier.
+ */
+export function useStartPolymarketOrigin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (slug: string) => startPolymarketOrigin(slug),
+    onSuccess: (job: PolymarketOriginJob) => {
+      queryClient.setQueryData(queryKeys.polymarketOriginJob(job.jobId), job);
+      if (job.result) {
+        queryClient.setQueryData(queryKeys.polymarketOrigin(job.slug), job.result);
+      }
+    },
+  });
+}
+
+/** Poll a running origin trace, publishing the report under the market's key. */
+export function usePolymarketOriginJob(jobId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: queryKeys.polymarketOriginJob(jobId ?? ''),
+    queryFn: async () => {
+      const job = await fetchPolymarketOriginJob(jobId!);
+      if (job.result) {
+        queryClient.setQueryData(queryKeys.polymarketOrigin(job.slug), job.result);
+      }
+      return job;
+    },
+    enabled: !!jobId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === 'queued' || status === 'running' ? JOB_POLL_INTERVAL_MS : false;
+    },
+    retry: false,
+    gcTime: 0,
+  });
+}
+
+/** The origin report for a market, once a job has published one. */
+export function usePolymarketOrigin(slug: string | null) {
+  return useQuery<PolymarketOriginReport | null>({
+    queryKey: queryKeys.polymarketOrigin(slug ?? ''),
+    queryFn: async () => null,
+    enabled: Boolean(slug),
+    staleTime: Infinity,
+  });
+}
+
+/**
+ * The map's three layers.
+ *
+ * Five minutes, matching the server. The jurisdiction list moves about once a
+ * year, the subject layer follows a board that refreshes on its own, and the
+ * activity histogram is a shape rather than a number — none of them is improved
+ * by a faster poll, and the trade tapes behind the third are the most expensive
+ * fetch on this surface.
+ */
+export function usePolymarketMap() {
+  return useQuery({
+    queryKey: queryKeys.polymarketMap,
+    queryFn: fetchPolymarketMap,
+    staleTime: 5 * 60 * 1000,
   });
 }

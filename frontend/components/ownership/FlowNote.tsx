@@ -53,6 +53,7 @@ export default function FlowNote({ data }: FlowNoteProps) {
   return (
     <Panel
       title="Institutional flow"
+      className="ai-surface"
       footnote={`${facts.quarter} — positions held on ${facts.period}, ${filed}. Values as filed.`}
     >
       <div className="p-4 flex flex-col gap-2.5">

@@ -32,7 +32,7 @@ export default function RegimeCard({ regime, isLoading }: RegimeCardProps) {
   const tone = regime.score > 0 ? 'text-up' : regime.score < 0 ? 'text-down' : 'text-fg-muted';
 
   return (
-    <div className="surface p-4 flex flex-col gap-2.5">
+    <div className="surface ai-surface p-4 flex flex-col gap-2.5">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
         <span className={`text-md font-semibold ${tone}`}>{regime.label}</span>
 

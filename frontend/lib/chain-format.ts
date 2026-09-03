@@ -232,3 +232,32 @@ export const CHAIN_TINT: Record<string, string> = {
   solana: '#14f195',
   tron: '#eb0029',
 };
+
+/**
+ * The Bitcoin mempool queue, as a phrase.
+ *
+ * The card's load bar already says how congested the chain is, and it says it
+ * the honest way: blocks whose median fee is actually competing, not raw size.
+ * This is the other half of that reading — how many transactions are sitting
+ * there and how deep the contested part goes — and it is the one on-chain
+ * figure the Home board used to carry that nothing on this page did.
+ *
+ * `null` for both inputs returns null rather than a dash, because only one
+ * chain on this board has a mempool at all: eight cards showing "—" would claim
+ * seven chains failed to report something they do not have.
+ */
+export function mempoolQueue(
+  txCount: number | null | undefined,
+  backlogBlocks: number | null | undefined
+): string | null {
+  if (typeof txCount !== 'number' && typeof backlogBlocks !== 'number') return null;
+
+  const parts: string[] = [];
+  if (typeof txCount === 'number') parts.push(`${formatCount(txCount)} queued`);
+  if (typeof backlogBlocks === 'number') {
+    // Zero contested blocks is a real and common reading — everything waiting
+    // is below the fee floor — and "0 blk deep" states it better than silence.
+    parts.push(`${backlogBlocks.toFixed(0)} blk deep`);
+  }
+  return parts.join(' · ');
+}

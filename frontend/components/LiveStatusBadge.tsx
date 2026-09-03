@@ -89,11 +89,11 @@ export default function LiveStatusBadge() {
           className="absolute right-0 top-full mt-1 w-72 py-1.5 bg-surface border border-line rounded-lg shadow-lg z-50"
         >
           <div className="px-3 pb-1.5 text-[11px] text-fg-subtle border-b border-line">
-            {unreachable ? 'API yanıt vermiyor — son bilinen durum' : 'Veri kaynakları'}
+            {unreachable ? 'API unreachable — last known state' : 'Data sources'}
           </div>
 
           {categories.length === 0 ? (
-            <div className="px-3 py-2 text-[11px] text-fg-subtle">Henüz veri yok.</div>
+            <div className="px-3 py-2 text-[11px] text-fg-subtle">No data yet.</div>
           ) : (
             categories.map((category) => (
               <div

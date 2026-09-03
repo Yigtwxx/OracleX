@@ -27,6 +27,9 @@ import {
 } from '@/lib/heatmap-scale';
 import { insetTile, squarify, type TreemapTile } from '@/lib/treemap';
 import { formatLargeNumber, formatPrice, formatVolume } from './overview-utils';
+import ToggleGroup from '@/components/ui/ToggleGroup';
+import StatusMessage from '@/components/ui/StatusMessage';
+import StaleStrip, { ENGLISH_LABELS } from '@/components/ui/StaleStrip';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Metrics
@@ -117,13 +120,6 @@ const UNCLASSIFIED_SECTOR = 'Unclassified';
 // ─────────────────────────────────────────────────────────────────────────────
 // Presentation helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-function relativeAge(seconds: number | undefined): string {
-  if (seconds === undefined) return 'a moment ago';
-  if (seconds < 90) return `${Math.round(seconds)}s ago`;
-  if (seconds < 5400) return `${Math.round(seconds / 60)} min ago`;
-  return `${Math.round(seconds / 3600)}h ago`;
-}
 
 function sectorLabel(coin: HeatmapCoin): string {
   return coin.sector ?? 'not classified yet';
@@ -426,41 +422,6 @@ function DetailPanel({ coin, timeframe }: { coin: HeatmapCoin | undefined; timef
 // Chrome
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ToggleGroup<T extends string>({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string;
-  options: { value: T; label: string; icon?: LucideIcon }[];
-  value: T;
-  onChange: (next: T) => void;
-}) {
-  return (
-    <div role="group" aria-label={label} className="flex gap-0.5">
-      {options.map((option) => {
-        const Icon = option.icon;
-        const active = option.value === value;
-        return (
-          <button
-            key={option.value}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onChange(option.value)}
-            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm transition-colors ${
-              active ? 'bg-surface-2 text-fg' : 'text-fg-muted hover:text-fg'
-            }`}
-          >
-            {Icon && <Icon className="h-3 w-3" aria-hidden="true" />}
-            <span>{option.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 /**
  * Rendered from the same array `bucketFor` walks.
  *
@@ -482,24 +443,6 @@ function Legend({ metric }: { metric: MetricType }) {
         <span className={`h-3 w-3 rounded ${UNKNOWN_BUCKET.className}`} aria-hidden="true" />
         <span className="text-fg-muted">{UNKNOWN_BUCKET.label}</span>
       </span>
-    </div>
-  );
-}
-
-function StatusMessage({
-  icon: Icon,
-  children,
-  action,
-}: {
-  icon: LucideIcon;
-  children: React.ReactNode;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-      <Icon className="h-4 w-4 text-fg-muted" aria-hidden="true" />
-      <p className="max-w-md text-sm text-fg-muted">{children}</p>
-      {action}
     </div>
   );
 }
@@ -700,22 +643,14 @@ export default function AdvancedHeatmap() {
 
       {/* Staleness / refresh failure — a badge, never a takeover */}
       {data && (data.stale || isError) && (
-        <div
-          role="status"
-          className="flex shrink-0 items-center gap-2 border-b border-line bg-warn-bg px-4 py-1 text-xs text-fg"
-        >
-          <AlertTriangle className="h-3 w-3 text-warn" aria-hidden="true" />
-          <span>
-            {isError ? "Couldn't refresh — showing data from " : 'Showing data from '}
-            {relativeAge(data.age_seconds)}.
-          </span>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="underline underline-offset-2 hover:text-fg"
-          >
-            Retry
-          </button>
+        <div className="shrink-0 border-b border-line px-4 py-1">
+          <StaleStrip
+            stale={data.stale}
+            refreshFailed={isError}
+            ageSeconds={data.age_seconds}
+            onRetry={() => refetch()}
+            labels={ENGLISH_LABELS}
+          />
         </div>
       )}
 

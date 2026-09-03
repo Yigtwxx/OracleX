@@ -46,7 +46,7 @@ export default function EntityRail({ entities, activeId, onSelect }: EntityRailP
         />
       </div>
 
-      <ul className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">
+      <ul className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
         {filtered.map((entity) => {
           const isActive = entity.id === activeId;
           return (

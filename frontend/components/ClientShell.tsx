@@ -6,13 +6,14 @@ import { queryClient } from '@/lib/queryClient';
 import BootGate from '@/components/BootGate';
 import Navigation from '@/components/Navigation';
 import GlobalTicker from '@/components/GlobalTicker';
-import PriceAlertModal from '@/components/PriceAlertModal';
+import AlarmCenter from '@/components/alarms/AlarmCenter';
 import ToastProvider from '@/components/ToastProvider';
-import { usePriceAlerts } from '@/hooks/usePriceAlerts';
+import { useAlarmEngine } from '@/hooks/useAlarmEngine';
 
 export default function ClientShell({ children }: { children: React.ReactNode }) {
-  // Initialize price alert monitoring globally
-  usePriceAlerts();
+  // One watcher for every alarm on every page — the dialog can be opened from
+  // the header wherever the user is.
+  useAlarmEngine();
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -37,8 +38,8 @@ export default function ClientShell({ children }: { children: React.ReactNode })
           {/* Page Content */}
           <main className="flex-1 min-h-0 overflow-hidden">{children}</main>
 
-          {/* Global Price Alert Modal */}
-          <PriceAlertModal />
+          {/* Global Alarm Centre */}
+          <AlarmCenter />
         </div>
       </BootGate>
 

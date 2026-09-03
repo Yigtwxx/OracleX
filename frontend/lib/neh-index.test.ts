@@ -6,6 +6,8 @@ import {
   formatIndex,
   formatProbability,
   hasReading,
+  markerShift,
+  trackFill,
 } from './neh-index';
 
 describe('bandPosition', () => {
@@ -39,6 +41,42 @@ describe('bandPosition', () => {
     // Null, not 0 — parking the marker at the left edge would render an outage
     // as a measured calm, which is the one reading this gauge must not invent.
     expect(bandPosition(null)).toBeNull();
+  });
+});
+
+describe('trackFill', () => {
+  it('stops the fill under the marker instead of a band past it', () => {
+    // The bug this replaced: a reading of 30 sits at the first point of
+    // "Something Might Happen", so the marker stands at a quarter of the track
+    // — but lighting the whole band it had just entered filled half of it.
+    const fill = trackFill(bandPosition(30));
+    expect(fill).toEqual({ band: 1, within: 0 });
+  });
+
+  it('fills the band it is partway through in proportion', () => {
+    expect(trackFill(37.5)).toEqual({ band: 1, within: 50 });
+    expect(trackFill(12.5)).toEqual({ band: 0, within: 50 });
+  });
+
+  it('keeps a full reading inside the last band rather than one past the end', () => {
+    expect(trackFill(100)).toEqual({ band: 3, within: 100 });
+  });
+
+  it('leaves the track unlit when there is no reading', () => {
+    expect(trackFill(null)).toEqual({ band: -1, within: 0 });
+  });
+});
+
+describe('markerShift', () => {
+  it('pins the marker inside the track at both ends', () => {
+    // Half a marker hanging past the rail reads as an overshoot, not as a
+    // reading of 0 or 100.
+    expect(markerShift(0)).toBe(0);
+    expect(markerShift(100)).toBe(-100);
+  });
+
+  it('centres the marker everywhere in between', () => {
+    expect(markerShift(50)).toBe(-50);
   });
 });
 

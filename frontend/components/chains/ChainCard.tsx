@@ -12,6 +12,7 @@ import {
   formatCount,
   formatDuration,
   formatUsd,
+  mempoolQueue,
 } from '@/lib/chain-format';
 
 interface ChainCardProps {
@@ -132,6 +133,7 @@ export default function ChainCard({ chain, now, isSelected, onSelect }: ChainCar
 
   const load = chain.load;
   const fee = chain.fee;
+  const queue = mempoolQueue(chain.mempool?.tx_count, chain.mempool?.backlog_blocks);
 
   if (chain.error) {
     return (
@@ -266,6 +268,19 @@ export default function ChainCard({ chain, now, isSelected, onSelect }: ChainCar
               <p className="text-2xs text-fg-subtle">No capacity ceiling to measure against</p>
             )}
           </div>
+
+          {/* The backlog, in transactions rather than as the percentage the bar
+              above already draws. Bitcoin only — it is the one chain here with a
+              mempool this board can read, and the one reading the Home page used
+              to carry that nothing on this page did. */}
+          {queue && (
+            <p
+              className="mt-1.5 text-2xs font-mono tabnum text-fg-subtle truncate"
+              title="Unconfirmed transactions waiting, and how many blocks deep the fee-contested part of that queue runs"
+            >
+              {queue}
+            </p>
+          )}
 
           <div className="mt-2 flex items-baseline justify-between gap-2 border-t border-line pt-1.5">
             <span className="text-2xs text-fg-subtle">

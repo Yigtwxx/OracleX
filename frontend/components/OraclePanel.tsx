@@ -207,7 +207,7 @@ export default function OraclePanel() {
         <h2 className="text-base font-semibold text-fg">Oracle</h2>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-3">
         {!selectedNews ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-6">
             <Brain className="w-6 h-6 text-fg-subtle mb-3" />

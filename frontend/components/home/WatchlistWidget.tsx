@@ -117,7 +117,7 @@ export default function WatchlistWidget() {
                 </button>
               </div>
 
-              <div className="divide-y divide-line overflow-y-auto custom-scrollbar max-h-[300px]">
+              <div className="divide-y divide-line overflow-y-auto overflow-x-hidden custom-scrollbar max-h-[300px]">
                 {list.items.map((item, idx) => {
                   // A missing quote is unknown, not zero. Defaulting to 0 here
                   // rendered unresolved symbols as "$0.00" with a green "+0.00%".

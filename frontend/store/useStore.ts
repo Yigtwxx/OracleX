@@ -1,5 +1,36 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import {
+  ALARM_HISTORY_LIMIT,
+  DEFAULT_COOLDOWN_MS,
+  type Alarm,
+  type AlarmSourceId,
+  type TriggerEvent,
+} from '@/lib/alarms/types';
+// `import type`: `lib/alarms/email` imports `lib/api`, which imports this file.
+// A value import would close that cycle at runtime; a type import is erased.
+import type { AlarmEmailIdentity } from '@/lib/alarms/email';
+
+/** What the builder hands `addAlarm`; the store owns the rest of the record. */
+export type NewAlarm = Omit<
+  Alarm,
+  'id' | 'createdAt' | 'lastTriggeredAt' | 'triggerCount' | 'seenKeys' | 'armed'
+>;
+
+/** Opening the modal already pointed at a source, e.g. from a chart. */
+export interface AlarmDraft {
+  sourceId: AlarmSourceId;
+  params: Record<string, string>;
+}
+
+function newAlarmId(): string {
+  // `crypto.randomUUID` is unavailable over plain HTTP on some hosts; the
+  // fallback only has to be unique within one browser's localStorage.
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `alarm_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
 
 export interface NewsItem {
   id: string;
@@ -123,18 +154,6 @@ export interface SentimentAnalysis {
   source?: string;
 }
 
-// Price Alert Types
-export interface PriceAlert {
-  id: string;
-  symbol: string;
-  displaySymbol: string;
-  targetPrice: number;
-  condition: 'above' | 'below';
-  isActive: boolean;
-  isTriggered: boolean;
-  createdAt: string;
-}
-
 interface OracleStore {
   // News state
   newsItems: NewsItem[];
@@ -159,9 +178,24 @@ interface OracleStore {
   // Current price from chart
   currentPrice: number | null;
 
-  // Price Alerts state
-  priceAlerts: PriceAlert[];
-  isAlertModalOpen: boolean;
+  // Alarm state. The alarms themselves and the log of what has fired are
+  // persisted; the modal's open/draft state deliberately is not.
+  alarms: Alarm[];
+  alarmHistory: TriggerEvent[];
+  isAlarmModalOpen: boolean;
+  /** Pre-selected source for a modal opened from somewhere with context. */
+  alarmDraft: AlarmDraft | undefined;
+  /**
+   * The confirmed mail address alarms are sent to, and the token proving it was
+   * confirmed. Persisted alongside the alarms, because it is the same kind of
+   * thing: a preference this browser holds, not an account property.
+   *
+   * `undefined` covers both "never set" and "removed". There is no separate
+   * enabled flag — an address that exists is an address that receives, and a
+   * user who wants to stop deletes it. A flag would add a state where mail is
+   * configured, silent, and looks broken.
+   */
+  alarmEmail: AlarmEmailIdentity | undefined;
 
   // Actions
   setNewsItems: (items: NewsItem[]) => void;
@@ -172,11 +206,67 @@ interface OracleStore {
   setCurrentPrice: (price: number) => void;
   clearSelection: () => void;
 
-  // Price Alert Actions
-  addAlert: (alert: Omit<PriceAlert, 'id' | 'isActive' | 'isTriggered' | 'createdAt'>) => void;
-  removeAlert: (id: string) => void;
-  triggerAlert: (id: string) => void;
-  toggleAlertModal: (open: boolean) => void;
+  // Alarm Actions
+  addAlarm: (alarm: NewAlarm) => void;
+  updateAlarm: (id: string, patch: Partial<Alarm>) => void;
+  removeAlarm: (id: string) => void;
+  toggleAlarmEnabled: (id: string) => void;
+  /** Applies the evaluator's patch and appends to the history in one write. */
+  recordAlarmTrigger: (id: string, patch: Partial<Alarm>, event: TriggerEvent) => void;
+  clearAlarmHistory: () => void;
+  openAlarmModal: (draft?: AlarmDraft) => void;
+  closeAlarmModal: () => void;
+  /** Pass `undefined` to stop mailing this browser's alarms. */
+  setAlarmEmail: (identity: AlarmEmailIdentity | undefined) => void;
+}
+
+/**
+ * v1 price alerts, as the general alarm model.
+ *
+ * A triggered one-shot alert arrives with `isActive: false`; it is carried over
+ * disabled rather than dropped, so a user who reopens the modal recognises what
+ * they had set rather than finding it empty.
+ */
+function migratePriceAlerts(raw: unknown): Alarm[] {
+  if (!Array.isArray(raw)) return [];
+
+  return raw.flatMap((entry): Alarm[] => {
+    if (!entry || typeof entry !== 'object') return [];
+    const legacy = entry as {
+      id?: unknown;
+      symbol?: unknown;
+      targetPrice?: unknown;
+      condition?: unknown;
+      isActive?: unknown;
+      isTriggered?: unknown;
+      createdAt?: unknown;
+    };
+
+    const symbol = typeof legacy.symbol === 'string' ? legacy.symbol : '';
+    const target = typeof legacy.targetPrice === 'number' ? legacy.targetPrice : Number.NaN;
+    const op = legacy.condition === 'below' ? 'below' : 'above';
+    // A row missing its symbol or price cannot be evaluated, and inventing a
+    // value for it would produce an alarm that fires on nothing.
+    if (!symbol || !Number.isFinite(target)) return [];
+
+    return [
+      {
+        id: typeof legacy.id === 'string' ? legacy.id : newAlarmId(),
+        sourceId: 'price',
+        params: { symbol },
+        condition: { kind: 'threshold', field: 'price', op, value: target },
+        repeat: 'once',
+        cooldownMs: DEFAULT_COOLDOWN_MS,
+        enabled: legacy.isActive === true && legacy.isTriggered !== true,
+        createdAt:
+          typeof legacy.createdAt === 'string' ? legacy.createdAt : new Date().toISOString(),
+        lastTriggeredAt: undefined,
+        triggerCount: legacy.isTriggered === true ? 1 : 0,
+        seenKeys: [],
+        armed: true,
+      },
+    ];
+  });
 }
 
 export const useStore = create<OracleStore>()(
@@ -190,8 +280,11 @@ export const useStore = create<OracleStore>()(
       recentSymbols: [],
       analysisJobIds: {},
       currentPrice: null,
-      priceAlerts: [],
-      isAlertModalOpen: false,
+      alarms: [],
+      alarmHistory: [],
+      isAlarmModalOpen: false,
+      alarmDraft: undefined,
+      alarmEmail: undefined,
 
       // Actions - setNewsItems with guaranteed sorted order
       setNewsItems: (items) => {
@@ -234,40 +327,65 @@ export const useStore = create<OracleStore>()(
 
       clearSelection: () => set({ selectedNews: null }),
 
-      // Price Alert Actions
-      addAlert: (alertData) => {
-        const newAlert: PriceAlert = {
-          ...alertData,
-          id: `alert_${Date.now()}`,
-          isActive: true,
-          isTriggered: false,
+      // Alarm Actions
+      addAlarm: (draft) => {
+        const alarm: Alarm = {
+          ...draft,
+          // randomUUID rather than a timestamp: two alarms created in the same
+          // millisecond used to share an id, and the second delete removed both.
+          id: newAlarmId(),
           createdAt: new Date().toISOString(),
+          lastTriggeredAt: undefined,
+          triggerCount: 0,
+          seenKeys: [],
+          armed: true,
         };
-        set((state) => ({
-          priceAlerts: [...state.priceAlerts, newAlert],
-        }));
+        set((state) => ({ alarms: [...state.alarms, alarm] }));
       },
 
-      removeAlert: (id) => {
+      updateAlarm: (id, patch) =>
         set((state) => ({
-          priceAlerts: state.priceAlerts.filter((a) => a.id !== id),
-        }));
-      },
+          alarms: state.alarms.map((alarm) => (alarm.id === id ? { ...alarm, ...patch } : alarm)),
+        })),
 
-      triggerAlert: (id) => {
+      removeAlarm: (id) =>
+        set((state) => ({ alarms: state.alarms.filter((alarm) => alarm.id !== id) })),
+
+      toggleAlarmEnabled: (id) =>
         set((state) => ({
-          priceAlerts: state.priceAlerts.map((a) =>
-            a.id === id ? { ...a, isTriggered: true, isActive: false } : a
+          alarms: state.alarms.map((alarm) =>
+            alarm.id === id
+              ? {
+                  // Re-enabling re-arms: an alarm switched back on is a fresh
+                  // intent, not a resumption of the latch it was left in.
+                  ...alarm,
+                  enabled: !alarm.enabled,
+                  armed: alarm.enabled ? alarm.armed : true,
+                }
+              : alarm
           ),
-        }));
-      },
+        })),
 
-      toggleAlertModal: (open) => set({ isAlertModalOpen: open }),
+      recordAlarmTrigger: (id, patch, event) =>
+        set((state) => ({
+          alarms: state.alarms.map((alarm) => (alarm.id === id ? { ...alarm, ...patch } : alarm)),
+          alarmHistory: [event, ...state.alarmHistory].slice(0, ALARM_HISTORY_LIMIT),
+        })),
+
+      clearAlarmHistory: () => set({ alarmHistory: [] }),
+
+      openAlarmModal: (draft) => set({ isAlarmModalOpen: true, alarmDraft: draft }),
+
+      closeAlarmModal: () => set({ isAlarmModalOpen: false, alarmDraft: undefined }),
+
+      setAlarmEmail: (identity) => set({ alarmEmail: identity }),
     }),
     {
       name: 'oracle-x-storage',
       partialize: (state) => ({
-        priceAlerts: state.priceAlerts,
+        alarms: state.alarms,
+        alarmHistory: state.alarmHistory,
+        alarmEmail: state.alarmEmail,
         chartSymbol: state.chartSymbol,
         recentSymbols: state.recentSymbols,
       }),
@@ -279,14 +397,27 @@ export const useStore = create<OracleStore>()(
       // TypeScript and confusing to whoever greps for it next.
       //
       // Envelopes written before this have no `version` field, which `persist`
-      // reads as 0, so the migration runs exactly once per browser.
-      version: 1,
+      // reads as 0, so each migration runs exactly once per browser.
+      //
+      // v2 replaces the price-only `priceAlerts` with the general `alarms`. It
+      // must delete the old key for the same shallow-merge reason as `settings`
+      // above, not merely stop writing it.
+      version: 2,
       migrate: (persisted, version) => {
-        if (version === 0 && persisted && typeof persisted === 'object') {
-          const { settings: _dropped, ...rest } = persisted as Record<string, unknown>;
-          return rest;
+        if (!persisted || typeof persisted !== 'object') return persisted;
+        let state = persisted as Record<string, unknown>;
+
+        if (version < 1) {
+          const { settings: _dropped, ...rest } = state;
+          state = rest;
         }
-        return persisted;
+
+        if (version < 2) {
+          const { priceAlerts, ...rest } = state;
+          state = { ...rest, alarms: migratePriceAlerts(priceAlerts) };
+        }
+
+        return state;
       },
     }
   )

@@ -22,6 +22,7 @@ import {
   ArrowDown,
   Link2,
 } from 'lucide-react';
+import AssetLogo from '@/components/ui/AssetLogo';
 import { fetchAssetDetail, AssetDetail } from '@/lib/api';
 import { formatVolume, formatPrice } from './overview-utils';
 
@@ -146,19 +147,17 @@ export default function AssetDetailModal({ symbol, marketType, onClose }: AssetD
 
       {/* Centered Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-[720px] max-h-[85vh] surface overflow-y-auto custom-scrollbar">
+        <div className="w-full max-w-[720px] max-h-[85vh] surface overflow-y-auto overflow-x-hidden custom-scrollbar">
           {/* Header */}
           <div className="sticky top-0 z-10 bg-surface border-b border-line px-5 py-3 rounded-t-lg">
             <div className="flex items-center justify-between">
               {data && !loading ? (
                 <div className="flex items-center gap-3">
-                  <img
-                    src={data.logo}
-                    alt={data.symbol}
+                  <AssetLogo
+                    symbol={data.symbol}
+                    providedLogo={data.logo}
+                    marketType={marketType}
                     className="w-10 h-10 rounded-full bg-surface-2 object-cover"
-                    onError={(e) => {
-                      e.currentTarget.src = `https://ui-avatars.com/api/?name=${data.symbol}&background=232328&color=e8e8ea&size=64&bold=true`;
-                    }}
                   />
                   <div>
                     <h2 className="text-md font-semibold text-fg">{data.name}</h2>

@@ -68,7 +68,7 @@ export default function PostDetailPage({ postId }: { postId: string }) {
         </Link>
       </header>
 
-      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
+      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4">
         <div className="mx-auto max-w-3xl space-y-3">
           {post.isLoading ? (
             <div className="surface shimmer h-56" aria-hidden="true" />

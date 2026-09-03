@@ -111,7 +111,9 @@ export default function EventCalendar({
           .filter((section) => section.rows.length > 0)
           .map((section) => (
             <section key={section.label}>
-              <h4 className="label sticky top-0 z-10 px-4 py-1.5 bg-surface border-y border-line">
+              {/* Margin, not padding: an opaque sticky bar that reaches the
+                  right edge paints over macOS's overlay scrollbar thumb. */}
+              <h4 className="label sticky top-0 z-10 mr-[var(--scrollbar-w)] px-4 py-1.5 bg-surface border-y border-line">
                 {section.label}
               </h4>
               <div className="divide-y divide-line">

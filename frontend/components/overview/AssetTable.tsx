@@ -13,10 +13,12 @@ import {
   X,
 } from 'lucide-react';
 import { MarketOverview } from '@/lib/api';
+import { HistogramBucket, inBucket } from '@/lib/market-breadth';
 import SparklineChart from './SparklineChart';
 import { useWebSocketPrices } from '@/hooks/useWebSocketPrices';
 import AssetDetailModal from './AssetDetailModal';
-import { getAssetLogo, getAssetName, formatPrice, formatVolume } from './overview-utils';
+import AssetLogo from '@/components/ui/AssetLogo';
+import { getAssetName, formatPrice, formatVolume } from './overview-utils';
 import {
   ColumnKey,
   columnsForMarket,
@@ -30,6 +32,13 @@ interface AssetTableProps {
   marketData: MarketOverview | null;
   marketType: 'crypto' | 'nasdaq';
   isLoading: boolean;
+  /**
+   * Change bucket selected in the distribution chart below the table. The chart
+   * owns the selection because it is what draws it; the table only narrows to
+   * it and offers a way out.
+   */
+  changeFilter?: HistogramBucket | null;
+  onClearChangeFilter?: () => void;
 }
 
 // Widths of the columns that are always present, in render order:
@@ -78,7 +87,13 @@ function RangeCell({
   );
 }
 
-export default function AssetTable({ marketData, marketType, isLoading }: AssetTableProps) {
+export default function AssetTable({
+  marketData,
+  marketType,
+  isLoading,
+  changeFilter = null,
+  onClearChangeFilter,
+}: AssetTableProps) {
   const [selectedAsset, setSelectedAsset] = useState<string | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [activeColumns, setActiveColumns] = useState<ColumnKey[]>([]);
@@ -204,11 +219,16 @@ export default function AssetTable({ marketData, marketType, isLoading }: AssetT
   // ever confirm what is already on screen.
   const coins = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return allCoins;
-    return allCoins.filter((coin) =>
-      `${coin.symbol} ${coin.name ?? ''}`.toLowerCase().includes(needle)
-    );
-  }, [allCoins, query]);
+    // Both narrowings compose: a bucket selection followed by a search reads as
+    // "find this name, among the ones that moved that much".
+    let rows = changeFilter ? allCoins.filter((coin) => inBucket(coin, changeFilter)) : allCoins;
+    if (needle) {
+      rows = rows.filter((coin) =>
+        `${coin.symbol} ${coin.name ?? ''}`.toLowerCase().includes(needle)
+      );
+    }
+    return rows;
+  }, [allCoins, query, changeFilter]);
 
   const totalPages = Math.max(1, Math.ceil(coins.length / PAGE_SIZE));
 
@@ -224,7 +244,7 @@ export default function AssetTable({ marketData, marketType, isLoading }: AssetT
   // Narrowing the list has the same effect as switching markets.
   useEffect(() => {
     setPage(1);
-  }, [query]);
+  }, [query, changeFilter]);
 
   // A refresh can shrink the list; never strand the user past the last page.
   const currentPage = Math.min(page, totalPages);
@@ -233,11 +253,13 @@ export default function AssetTable({ marketData, marketType, isLoading }: AssetT
 
   const noun = marketType === 'nasdaq' ? 'stocks' : 'assets';
   const searching = query.trim().length > 0;
+  const narrowed = searching || changeFilter != null;
   const rangeLabel = coins.length
-    ? // While searching, the payload total stays in view so the count reads as
-      // "found this many out of that many" rather than as a shrunken market.
+    ? // While the list is narrowed, the payload total stays in view so the count
+      // reads as "found this many out of that many" rather than as a shrunken
+      // market.
       `${pageStart + 1}–${pageStart + visibleCoins.length} of ${coins.length}${
-        searching ? ` (${allCoins.length})` : ''
+        narrowed ? ` (${allCoins.length})` : ''
       }`
     : '--';
 
@@ -296,6 +318,22 @@ export default function AssetTable({ marketData, marketType, isLoading }: AssetT
               </button>
             )}
           </div>
+
+          {/* The chart that owns this selection sits below the table, which can
+              be off-screen once the list is long. The chip is what tells you
+              why the table is short. */}
+          {changeFilter && (
+            <button
+              type="button"
+              onClick={onClearChangeFilter}
+              disabled={!onClearChangeFilter}
+              className="shrink-0 flex items-center gap-1.5 px-2 py-1 rounded-md bg-accent-bg border border-accent/40 text-2xs font-mono tabnum text-fg enabled:hover:border-accent transition-colors"
+            >
+              24h {changeFilter.label}
+              <X className="w-3 h-3" aria-hidden />
+              <span className="sr-only">Clear change filter</span>
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-4 text-xs text-fg-subtle">
@@ -389,10 +427,12 @@ export default function AssetTable({ marketData, marketType, isLoading }: AssetT
                 </div>
               ))
             : visibleCoins.length === 0
-              ? searching && (
+              ? narrowed && (
                   <div className="px-4 py-10 text-center">
                     <p className="text-base text-fg-muted">
-                      No {noun} match “{query.trim()}”.
+                      {searching
+                        ? `No ${noun} match “${query.trim()}”${changeFilter ? ` in ${changeFilter.label}` : ''}.`
+                        : `No ${noun} changed ${changeFilter?.label} in the last 24h.`}
                     </p>
                   </div>
                 )
@@ -428,13 +468,11 @@ export default function AssetTable({ marketData, marketType, isLoading }: AssetT
                       </div>
 
                       <div className="flex items-center gap-3 min-w-0">
-                        <img
-                          src={getAssetLogo(coin.symbol, coin.logo, marketType)}
-                          alt=""
+                        <AssetLogo
+                          symbol={coin.symbol}
+                          providedLogo={coin.logo}
+                          marketType={marketType}
                           className="w-7 h-7 rounded-full object-cover bg-surface-2 shrink-0"
-                          onError={(e) => {
-                            e.currentTarget.src = `https://ui-avatars.com/api/?name=${coin.symbol}&background=232328&color=e8e8ea&size=64&bold=true`;
-                          }}
                         />
                         <div className="min-w-0">
                           <p className="text-base text-fg truncate">

@@ -310,6 +310,7 @@ function NehStrip() {
 
   const readable = data ? neh.hasReading(data.status) : false;
   const position = readable ? neh.bandPosition(data!.index) : null;
+  const fill = neh.trackFill(position);
   const tone = data ? neh.statusTone(data.status) : 'text-fg-subtle';
 
   return (
@@ -336,20 +337,27 @@ function NehStrip() {
         </span>
       </div>
 
-      {/* One quarter of the track per band, with the marker on it. Each segment
-          carries its own colour at full strength once the reading has reached
-          it, so the track reads as a filled gauge and not as four buttons. */}
+      {/* One quarter of the track per band, with the marker on it. Segments
+          behind the marker carry their colour at full strength and the one the
+          marker stands in stops under it, so the fill and the marker always
+          say the same thing — see `trackFill`. */}
       <div className="relative mt-1.5 flex items-center gap-px">
         {neh.BANDS.map((band, i) => {
-          const reached = position !== null && position >= i * 25;
+          const color = neh.statusColor(band.status);
+          const lit = `color-mix(in srgb, ${color} 90%, transparent)`;
+          const unlit = `color-mix(in srgb, ${color} 20%, transparent)`;
           return (
             <div
               key={band.status}
               title={band.label}
               className="h-1 flex-1 first:rounded-l-sm last:rounded-r-sm"
               style={{
-                background: neh.statusColor(band.status),
-                opacity: reached ? 0.9 : 0.2,
+                background:
+                  i < fill.band
+                    ? lit
+                    : i > fill.band
+                      ? unlit
+                      : `linear-gradient(to right, ${lit} ${fill.within}%, ${unlit} ${fill.within}%)`,
               }}
             />
           );
@@ -357,7 +365,10 @@ function NehStrip() {
         {position !== null && (
           <div
             className="absolute top-1/2 h-2.5 w-0.5 rounded-full bg-fg pointer-events-none"
-            style={{ left: `${position}%`, transform: 'translate(-50%, -50%)' }}
+            style={{
+              left: `${position}%`,
+              transform: `translate(${neh.markerShift(position)}%, -50%)`,
+            }}
           />
         )}
       </div>

@@ -3,14 +3,10 @@
 import { useStore } from '@/store/useStore';
 import AssetTag from '@/components/ui/AssetTag';
 import { AdvancedRealTimeChart } from 'react-ts-tradingview-widgets';
-import { BarChart3, Maximize2, Settings, Bell } from 'lucide-react';
+import { BarChart3, Maximize2, Settings } from 'lucide-react';
 
 export default function ChartPanel() {
-  const { chartSymbol, selectedNews, toggleAlertModal, priceAlerts } = useStore();
-
-  const activeAlertsCount = priceAlerts.filter(
-    (a) => a.isActive && a.symbol === chartSymbol
-  ).length;
+  const { chartSymbol, selectedNews } = useStore();
 
   return (
     <div className="flex flex-col h-full">
@@ -24,18 +20,6 @@ export default function ChartPanel() {
           </span>
         </div>
         <div className="flex items-center gap-0.5">
-          <button
-            onClick={() => toggleAlertModal(true)}
-            className="p-1.5 rounded-md text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors relative"
-            title="Set price alert"
-          >
-            <Bell className="w-3.5 h-3.5" />
-            {activeAlertsCount > 0 && (
-              <span className="absolute top-0 right-0 min-w-[14px] h-3.5 px-1 bg-warn rounded-full text-2xs font-mono tabnum text-black flex items-center justify-center">
-                {activeAlertsCount}
-              </span>
-            )}
-          </button>
           <button
             className="p-1.5 rounded-md text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors"
             title="Settings"

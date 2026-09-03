@@ -43,7 +43,7 @@ export default function AssetOwnersPanel({
           None of the tracked holders report {symbol}.
         </p>
       ) : (
-        <ul className="max-h-[55vh] overflow-y-auto custom-scrollbar">
+        <ul className="max-h-[55vh] overflow-y-auto overflow-x-hidden custom-scrollbar">
           {rows.map((owner) => (
             <li key={`${owner.entity_id}-${owner.label}`}>
               <button

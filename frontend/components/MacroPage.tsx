@@ -1,9 +1,10 @@
 'use client';
 
 import { RefreshCw } from 'lucide-react';
-import { useMacroBoard, useMacroRegime } from '@/hooks/queries';
+import { useElections, useMacroBoard, useMacroRegime } from '@/hooks/queries';
 import { MacroQuote } from '@/lib/api';
 import CommodityPanel from './macro/CommodityPanel';
+import ElectionsPanel from './macro/ElectionsPanel';
 import HeroCard from './macro/HeroCard';
 import IndexPanel from './macro/IndexPanel';
 import MacroRatios from './macro/MacroRatios';
@@ -26,6 +27,7 @@ const HERO: { symbol: string; label: string }[] = [
 export default function MacroPage() {
   const board = useMacroBoard();
   const regime = useMacroRegime();
+  const elections = useElections();
 
   const quotes = new Map<string, MacroQuote>();
   for (const row of board.data?.commodities ?? []) quotes.set(row.symbol, row);
@@ -42,7 +44,7 @@ export default function MacroPage() {
           <div>
             <h1 className="text-lg font-semibold text-fg">Macro</h1>
             <p className="text-base text-fg-muted">
-              Commodity futures, benchmark indices and the dollar.
+              Commodity futures, benchmark indices, the dollar and what votes next.
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
@@ -119,6 +121,18 @@ export default function MacroPage() {
             </div>
           </>
         )}
+
+        {/* Outside the board's error branch on purpose: this panel has its own
+            query and its own upstreams, and an electoral calendar that vanished
+            because the *commodity* feed failed would be reporting the wrong
+            outage. The two surfaces fail independently. */}
+        <div className="h-[520px]">
+          <ElectionsPanel
+            data={elections.data}
+            isLoading={elections.isLoading}
+            isError={elections.isError}
+          />
+        </div>
       </div>
     </div>
   );

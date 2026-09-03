@@ -46,7 +46,7 @@ export default function ConversationList({
   }
 
   return (
-    <ul className="custom-scrollbar h-full overflow-y-auto">
+    <ul className="custom-scrollbar h-full overflow-y-auto overflow-x-hidden">
       {conversations.map((conversation) => {
         const isSelected = conversation.id === selectedId;
         const unread = formatUnread(conversation.unread_count);

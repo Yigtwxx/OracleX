@@ -1,12 +1,14 @@
 'use client';
 
 import {
-  useOnChainData,
+  useFearGreedIndex,
   useFundingRates,
   useLiquidations,
   useMacroCalendar,
+  useMarketOverview,
 } from '@/hooks/queries';
-import OnChainStats from './home/OnChainStats';
+import AssetBrief from './home/AssetBrief';
+import MarketRibbon from './home/MarketRibbon';
 import FundingRates from './home/FundingRates';
 import LiquidationFeed from './home/LiquidationFeed';
 import MacroCalendar from './home/MacroCalendar';
@@ -14,17 +16,25 @@ import WatchlistWidget from './home/WatchlistWidget';
 import { RefreshCw } from 'lucide-react';
 
 export default function HomePage() {
-  const onChain = useOnChainData();
+  const market = useMarketOverview();
+  const fearGreed = useFearGreedIndex();
   const funding = useFundingRates();
   const liquidations = useLiquidations();
   const macro = useMacroCalendar();
 
   // Each widget tracks its own query — one slow source must not blank the page.
+  // The brief's queries are deliberately absent: they live per card so a symbol
+  // swap does not spin this button on behalf of two assets that did not change.
   const isFetching =
-    onChain.isFetching || funding.isFetching || liquidations.isFetching || macro.isFetching;
+    market.isFetching ||
+    fearGreed.isFetching ||
+    funding.isFetching ||
+    liquidations.isFetching ||
+    macro.isFetching;
 
   const handleRefresh = () => {
-    onChain.refetch();
+    market.refetch();
+    fearGreed.refetch();
     funding.refetch();
     liquidations.refetch();
     macro.refetch();
@@ -34,30 +44,24 @@ export default function HomePage() {
     <div className="h-full overflow-y-auto custom-scrollbar p-4">
       <div className="max-w-[1600px] mx-auto space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between gap-4">
-          <div>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
             <h1 className="text-lg font-semibold text-fg">Market Intelligence</h1>
-            <p className="text-base text-fg-muted">
-              Real-time on-chain data, funding rates, and macroeconomic events.
-            </p>
+            <div className="mt-1">
+              <MarketRibbon
+                marketData={market.data ?? null}
+                fearGreedData={fearGreed.data ?? null}
+                isLoading={market.isLoading}
+              />
+            </div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            {/* The server's own `as_of`, not the client's fetch time — a cached
+            {/* The server's own timestamp, not the client's fetch time — a cached
                 payload replayed after an upstream failure used to be stamped with
                 the moment the browser asked for it. */}
-            {onChain.data?.as_of && (
-              <span className="flex items-center gap-2">
-                {onChain.data.stale && (
-                  <span
-                    title="Upstream unavailable — showing the last known values"
-                    className="px-1.5 py-0.5 rounded border border-line text-2xs uppercase tracking-wide text-fg-subtle"
-                  >
-                    Stale
-                  </span>
-                )}
-                <span className="text-xs font-mono tabnum text-fg-subtle">
-                  {new Date(onChain.data.as_of).toLocaleTimeString('en-GB')}
-                </span>
+            {market.data?.timestamp && (
+              <span className="text-xs font-mono tabnum text-fg-subtle">
+                {new Date(market.data.timestamp).toLocaleTimeString('en-GB')}
               </span>
             )}
             <button
@@ -70,11 +74,11 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Top Row: On-Chain Stats */}
-        <OnChainStats data={onChain.data ?? null} isLoading={onChain.isLoading} />
+        {/* Top Row: the reader's own assets */}
+        <AssetBrief />
 
         {/* Middle Row: 3-Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 h-[480px]">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:h-[480px]">
           {/* Col 1: Funding Rates */}
           <FundingRates data={funding.data ?? []} isLoading={funding.isLoading} />
 

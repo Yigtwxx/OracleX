@@ -3,8 +3,10 @@ import {
   Bitcoin,
   Blocks,
   BrainCircuit,
+  Building2,
   CalendarDays,
   CandlestickChart,
+  Crosshair,
   Gauge,
   Gem,
   Home,
@@ -12,6 +14,7 @@ import {
   Landmark,
   Layers,
   LayoutDashboard,
+  LayoutGrid,
   LineChart,
   Megaphone,
   MessageCircleMore,
@@ -73,6 +76,10 @@ export const NAV_ICONS: Record<NavKey, NavIcon> = {
 
   'bist-overview': Gauge,
   'bist-stocks': CandlestickChart,
+  // LayoutGrid is the treemap's own shape — nested rectangles of unequal size.
+  // Distinct from the candlesticks next to it and from Layers, which the global
+  // realm's derivatives tab already holds.
+  'bist-heatmap': LayoutGrid,
   // PieChart rather than a chart line: what a reader actually compares between
   // two TEFAS funds is the portfolio split, not the NAV curve.
   'bist-funds': PieChart,
@@ -84,6 +91,15 @@ export const NAV_ICONS: Record<NavKey, NavIcon> = {
   // Hourglass is the literal subject: VIOP contracts are "vadeli" — what
   // separates them from the spot board is that they expire.
   'bist-viop': Hourglass,
+  // Layers, because the page is literally two of them on one axis: the
+  // futures book and the spot volume profile.
+  // A building rather than a second pie: Fonlar already owns the pie, and two
+  // tabs with one glyph are two tabs nobody tells apart at a glance.
+  'bist-ownership': Building2,
+  'bist-viop-map': Layers,
+  // Crosshair, not Radar: Konumlanma already owns the radar dish, and the
+  // subject here is a single name lined up at a level rather than a sweep.
+  'bist-radar': Crosshair,
   'bist-macro': Landmark,
 };
 

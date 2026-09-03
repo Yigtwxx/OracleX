@@ -96,7 +96,7 @@ export default function NewsFeed() {
       </div>
 
       {/* News List */}
-      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
         {isLoadingNews ? (
           // Loading skeleton
           <div className="p-3 space-y-2">

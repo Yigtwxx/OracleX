@@ -49,12 +49,12 @@ export function stateColor(state: SourceState): string {
 export function formatAge(lastOkAt: number | null, nowMs: number = Date.now()): string | null {
   if (lastOkAt === null) return null;
   const seconds = Math.max(0, Math.round(nowMs / 1000 - lastOkAt));
-  if (seconds < 60) return `${seconds}sn önce`;
+  if (seconds < 60) return `${seconds}s ago`;
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes}dk önce`;
+  if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}sa önce`;
-  return `${Math.round(hours / 24)}g önce`;
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
 }
 
 /**
@@ -70,12 +70,12 @@ export function formatDetail(
   detail: string | null,
   nowMs: number = Date.now()
 ): string {
-  if (state === 'idle') return 'henüz veri yok';
+  if (state === 'idle') return 'no data yet';
 
   const age = formatAge(lastOkAt, nowMs);
   // Says why the row is quiet rather than leaving a bare age next to a grey
   // dot, which reads as "last seen" — as if contact had been lost.
-  if (state === 'stale') return age ? `${age} kullanıldı` : 'henüz veri yok';
+  if (state === 'stale') return age ? `used ${age}` : 'no data yet';
   const parts: string[] = [];
   if (age) parts.push(age);
   if (state === 'ok') {

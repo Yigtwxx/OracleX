@@ -1,7 +1,7 @@
 'use client';
 
 import { LucideIcon } from 'lucide-react';
-import { getAssetLogo } from './overview-utils';
+import AssetLogo from '@/components/ui/AssetLogo';
 
 interface AssetListItem {
   symbol: string;
@@ -48,13 +48,12 @@ export default function AssetListCard({
                   {type === 'trending' && (
                     <span className="w-3 text-2xs font-mono tabnum text-fg-subtle">{i + 1}</span>
                   )}
-                  <img
-                    src={getAssetLogo(asset.symbol, asset.logo, marketType)}
-                    alt=""
+                  <AssetLogo
+                    symbol={asset.symbol}
+                    providedLogo={asset.logo}
+                    marketType={marketType}
+                    size={40}
                     className="w-5 h-5 rounded-full object-cover bg-surface-2"
-                    onError={(e) => {
-                      e.currentTarget.src = `https://ui-avatars.com/api/?name=${asset.symbol}&background=232328&color=e8e8ea&size=40&bold=true`;
-                    }}
                   />
                   <span className="text-base text-fg truncate">{asset.symbol}</span>
                 </div>

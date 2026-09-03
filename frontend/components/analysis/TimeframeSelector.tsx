@@ -77,7 +77,7 @@ export default function TimeframeSelector({
   isStopping,
 }: TimeframeSelectorProps) {
   return (
-    <div className="h-full overflow-y-auto custom-scrollbar p-1">
+    <div className="h-full overflow-y-auto overflow-x-hidden custom-scrollbar p-1">
       <div className="mb-5">
         <h3 className="text-lg font-semibold text-fg mb-1">Choose a reporting horizon</h3>
         <p className="text-base text-fg-muted max-w-xl">

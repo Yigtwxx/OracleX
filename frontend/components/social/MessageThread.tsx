@@ -132,7 +132,7 @@ export default function MessageThread({
         </div>
       </header>
 
-      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-4">
+      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
         {isLoading ? (
           <div className="space-y-3">
             <div className="shimmer h-10 w-2/3 rounded-lg" />

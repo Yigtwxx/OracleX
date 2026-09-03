@@ -81,7 +81,7 @@ export default function EntityDetail({ entityId, fallback, onSelectAsset }: Enti
         )}
       </header>
 
-      <div className="custom-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+      <div className="custom-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden">
         <Panel
           title="Holdings"
           footnote={

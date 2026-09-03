@@ -591,7 +591,7 @@ export default function OracleChatPage() {
         </div>
 
         {/* Messages Area */}
-        <div className="relative z-10 flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 space-y-3">
+        <div className="relative z-10 flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-4 space-y-3">
           {messages.length === 0 ? (
             // Welcome State
             <div className="h-full flex flex-col items-center justify-center text-center px-6">

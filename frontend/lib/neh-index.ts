@@ -55,6 +55,50 @@ export function bandPosition(index: number | null): number | null {
 }
 
 /**
+ * How much of the track is filled, given a marker position.
+ *
+ * Split out from the position itself because the two answer different
+ * questions and the strip got them confused: lighting a whole band the moment
+ * the marker touched its left edge drew a gauge that ran a full quarter of the
+ * track past its own marker. A reading of 30 — the first point of "Something
+ * Might Happen" — filled halfway while the marker stood at a quarter.
+ *
+ * `band` is the segment the marker is standing in and `within` is how far into
+ * it, as a percentage of that one segment, so a caller can fill the segments
+ * before it outright and stop the last one exactly under the marker.
+ *
+ * `band` is -1 for a missing reading, which leaves the whole track unlit.
+ */
+export function trackFill(position: number | null): { band: number; within: number } {
+  if (position === null) return { band: -1, within: 0 };
+
+  const clamped = Math.max(0, Math.min(100, position));
+  const width = 100 / BANDS.length;
+  // Not `Math.floor` alone: a position of exactly 100 lands one band past the
+  // end, and the reading that matters most is the one that would fall off.
+  const band = Math.min(BANDS.length - 1, Math.floor(clamped / width));
+  return { band, within: ((clamped - band * width) / width) * 100 };
+}
+
+/**
+ * How far to pull the marker back along its own width, as a percentage.
+ *
+ * A marker centred with a flat -50% hangs half outside the rail at 0 and at
+ * 100, which reads as a gauge that overshot rather than one pinned to its end.
+ * Interpolating the pull-back with the position instead keeps every reading
+ * inside the track: flush left at 0, centred in the middle, flush right at 100.
+ * It costs under a pixel of centring error on a two-pixel marker, which is
+ * cheaper than the alternative of special-casing the two ends.
+ */
+export function markerShift(position: number): number {
+  const clamped = Math.max(0, Math.min(100, position));
+  // Guarded rather than a bare negation: `-0` is what that returns at the left
+  // edge, and a negative zero travelling into a transform string is a footgun
+  // nobody reading `translate(-0%, -50%)` would expect to be there.
+  return clamped === 0 ? 0 : -clamped;
+}
+
+/**
  * The reading as it is written: `27`.
  *
  * Rendered bare rather than as `27%` in the compact row, because the caption

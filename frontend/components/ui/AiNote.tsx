@@ -15,6 +15,12 @@ interface AiNoteProps {
  * prose, so the panel does not resize under the reader when it lands. A note
  * that will not arrive draws nothing at all.
  *
+ * The arrival is animated because the two states look alike: a shimmering line
+ * and a line of prose at the same height in the same box swap with no visible
+ * transition, which reads as a rendering glitch rather than as an answer landing.
+ * The settle is 4px of travel inside a box that was already the right size, so
+ * nothing on the page reflows.
+ *
  * That last case is the important one. Every surface using this computes its
  * own figures in Python and renders them beside this component, so an absent
  * note costs a paragraph and nothing else. Showing "AI unavailable" here would
@@ -25,7 +31,9 @@ export default function AiNote({ aiNote, className = '' }: AiNoteProps) {
   const text = aiNoteText(aiNote);
 
   if (text) {
-    return <p className={`text-xs leading-relaxed text-fg-muted ${className}`}>{text}</p>;
+    return (
+      <p className={`ai-note-settle text-xs leading-relaxed text-fg-muted ${className}`}>{text}</p>
+    );
   }
 
   if (isGenerating(aiNote)) {

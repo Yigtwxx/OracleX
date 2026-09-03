@@ -5,22 +5,23 @@ import ReactECharts from 'echarts-for-react';
 import { AlertTriangle, Check, Info, Palette as PaletteIcon, RefreshCw } from 'lucide-react';
 
 import { useLiquidationMap } from '@/hooks/queries';
+import { LIQUIDATION_EXCHANGES, LIQUIDATION_SYMBOLS, type LiquidationExchange } from '@/lib/api';
+import { compactUsd, FALLBACK, parseHex, readPalette, type Palette } from '@/lib/chart-palette';
 
 /**
  * Coinglass-style liquidation heatmap.
  *
- * Every colour and geometry value here is resolved from the design tokens at
- * runtime rather than passed to ECharts as `var(--token)`: the canvas renderer
- * hands colour strings straight to the 2D context, which silently ignores CSS
- * custom properties, so `var(...)` in a chart option renders as nothing.
+ * Colours come from `lib/chart-palette`, which resolves the design tokens to
+ * literals at runtime — the canvas renderer cannot read `var(--token)`.
  */
 
 /**
- * Pinned to BTC. The backend model is symbol-agnostic, but BTC is the only
- * market deep enough for the open-interest and long/short statistics the model
- * consumes to be meaningful at every interval.
+ * BTC leads because it is the deepest book and the one whose statistics are
+ * meaningful at every interval — but it is a default, not a pin. The markets
+ * behind it come from `LIQUIDATION_SYMBOLS`, shared with the levels and map
+ * views so a switch between the three tabs stays on the same market.
  */
-const DEFAULT_SYMBOL = 'BTCUSDT';
+const DEFAULT_SYMBOL = LIQUIDATION_SYMBOLS[0];
 
 const INTERVALS = [
   { value: '4h', label: '4H' },
@@ -36,77 +37,6 @@ interface TooltipParams {
   value?: unknown;
 }
 
-/** Design tokens the chart needs as literal colours. */
-const TOKENS = [
-  '--fg',
-  '--fg-muted',
-  '--fg-subtle',
-  '--surface',
-  '--surface-2',
-  '--border',
-  '--border-strong',
-  '--up',
-  '--down',
-  '--up-bg',
-  '--down-bg',
-  '--heat-seq-1',
-  '--heat-seq-2',
-  '--heat-seq-3',
-  '--heat-seq-4',
-  '--warn',
-] as const;
-
-type Token = (typeof TOKENS)[number];
-type Palette = Record<Token, string>;
-
-/** Values from globals.css, used until the document is available. */
-const FALLBACK: Palette = {
-  '--fg': '#e8e8ea',
-  '--fg-muted': '#9a9aa3',
-  '--fg-subtle': '#6b6b74',
-  '--surface': '#111114',
-  '--surface-2': '#17171b',
-  '--border': '#232328',
-  '--border-strong': '#34343b',
-  '--up': '#22c55e',
-  '--down': '#ef4444',
-  '--up-bg': 'rgba(34, 197, 94, 0.12)',
-  '--down-bg': 'rgba(239, 68, 68, 0.12)',
-  '--heat-seq-1': '#1f3b6e',
-  '--heat-seq-2': '#285099',
-  '--heat-seq-3': '#2f63c3',
-  '--heat-seq-4': '#4788ff',
-  '--warn': '#f59e0b',
-};
-
-function readPalette(): Palette {
-  if (typeof window === 'undefined') return FALLBACK;
-  const computed = getComputedStyle(document.documentElement);
-  const palette = { ...FALLBACK };
-  for (const token of TOKENS) {
-    const value = computed.getPropertyValue(token).trim();
-    if (value) palette[token] = value;
-  }
-  return palette;
-}
-
-/** `#rrggbb` → `[r, g, b]`. */
-function parseHex(hex: string): [number, number, number] {
-  const clean = hex.replace('#', '');
-  const full =
-    clean.length === 3
-      ? clean
-          .split('')
-          .map((c) => c + c)
-          .join('')
-      : clean;
-  return [
-    parseInt(full.slice(0, 2), 16),
-    parseInt(full.slice(2, 4), 16),
-    parseInt(full.slice(4, 6), 16),
-  ];
-}
-
 /**
  * Selectable heat ramps.
  *
@@ -114,15 +44,21 @@ function parseHex(hex: string): [number, number, number] {
  * because green-up/red-down is read pre-attentively and re-colouring it would
  * cost far more than the heat layer gains. Every ramp therefore has to stay
  * legible *underneath* those two hues, which rules out green- and red-dominant
- * bases; the contrasting top stop is the one place a warm hue is affordable,
- * since only a handful of magnet levels ever reach it.
+ * bases.
  *
- * Each scheme follows the default's two-colour shape: the first four stops are
- * one hue climbing from near-black to bright — wide enough apart that "faint"
- * and "strong" never look like the same shade — and the fifth is a deliberately
- * contrasting hue that fires only at the saturating end. Reading the map is
- * then a two-step question ("is this the base hue or the accent?") rather than
- * a judgement over a continuous gradient.
+ * Each scheme is one hue climbing from near-black to bright, ending on a stop
+ * that is lighter and more saturated but **adjacent** on the wheel — blue into
+ * cyan, violet into orchid, amber into gold. The tip still fires only at the
+ * saturating end, so magnet levels stay a separate read from the field.
+ *
+ * The tips used to be deliberately *complementary* — blue to amber, teal to
+ * pink — on the reasoning that a clashing accent makes the magnets a category
+ * rather than a point on a gradient. It does, but `buildRamp` interpolates in
+ * RGB, and the straight line between two opposing hues runs through
+ * desaturated grey: the payoff arrived in the top few percent of cells while
+ * the upper third of every ramp spent itself looking muddy. Staying inside a
+ * neighbourhood keeps the whole ramp saturated and costs almost none of the
+ * separation, because opacity is already carrying most of it.
  *
  * `null` stops mean "resolve from the design tokens" — the default scheme
  * follows the active theme instead of pinning hex values.
@@ -132,20 +68,20 @@ const SCHEMES = [
   {
     value: 'violet',
     label: 'Violet',
-    stops: ['#1b0a4a', '#3a1a9e', '#6a3aee', '#b79bff', '#22d3ee'],
+    stops: ['#160a3f', '#3a1a9e', '#6d3ff0', '#a78bfa', '#e9d5ff'],
   },
-  { value: 'teal', label: 'Teal', stops: ['#052a34', '#08606b', '#0fa89f', '#7cf0dc', '#f0abfc'] },
+  { value: 'teal', label: 'Teal', stops: ['#04252e', '#08606b', '#12a89c', '#5eead4', '#cffafe'] },
   {
     value: 'magenta',
     label: 'Magenta',
-    stops: ['#2c0433', '#6c0d78', '#bd1cb0', '#f5a8ff', '#fde047'],
+    stops: ['#2c0433', '#7a1188', '#c92bb7', '#f5a8ff', '#ffe0fb'],
   },
   {
     value: 'amber',
     label: 'Amber',
-    stops: ['#2b1a02', '#63400a', '#ad7a0c', '#fbc02d', '#60a5fa'],
+    stops: ['#2b1503', '#6b3a07', '#b5790e', '#f7b731', '#fde68a'],
   },
-  { value: 'mono', label: 'Mono', stops: ['#1a1a20', '#41414b', '#7b7b88', '#c9c9d4', '#ffffff'] },
+  { value: 'mono', label: 'Mono', stops: ['#15151b', '#3a3a45', '#75757f', '#c2c2cc', '#ffffff'] },
 ] as const;
 
 type SchemeValue = (typeof SCHEMES)[number]['value'];
@@ -166,7 +102,13 @@ function schemeStops(scheme: SchemeValue, palette: Palette): string[] {
     palette['--heat-seq-2'],
     palette['--heat-seq-3'],
     palette['--heat-seq-4'],
-    palette['--warn'],
+    // The tokens stop at a mid blue, which is where the theme needs them — they
+    // also have to work as a background behind text. A heat ramp needs a
+    // brighter place to land, and no token is that colour, so the tip is the
+    // one literal here. Cyan rather than the `--warn` amber it used to be: the
+    // amber was two-thirds of the way round the wheel from the base, and
+    // everything between the two rendered grey.
+    '#22d3ee',
   ];
 }
 
@@ -206,25 +148,19 @@ const ALPHA_CURVE = 2.1;
 /** Percentile of cell values treated as full heat; anything above it saturates. */
 const INTENSITY_CLIP = 0.98;
 
-function compactUsd(value: number): string {
-  const abs = Math.abs(value);
-  if (abs >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
-  if (abs >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
-  if (abs >= 1e3) return `$${(value / 1e3).toFixed(0)}K`;
-  return `$${value.toFixed(0)}`;
-}
-
 interface LiquidationHeatmapProps {
-  /** Overrides the pinned BTC market. */
-  symbol?: string;
+  /** The market the chart opens on; the toolbar can move off it from there. */
+  initialSymbol?: string;
   className?: string;
 }
 
 export default function LiquidationHeatmap({
-  symbol = DEFAULT_SYMBOL,
+  initialSymbol = DEFAULT_SYMBOL,
   className = '',
 }: LiquidationHeatmapProps) {
+  const [symbol, setSymbol] = useState<string>(initialSymbol);
   const [interval, setInterval] = useState<Interval>('4h');
+  const [venue, setVenue] = useState<LiquidationExchange>('okx');
   const [palette, setPalette] = useState<Palette>(FALLBACK);
   const [scheme, setScheme] = useState<SchemeValue>(DEFAULT_SCHEME);
   const [schemeOpen, setSchemeOpen] = useState(false);
@@ -264,8 +200,14 @@ export default function LiquidationHeatmap({
 
   const { data, isLoading, isFetching, isError, error, refetch } = useLiquidationMap(
     symbol,
-    interval
+    interval,
+    venue
   );
+
+  // The payload names the venue it modelled; this is only for the moment before
+  // one arrives, and for the tooltips, which read wrong if they say OKX while
+  // Bybit is selected.
+  const venueName = LIQUIDATION_EXCHANGES.find((entry) => entry.value === venue)?.label ?? 'OKX';
 
   const ramp = useMemo(() => buildRamp(schemeStops(scheme, palette)), [scheme, palette]);
 
@@ -304,7 +246,19 @@ export default function LiquidationHeatmap({
     return {
       backgroundColor: 'transparent',
       animation: false,
-      grid: { left: 8, right: 68, top: 12, bottom: 24, containLabel: true },
+      grid: {
+        left: 8,
+        right: 6,
+        top: 12,
+        bottom: 6,
+        containLabel: true,
+        // `right`/`bottom` are small because `containLabel` already reserves the
+        // axis labels; anything more is empty margin outside them. They used to
+        // be 68 and 24, which predates `containLabel` and reserved the same
+        // space twice. Both charts carry the same numbers on purpose: they
+        // share a price grid, and a different margin would move the axis on a
+        // tab switch.
+      },
       tooltip: {
         trigger: 'item',
         backgroundColor: palette['--surface'],
@@ -353,6 +307,12 @@ export default function LiquidationHeatmap({
         axisLabel: { color: palette['--fg-subtle'], fontSize: 10, hideOverlap: true },
         axisPointer: {
           show: true,
+          // Above every series. ECharts draws the axis pointer at z 0 by
+          // default, which on this chart puts the crosshair and its price
+          // label *under* the liquidity cells — the label became unreadable
+          // the moment it crossed a bright row, which is exactly where a
+          // reader puts it.
+          z: 100,
           lineStyle: { color: palette['--border-strong'] },
           label: { backgroundColor: palette['--surface-2'], color: palette['--fg-muted'] },
         },
@@ -373,6 +333,7 @@ export default function LiquidationHeatmap({
         },
         axisPointer: {
           show: true,
+          z: 100,
           label: { backgroundColor: palette['--surface-2'], color: palette['--fg-muted'] },
         },
       },
@@ -388,6 +349,12 @@ export default function LiquidationHeatmap({
           progressiveThreshold: 2000,
           data: heatData,
           z: 1,
+          // Every cell is drawn half a column wide either side of its own
+          // timestamp, so the first and last columns reach past the axis. Left
+          // unclipped they spill into the gutter — and only on the rows that
+          // happen to hold a cell in that column, which serrates the edge of
+          // the map. Clipping squares it off.
+          clip: true,
           renderItem: (
             _params: unknown,
             api: {
@@ -443,8 +410,42 @@ export default function LiquidationHeatmap({
       <div className="shrink-0 flex items-center justify-between gap-3 px-3 h-10 border-b border-line bg-surface">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-base font-semibold text-fg truncate">Liquidation Heatmap</span>
-          <span className="px-1.5 py-0.5 rounded text-2xs font-mono bg-surface-2 text-fg-muted">
-            {data?.symbol ?? symbol}
+          {/* Venue first, and selectable: the whole chart is a model of one
+              exchange's book, so which one is not a caption, it is the question
+              the chart answers. Where a wall sits on Binance says nothing about
+              what is stacked on Bybit. */}
+          <span className="flex items-center gap-1 px-0.5 py-0.5 rounded text-2xs font-mono bg-surface-2 text-fg-muted">
+            <select
+              value={venue}
+              onChange={(event) => setVenue(event.target.value as LiquidationExchange)}
+              aria-label="Exchange"
+              className="bg-transparent text-fg-subtle hover:text-fg focus:outline-none"
+            >
+              {LIQUIDATION_EXCHANGES.map((entry) => (
+                <option key={entry.value} value={entry.value}>
+                  {entry.label}
+                </option>
+              ))}
+            </select>
+            {'·'}
+            {/* Venue and market sit in one badge because neither answers
+                anything alone: this chart is one exchange's book for one
+                market, and reading a wall off it means reading both. The
+                market used to be the payload's own `symbol`, which is still
+                what settles a disagreement — but a label that only catches up
+                after the fetch lands reads as a chart that ignored the click. */}
+            <select
+              value={symbol}
+              onChange={(event) => setSymbol(event.target.value)}
+              aria-label="Market"
+              className="bg-transparent text-fg-muted hover:text-fg focus:outline-none"
+            >
+              {LIQUIDATION_SYMBOLS.map((entry) => (
+                <option key={entry} value={entry}>
+                  {entry}
+                </option>
+              ))}
+            </select>
           </span>
           {lastPrice !== undefined && (
             <span className="text-xs font-mono tabnum text-fg-muted">
@@ -453,14 +454,14 @@ export default function LiquidationHeatmap({
           )}
           <span
             className="text-fg-subtle"
-            title="Estimated liquidation levels modelled from OKX open interest, volume and the long/short ratio — not observed liquidations."
+            title={`Estimated liquidation levels modelled from ${venueName} open interest, volume and the long/short ratio — not observed liquidations.`}
           >
             <Info className="w-3 h-3" />
           </span>
           {data !== undefined && data.stats_from_column > 0 && (
             <span
               className="px-1.5 py-0.5 rounded text-2xs bg-surface-2 text-fg-subtle"
-              title={`The oldest ${data.stats_from_column} columns predate OKX's open-interest and long/short history — modelled from volume alone with a neutral split.`}
+              title={`The oldest ${data.stats_from_column} columns predate ${venueName}'s open-interest and long/short history — modelled from volume alone with a neutral split.`}
             >
               partial
             </span>
@@ -573,7 +574,7 @@ export default function LiquidationHeatmap({
         ) : !option ? (
           <div className="absolute inset-0 flex items-center justify-center px-6 text-center">
             <span className="text-sm text-fg-muted">
-              No market data for {symbol} on OKX perpetuals.
+              No market data for {symbol} on {venueName} perpetuals.
             </span>
           </div>
         ) : (

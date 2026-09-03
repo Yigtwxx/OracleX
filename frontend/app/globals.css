@@ -216,12 +216,19 @@
   --nav-bist-heatmap: #4fd3d8;
   --nav-bist-funds: #6aa9f5;
   --nav-bist-smart-money: #c99bff;
+  /* Indigo, between the funds blue (#6aa9f5) and the Konumlanma purple
+     (#c99bff) it sits beside — far enough from each to be told apart at 14px. */
+  --nav-bist-ownership: #8d8bff;
   --nav-bist-kap: #f07fa8;
   --nav-bist-viop: #ff9f5a;
   /* Warm red, the last clear gap in this set: far enough from the VİOP
      orange it sits beside (#ff9f5a) and the KAP pink (#f07fa8) to be told
      apart at 14px, which is the size these labels are read at. */
   --nav-bist-viop-map: #f2685c;
+  /* Mint-white, the one stop this set does not have: it sits between the
+     Makro lime (#b8d95c) and the Genel Bakış amber it wraps round to, and is
+     the only neutral in the row — which suits the tab that reads the others. */
+  --nav-bist-radar: #dfeee0;
   --nav-bist-macro: #b8d95c;
 
   /* Heatmap is the one tab that cannot be a single stop: the board it opens is

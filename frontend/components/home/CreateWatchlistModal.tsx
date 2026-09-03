@@ -113,7 +113,7 @@ export default function CreateWatchlistModal({
             </div>
 
             {/* List */}
-            <div className="h-48 overflow-y-auto custom-scrollbar border border-line rounded-md">
+            <div className="h-48 overflow-y-auto overflow-x-hidden custom-scrollbar border border-line rounded-md">
               {isLoading ? (
                 <div className="flex items-center justify-center h-full text-fg-subtle text-base">
                   Loading assets…

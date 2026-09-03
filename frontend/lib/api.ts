@@ -1,4 +1,5 @@
 import { NewsItem, SentimentAnalysis } from '@/store/useStore';
+import type { ElectionsBoard } from './elections';
 import { getSupabase } from '@/lib/supabase';
 import { toChatJob, type ChatJob, type StoredChatStep } from '@/lib/chat-job';
 import type { AiNote } from '@/lib/ai-note';
@@ -490,6 +491,8 @@ export interface MarketOverview {
   total_market_cap: number;
   btc_dominance: number;
   eth_dominance?: number;
+  /** Stablecoin share. Optional: payloads cached before this was read lack it. */
+  usdt_dominance?: number;
   active_cryptocurrencies: number;
   fear_greed: FearGreedData;
   timestamp: string;
@@ -502,6 +505,27 @@ export async function fetchFearGreedIndex(): Promise<FearGreedData> {
 
 export async function fetchMarketOverview(): Promise<MarketOverview> {
   return apiFetch<MarketOverview>('/api/market-overview');
+}
+
+/** One symbol's current price, crypto or equity. */
+export interface SymbolPrice {
+  symbol: string;
+  price: number;
+  /** Which upstream actually answered — OKX, Yahoo Finance, ... */
+  source: string;
+}
+
+/**
+ * Current price for one symbol, through the backend.
+ *
+ * The alarm engine used to call `api.binance.com` from the page, which fails
+ * outright on the networks where Binance is blocked and silently skipped every
+ * equity symbol. This endpoint resolves crypto and equities alike and answers
+ * 404 rather than a placeholder, so a symbol that cannot be priced surfaces as
+ * an error instead of a plausible wrong number.
+ */
+export async function fetchSymbolPrice(symbol: string): Promise<SymbolPrice> {
+  return apiFetch<SymbolPrice>(`/api/price/${encodeURIComponent(symbol)}`);
 }
 
 export interface NasdaqOverview {
@@ -560,34 +584,6 @@ export interface MacroEvent {
   previous: string;
 }
 
-export interface OnChainData {
-  active_addresses: {
-    btc: number | null;
-    eth: number | null;
-    btc_change_24h: number | null;
-    eth_change_24h: number | null;
-  };
-  transactions_24h: {
-    btc: number | null;
-    eth: number | null;
-  };
-  network_load: {
-    eth_gas_gwei: number | null;
-    btc_mempool_size_vbytes: number | null;
-  };
-  /** Real exchange in/out flows from Coin Metrics. Positive = net inflow. */
-  exchange_flows: {
-    btc_net_flow_usd: number | null;
-    eth_net_flow_usd: number | null;
-    /** UTC day the flows describe (YYYY-MM-DD); they settle a day behind. */
-    as_of: string | null;
-  };
-  /** When the server built this payload. */
-  as_of: string;
-  /** True when the payload is being replayed from cache after an upstream failure. */
-  stale: boolean;
-}
-
 export async function fetchFundingRates(): Promise<FundingRate[]> {
   return apiFetch<FundingRate[]>('/api/home/funding-rates');
 }
@@ -602,8 +598,98 @@ export async function fetchLiquidations(): Promise<Liquidation[]> {
   return apiFetch<Liquidation[]>('/api/home/liquidations');
 }
 
-export async function fetchOnChainData(): Promise<OnChainData> {
-  return apiFetch<OnChainData>('/api/home/onchain');
+// ==========================================
+// ASSET BRIEF
+// ==========================================
+
+/** One wall in the standing liquidation book. */
+export interface AssetBriefLiquidityCluster {
+  price: number;
+  notional_usd: number;
+  /** Which side gets liquidated here: longs sit below spot, shorts above. */
+  side: 'long' | 'short';
+  /** Signed against spot, so the sign alone says which way price has to move. */
+  distance_pct: number;
+}
+
+/**
+ * Where leverage is stacked around spot.
+ *
+ * `modelled` is not decoration. These levels come from open interest and
+ * leverage assumptions, not from liquidations anyone observed, and the card has
+ * to keep saying so — a bar chart of estimates drawn like a bar chart of
+ * measurements is the same picture making a different claim.
+ */
+export interface AssetBriefLiquidity {
+  clusters: AssetBriefLiquidityCluster[];
+  total_long_usd: number | null;
+  total_short_usd: number | null;
+  venue: string | null;
+  modelled: boolean;
+}
+
+/** Perpetual-market context. Present on crypto briefs only. */
+export interface AssetBriefCryptoLeg {
+  /** Per-interval rate as a fraction, not a percentage. Null = no listed perp. */
+  funding_rate: number | null;
+  funding_interval_hours: number | null;
+  funding_is_extreme: boolean | null;
+  volume_24h_usd: number | null;
+  /** Null when the book could not be modelled — not an empty book. */
+  liquidity: AssetBriefLiquidity | null;
+}
+
+/** Equity context. Present on stock briefs only. */
+export interface AssetBriefEquityLeg {
+  name: string | null;
+  sector: string | null;
+  volume: number | null;
+  avg_volume: number | null;
+  /** Today's volume over its 30-session average. 1.0 = an ordinary day. */
+  relative_volume: number | null;
+  fifty_two_week_high: number | null;
+  fifty_two_week_low: number | null;
+}
+
+/**
+ * One asset's daily read.
+ *
+ * `crypto` and `equity` are mutually exclusive — exactly one is non-null. The
+ * shape is deliberate: an equity carrying `funding_rate: 0` would be a figure
+ * the reader could act on and a fact that does not exist.
+ */
+export interface AssetBrief {
+  /** Venue-qualified: "BINANCE:BTCUSDT", "NASDAQ:NVDA". */
+  symbol: string;
+  /** Without the venue, for display: "BTCUSDT", "NVDA". */
+  display_symbol: string;
+  asset_type: 'crypto' | 'stock';
+  price: number;
+  change_24h_pct: number | null;
+  change_7d_pct: number | null;
+  /** Downsampled closes, oldest first. The last point is always the newest. */
+  spark: number[];
+  rsi_14: number | null;
+  rsi_signal: string | null;
+  trend: string | null;
+  timeframe: string | null;
+  support: number | null;
+  resistance: number | null;
+  support_distance_pct: number | null;
+  resistance_distance_pct: number | null;
+  crypto: AssetBriefCryptoLeg | null;
+  equity: AssetBriefEquityLeg | null;
+  ai_note: AiNote;
+  as_of: string;
+}
+
+/**
+ * Deliberately unguarded. A symbol that cannot be resolved or priced answers
+ * 404, and the card has to say so — swallowing that into a null would render an
+ * unknown ticker as an empty card indistinguishable from one still loading.
+ */
+export async function fetchAssetBrief(symbol: string): Promise<AssetBrief> {
+  return apiFetch<AssetBrief>(`/api/home/asset-brief/${encodeURIComponent(symbol)}`);
 }
 
 // ==========================================
@@ -711,6 +797,22 @@ export interface MacroRegime {
 
 export async function fetchMacroRegime(): Promise<MacroRegime> {
   return apiFetch<MacroRegime>('/api/macro/regime', { anonymous: true });
+}
+
+// ==========================================
+// ELECTIONS
+// ==========================================
+
+/**
+ * Upcoming national elections, priced where a market could be matched to one.
+ *
+ * The shapes live in `lib/elections` beside the derivations that read them,
+ * because vitest only reaches `lib/`. Deliberately unguarded: swallowing the
+ * error into an empty board would render an outage as the claim that no
+ * election is scheduled anywhere on Earth.
+ */
+export async function fetchElections(): Promise<ElectionsBoard> {
+  return apiFetch<ElectionsBoard>('/api/macro/elections', { anonymous: true });
 }
 
 // ==========================================
@@ -864,6 +966,8 @@ export type LiquidationCell = [number, number, number, number];
  */
 export interface LiquidationMap {
   symbol: string;
+  /** The venue whose book was modelled. Named, not assumed — see the badge. */
+  exchange: string;
   interval: string;
   candles: LiquidationCandle[];
   cells: LiquidationCell[];
@@ -886,14 +990,271 @@ export async function fetchLiquidationMap(
   symbol: string,
   interval: string,
   columns = 160,
+  venue: LiquidationExchange = 'okx',
   // The grid now spans a full leverage distance past the traded range, so it
   // needs more rows to keep each cell at roughly the previous price height.
   bins = 120
 ): Promise<LiquidationMap> {
   return apiFetch<LiquidationMap>(`/api/liquidations/map/${encodeURIComponent(symbol)}`, {
-    params: { interval, columns, bins },
+    params: { interval, columns, bins, venue },
     anonymous: true,
   });
+}
+
+/**
+ * One modelled liquidation span:
+ * `[startColumn, endColumn, priceBin, leverage, side, notionalUsd]`.
+ *
+ * `side` is 0 for longs and 1 for shorts. A span whose `endColumn` is the last
+ * candle is a level price has not reached yet.
+ */
+export type LiquidationLine = [number, number, number, number, number, number];
+
+/**
+ * The same model as `LiquidationMap`, emitted as spans instead of as a grid.
+ *
+ * The heatmap's cells collapse two things a line needs: the leverage tier that
+ * produced a level, and the candle it was opened at. This shape keeps both, at
+ * a fraction of the payload — spans merge across the columns a cell list has to
+ * repeat.
+ */
+export interface LiquidationLines {
+  symbol: string;
+  /** As `LiquidationMap.exchange`. */
+  exchange: string;
+  interval: string;
+  candles: LiquidationCandle[];
+  lines: LiquidationLine[];
+  bins: number;
+  price_min: number;
+  price_max: number;
+  bin_size: number;
+  max_value: number;
+  interval_ms: number;
+  leverage_tiers: number[];
+  /**
+   * The strongest span in each leverage tier, aligned index-for-index with
+   * `leverage_tiers`. Intensity has to be scaled per tier — see `lineAlpha`.
+   */
+  tier_max: number[];
+  /** As `LiquidationMap.stats_from_column`. */
+  stats_from_column: number;
+}
+
+export async function fetchLiquidationLines(
+  symbol: string,
+  interval: string,
+  columns = 160,
+  venue: LiquidationExchange = 'okx',
+  // Finer than the heatmap's grid: a span is drawn one pixel tall, so the price
+  // resolution is not paying for cell height the way the cell list does, and a
+  // coarse grid merges levels that are visibly distinct.
+  bins = 200
+): Promise<LiquidationLines> {
+  return apiFetch<LiquidationLines>(`/api/liquidations/lines/${encodeURIComponent(symbol)}`, {
+    params: { interval, columns, bins, venue },
+    anonymous: true,
+  });
+}
+
+/** `[bin, tierIndex, side, notionalUsd]`; `side` is 0 for longs, 1 for shorts. */
+export type LiquidationProfileLevel = [number, number, number, number];
+
+/**
+ * The standing liquidation book as a price profile.
+ *
+ * The same simulation as `LiquidationMap`, stopped at the newest candle and
+ * kept split by leverage tier instead of summed. There is no time axis and no
+ * candle series: `price` is the close the two sides divide at, and everything
+ * else describes one moment.
+ */
+export interface LiquidationProfile {
+  symbol: string;
+  /**
+   * The venue whose book this is — or every contributing venue joined, when the
+   * profile is an aggregate. Only the ones that actually answered are named.
+   */
+  exchange: string;
+  interval: string;
+  /** Spot at the moment the profile was taken; longs sit below it, shorts above. */
+  price: number;
+  levels: LiquidationProfileLevel[];
+  bins: number;
+  price_min: number;
+  price_max: number;
+  bin_size: number;
+  /** The tallest bin once the tier split is summed back — the y-axis ceiling. */
+  max_value: number;
+  total_long: number;
+  total_short: number;
+  leverage_tiers: number[];
+  /** As `LiquidationMap.stats_from_column`. */
+  stats_from_column: number;
+}
+
+/** Whose book to model: one exchange, or every one of them summed. */
+/**
+ * A venue whose book can be modelled on its own.
+ *
+ * Separate from `LiquidationVenue` because the aggregate is not available
+ * everywhere. The profile can sum three books — it has no time axis and its
+ * price grid is rebuilt to span all of them. The heatmap and the levels view
+ * cannot: both index their payload by column and bin, and those belong to one
+ * venue's candles.
+ */
+export type LiquidationExchange = 'okx' | 'binance' | 'bybit';
+
+export type LiquidationVenue = LiquidationExchange | 'all';
+
+/**
+ * The venues, in the order every liquidation view offers them.
+ *
+ * Here rather than in a component because three of them read from this list and
+ * the labels are the exchanges' own names, not copy — a fourth venue is a line
+ * added once. OKX leads because it is the default the routes fall back to.
+ */
+export const LIQUIDATION_EXCHANGES: { value: LiquidationExchange; label: string }[] = [
+  { value: 'okx', label: 'OKX' },
+  { value: 'binance', label: 'Binance' },
+  { value: 'bybit', label: 'Bybit' },
+];
+
+/**
+ * The markets every liquidation view offers.
+ *
+ * The model itself is symbol-agnostic — it only needs candles, open interest
+ * and a long/short ratio — but the list is short on purpose: below these the
+ * open-interest and long/short statistics thin out enough that the book they
+ * produce is noise dressed as a level. All three venues list every one of them
+ * as a perpetual, so switching venue never empties the chart.
+ *
+ * Here rather than in a component because the heatmap, the levels view and the
+ * map all read from it, and a market added to one of them and not the others
+ * reads as a missing feed.
+ */
+export const LIQUIDATION_SYMBOLS = [
+  'BTCUSDT',
+  'ETHUSDT',
+  'SOLUSDT',
+  'XRPUSDT',
+  'BNBUSDT',
+  'DOGEUSDT',
+] as const;
+
+export async function fetchLiquidationProfile(
+  symbol: string,
+  interval: string,
+  columns = 160,
+  venue: LiquidationVenue = 'okx',
+  // Buckets, not bars: a bucket the model puts nothing in is drawn as a gap.
+  // A hundred was chosen when four leverage tiers left the book standing in
+  // four bands with deserts between them, and past that the deserts merely got
+  // wider. Ten tiers fill the grid, so resolution buys detail again — and this
+  // is the width at which a BTC bucket is a couple of hundred dollars, which is
+  // about as fine as a modelled level deserves to be read.
+  bins = 140
+): Promise<LiquidationProfile> {
+  return apiFetch<LiquidationProfile>(`/api/liquidations/profile/${encodeURIComponent(symbol)}`, {
+    params: { interval, columns, bins, venue },
+    anonymous: true,
+  });
+}
+
+// ===== OPEN INTEREST =====
+
+/**
+ * Which provider answered.
+ *
+ * `coinalyze` reaches back years on the daily series; `venues` is the
+ * exchanges' own statistics endpoints and stops at roughly thirty days. The
+ * board shows this so a short chart reads as a configuration state rather than
+ * as a gap in the market.
+ */
+export type OpenInterestSource = 'coinalyze' | 'venues';
+
+/**
+ * Open interest per exchange against price.
+ *
+ * `series`, `aggregate` and `market_cap` are all aligned index-for-index with
+ * `candles`, so every derivation is a zip rather than a join. A `null` inside
+ * one of them is a bar that venue did not report — never a zero, because an
+ * exchange with no open interest and an exchange that did not answer are
+ * different claims.
+ */
+export interface OpenInterestBoard {
+  /** Base asset, e.g. `BTC` — not a venue-qualified symbol. */
+  symbol: string;
+  /** What was actually served. `1w` degrades to `1d` on the venue path. */
+  interval: string;
+  source: OpenInterestSource;
+  /** Exchanges that answered, in stacking order. A silent venue is absent. */
+  venues: string[];
+  candles: LiquidationCandle[];
+  /** Open interest in USD per venue, keyed by the names in `venues`. */
+  series: Record<string, (number | null)[]>;
+  /** Sum across the venues present at each bar. */
+  aggregate: (number | null)[];
+  /** `close * circulating_supply` per bar; empty when supply is unknown. */
+  market_cap: number[];
+  circulating_supply: number | null;
+  /**
+   * Index of the first bar where *every* listed venue reported.
+   * Before it the aggregate sums fewer books, so the chart greys it — otherwise
+   * a venue's first sample reads as a sudden inflow of open interest.
+   */
+  coverage_from: number;
+}
+
+export async function fetchOpenInterest(
+  symbol: string,
+  interval: string,
+  // Bars, not days, and set to what Coinalyze actually serves: a history
+  // request caps at roughly fifteen hundred points on every interval, so this
+  // is the whole chart it can draw — a little over four years on the daily
+  // series. Asking for more only lengthens the price line, and the backend
+  // trims those bars back off. The slider is how the window gets narrowed.
+  limit = 1500
+): Promise<OpenInterestBoard> {
+  return apiFetch<OpenInterestBoard>(
+    `/api/derivatives/open-interest/${encodeURIComponent(symbol)}`,
+    { params: { interval, limit }, anonymous: true }
+  );
+}
+
+/** One venue's bar in one panel. `value_usd` is always positive — the backend
+ *  drops a venue that reported nothing rather than drawing it as a zero. */
+export interface DexPerpVenue {
+  slug: string;
+  name: string;
+  value_usd: number;
+  /** Only the open-interest panel carries one; the other two send null rather
+   *  than borrowing a change that measures a different quantity. */
+  change_1d_pct: number | null;
+  logo: string;
+  chains: string[];
+}
+
+export type DexPerpPanel = 'open_interest' | 'volume_24h' | 'tvl';
+
+/**
+ * Three independent rankings of on-chain perpetual venues, not one table.
+ *
+ * `sources` names the provider behind each panel, or `unavailable` when it
+ * failed and nothing could be replayed — an empty panel is a missing
+ * measurement, never a venue holding nothing. `stale` marks a panel drawn from
+ * the previous refresh because its provider is down.
+ */
+export interface DexPerpsBoard {
+  open_interest: DexPerpVenue[];
+  volume_24h: DexPerpVenue[];
+  tvl: DexPerpVenue[];
+  sources: Record<DexPerpPanel, string>;
+  stale: Record<DexPerpPanel, boolean>;
+  updated_at: number;
+}
+
+export async function fetchDexPerps(): Promise<DexPerpsBoard> {
+  return apiFetch<DexPerpsBoard>('/api/derivatives/dex-perps', { anonymous: true });
 }
 
 // ==========================================
@@ -2886,4 +3247,374 @@ export interface ChainAnomalyReport {
 
 export async function fetchChainAnomalies(): Promise<ChainAnomalyReport> {
   return apiFetch<ChainAnomalyReport>('/api/chains/anomalies');
+}
+
+// ===== POLYMARKET =====
+
+/**
+ * Prediction markets.
+ *
+ * `price` is a probability in [0, 1] and is nullable throughout for the reason
+ * every other figure in this file is: a market priced at 0 is the crowd saying
+ * something will not happen, and a market with no price is one the upstream did
+ * not give us. The two must stay distinguishable all the way to the renderer.
+ */
+export interface PolymarketOutcome {
+  label: string;
+  price: number | null;
+  token_id: string | null;
+}
+
+export interface PolymarketMarket {
+  market_id: string;
+  slug: string;
+  question: string;
+  category: string;
+  outcomes: PolymarketOutcome[];
+  volume_usd: number | null;
+  liquidity_usd: number | null;
+  end_date: string | null;
+  created_at: string | null;
+  closed: boolean;
+  icon_url: string | null;
+  event_slug: string | null;
+}
+
+export interface PolymarketBoard {
+  markets: PolymarketMarket[];
+  count: number;
+  /** True when the board is being replayed from cache after an upstream fault. */
+  stale: boolean;
+  age_seconds: number;
+}
+
+export interface PolymarketPricePoint {
+  t: string;
+  p: number;
+}
+
+/**
+ * A window the market re-priced in, or the window it opened in.
+ *
+ * `delta` is in absolute probability points, never percent — 0.02 to 0.04 is a
+ * doubling and two cents of noise, while 0.45 to 0.62 is the move that had a
+ * cause. These windows are what the origin analysis searches news inside.
+ */
+export interface PolymarketMove {
+  kind: 'spike' | 'creation';
+  started_at: string;
+  ended_at: string;
+  price_from: number | null;
+  price_to: number | null;
+  delta: number | null;
+  outcome_label: string | null;
+}
+
+export interface PolymarketHolder {
+  wallet: string;
+  /** Null unless its owner chose to publish a name. Never the raw address. */
+  display_name: string | null;
+  outcome_label: string | null;
+  shares: number | null;
+}
+
+export interface PolymarketFacts {
+  market: PolymarketMarket;
+  resolution_criteria: string | null;
+  history: PolymarketPricePoint[];
+  moves: PolymarketMove[];
+  holders: PolymarketHolder[];
+  /** Named gaps. A source that could not be read, rather than silently omitted. */
+  unavailable: string[];
+}
+
+export interface PolymarketMicrostructure {
+  leading_outcome: string | null;
+  leading_price: number | null;
+  drift_24h: number | null;
+  drift_7d: number | null;
+  spread: number | null;
+  liquidity_usd: number | null;
+  volume_usd: number | null;
+  top_holder_share: number | null;
+  top5_holder_share: number | null;
+  notes: string[];
+}
+
+export interface PolymarketMarketDetail {
+  facts: PolymarketFacts;
+  microstructure: PolymarketMicrostructure;
+}
+
+export async function fetchPolymarketBoard(): Promise<PolymarketBoard> {
+  return apiFetch<PolymarketBoard>('/api/polymarket/board');
+}
+
+export async function fetchPolymarketMarket(slug: string): Promise<PolymarketMarketDetail> {
+  return apiFetch<PolymarketMarketDetail>(`/api/polymarket/markets/${encodeURIComponent(slug)}`);
+}
+
+/**
+ * The bet analysis, and the shape it takes when there is not enough to write one.
+ *
+ * Two shapes rather than one with everything optional, discriminated on
+ * `status`. A single model would let the panel render a verdict-shaped card full
+ * of blanks, which reads as a confident answer that happens to be missing its
+ * words — the precise failure this feature is built to avoid. A refusal has to
+ * look like a refusal.
+ */
+export interface PolymarketSourceRef {
+  id: string;
+  url: string;
+  domain: string;
+  title: string;
+  published_at: string | null;
+  /** 1 = full text from an allowlisted desk, 3 = a snippet from an unknown one. */
+  tier: number;
+  via: string;
+  body_chars: number;
+}
+
+export interface PolymarketClaim {
+  text: string;
+  sources: string[];
+  direction: 'yes' | 'no' | 'neutral';
+  weight: 'strong' | 'moderate' | 'weak';
+}
+
+export interface PolymarketTrigger {
+  summary: string;
+  source_id: string;
+  occurred_at: string | null;
+  move_index: number | null;
+}
+
+/**
+ * Why a market was opened.
+ *
+ * `conjecture` is the one field on this surface that carries no source. It is
+ * populated only when nothing could be traced, it names the kind of event that
+ * usually opens a market like this rather than asserting one happened, and the
+ * server never lets it reach the stage that writes a verdict. The UI has to keep
+ * that distinction visible: rendered next to a traced answer with the same
+ * weight, it would read as a finding.
+ */
+export interface PolymarketOrigin {
+  status: 'traced' | 'conjectured' | 'undetermined';
+  opening_rationale: string | null;
+  triggers: PolymarketTrigger[];
+  conjecture: string | null;
+  conjecture_basis: string[];
+}
+
+/** The origin job's own result — self-contained, since it lands on its own. */
+export interface PolymarketOriginReport extends PolymarketOrigin {
+  market_id: string;
+  slug: string;
+  question: string;
+  category: string;
+  moves: PolymarketMove[];
+  sources: PolymarketSourceRef[];
+  attempted: PolymarketSweepAttempt[];
+  generated_at: string;
+}
+
+export interface PolymarketSweepAttempt {
+  kind: string;
+  target: string;
+  outcome: 'hits' | 'empty' | 'error' | 'timeout';
+  hits: number;
+  detail: string | null;
+}
+
+export interface PolymarketCoverage {
+  attempted: PolymarketSweepAttempt[];
+  total_sources: number;
+  distinct_domains: number;
+  tier1_sources: number;
+  body_chars: number;
+  queries_answered: number;
+  queries_issued: number;
+  dropped: string[];
+}
+
+export interface PolymarketAttributionReport {
+  claims_in: number;
+  claims_kept: number;
+  sentences_dropped: number;
+  dropped: string[];
+}
+
+export interface PolymarketAnalysis {
+  status: 'ok' | 'degraded';
+  market_id: string;
+  slug: string;
+  question: string;
+  category: string;
+  facts: PolymarketFacts;
+  microstructure: PolymarketMicrostructure;
+  confidence: number;
+  leaning: 'yes' | 'no' | 'unclear';
+  bottom_line: string;
+  claims_for: PolymarketClaim[];
+  claims_against: PolymarketClaim[];
+  sources: PolymarketSourceRef[];
+  coverage: PolymarketCoverage;
+  attribution: PolymarketAttributionReport;
+  gaps: string[];
+  generated_at: string;
+}
+
+export interface PolymarketRefusal {
+  status: 'insufficient_evidence';
+  market_id: string;
+  slug: string;
+  question: string;
+  category: string;
+  reason_code: string;
+  explanation: string;
+  facts: PolymarketFacts | null;
+  microstructure: PolymarketMicrostructure | null;
+  coverage: PolymarketCoverage;
+  generated_at: string;
+}
+
+export type PolymarketVerdict = PolymarketAnalysis | PolymarketRefusal;
+
+/**
+ * A Polymarket background run, whatever it is computing.
+ *
+ * Generic over its payload because the verdict and the origin trace are two
+ * jobs over the same market, started by the same click and polled the same way.
+ * They differ only in what lands at the end, and duplicating the envelope would
+ * mean two places to fix the next time the job shape moves.
+ */
+export interface PolymarketJob<T> {
+  jobId: string;
+  slug: string;
+  status: string;
+  stage: string | null;
+  stageIndex: number;
+  stages: { key: string; label: string }[];
+  elapsedSeconds: number;
+  result: T | null;
+  error: string | null;
+}
+
+export type PolymarketAnalysisJob = PolymarketJob<PolymarketVerdict>;
+export type PolymarketOriginJob = PolymarketJob<PolymarketOriginReport>;
+
+interface RawJob<T> {
+  job_id: string;
+  key: string;
+  status: string;
+  stage?: string | null;
+  stage_index?: number;
+  stages?: { key: string; label: string }[];
+  elapsed_seconds?: number;
+  result?: T | null;
+  partial_result?: T | null;
+  error?: string | null;
+}
+
+function toPolymarketJob<T>(raw: RawJob<T>): PolymarketJob<T> {
+  return {
+    jobId: raw.job_id,
+    slug: raw.key,
+    status: raw.status,
+    stage: raw.stage ?? null,
+    stageIndex: raw.stage_index ?? 0,
+    stages: raw.stages ?? [],
+    elapsedSeconds: raw.elapsed_seconds ?? 0,
+    result: raw.result ?? raw.partial_result ?? null,
+    error: raw.error ?? null,
+  };
+}
+
+export async function startPolymarketAnalysis(slug: string): Promise<PolymarketAnalysisJob> {
+  const raw = await apiFetch<RawJob<PolymarketVerdict>>(
+    `/api/polymarket/markets/${encodeURIComponent(slug)}/analysis/jobs`,
+    { method: 'POST' }
+  );
+  return toPolymarketJob(raw);
+}
+
+export async function fetchPolymarketAnalysisJob(jobId: string): Promise<PolymarketAnalysisJob> {
+  const raw = await apiFetch<RawJob<PolymarketVerdict>>(`/api/polymarket/analysis/jobs/${jobId}`);
+  return toPolymarketJob(raw);
+}
+
+export async function startPolymarketOrigin(slug: string): Promise<PolymarketOriginJob> {
+  const raw = await apiFetch<RawJob<PolymarketOriginReport>>(
+    `/api/polymarket/markets/${encodeURIComponent(slug)}/origin/jobs`,
+    { method: 'POST' }
+  );
+  return toPolymarketJob(raw);
+}
+
+export async function fetchPolymarketOriginJob(jobId: string): Promise<PolymarketOriginJob> {
+  const raw = await apiFetch<RawJob<PolymarketOriginReport>>(
+    `/api/polymarket/origin/jobs/${jobId}`
+  );
+  return toPolymarketJob(raw);
+}
+
+/**
+ * The map's three layers.
+ *
+ * `provenance` is not decoration. Once drawn, a choropleth of legal access, a
+ * bubble sized by a market's subject and a band of trading hours look equally
+ * authoritative, and this field is the only thing that tells a reader which is a
+ * measurement and which is an inference.
+ */
+export interface PolymarketJurisdiction {
+  code: string;
+  name: string;
+  tier: 'blocked' | 'close_only' | 'frontend_only';
+  /** True when only named sub-national regions are affected. */
+  partial: boolean;
+  regions: string[];
+  note: string;
+}
+
+export interface PolymarketSubjectCountry {
+  country: string;
+  lon: number;
+  lat: number;
+  volume_usd: number;
+  market_count: number;
+  markets: { slug: string; question: string; category: string }[];
+}
+
+export interface PolymarketActivityHour {
+  hour: number;
+  value_usd: number;
+  share: number;
+}
+
+export interface PolymarketMap {
+  jurisdictions: {
+    provenance: 'measured';
+    source_url: string;
+    retrieved: string;
+    tier_labels: Record<string, string>;
+    tier_details: Record<string, string>;
+    countries: PolymarketJurisdiction[];
+  };
+  subjects: {
+    provenance: 'derived';
+    note: string;
+    countries: PolymarketSubjectCountry[];
+  };
+  activity: {
+    provenance: 'estimated';
+    note: string;
+    markets_sampled: number;
+    hours: PolymarketActivityHour[];
+  };
+  market_count: number;
+}
+
+export async function fetchPolymarketMap(): Promise<PolymarketMap> {
+  return apiFetch<PolymarketMap>('/api/polymarket/map');
 }

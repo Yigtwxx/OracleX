@@ -28,7 +28,7 @@ export default function AnomalyBanner({ report }: AnomalyBannerProps) {
   if (!report || report.anomalies.length === 0) return null;
 
   return (
-    <div className="surface px-4 py-2.5 flex items-start gap-2.5">
+    <div className="surface ai-surface px-4 py-2.5 flex items-start gap-2.5">
       <Activity className="w-3.5 h-3.5 text-warn shrink-0 mt-0.5" aria-hidden />
 
       <div className="min-w-0 flex flex-col gap-1.5">

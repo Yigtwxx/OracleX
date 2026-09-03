@@ -1,14 +1,17 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMarketOverview, useFearGreedIndex, useNasdaqOverview } from '@/hooks/queries';
 import { FearGreedData, MarketOverview } from '@/lib/api';
+import { HistogramBucket } from '@/lib/market-breadth';
 import FearGreedGauge from './FearGreedGauge';
 import { TrendingUp, TrendingDown, Activity, Flame } from 'lucide-react';
 import MarketStatsBar from './overview/MarketStatsBar';
 import AssetListCard from './overview/AssetListCard';
 import AssetTable from './overview/AssetTable';
-import BottomStatsGrid from './overview/BottomStatsGrid';
+import MarketBreadthStrip from './overview/MarketBreadthStrip';
+import ChangeDistribution from './overview/ChangeDistribution';
+import DivergenceBoard from './overview/DivergenceBoard';
 
 export default function OverviewPage({
   marketType = 'crypto',
@@ -16,6 +19,16 @@ export default function OverviewPage({
   marketType?: 'crypto' | 'nasdaq';
 }) {
   const isCrypto = marketType === 'crypto';
+
+  // The distribution chart draws the selection but the table applies it, so the
+  // page holds it. Kept here rather than in the chart so switching markets can
+  // drop a bucket that means nothing in the other one.
+  const [changeFilter, setChangeFilter] = useState<HistogramBucket | null>(null);
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setChangeFilter(null);
+  }, [marketType]);
 
   // Use the appropriate hooks based on market type
   const cryptoMarket = useMarketOverview(isCrypto);
@@ -56,6 +69,16 @@ export default function OverviewPage({
     : nasdaq.dataUpdatedAt > 0
       ? new Date(nasdaq.dataUpdatedAt)
       : null;
+
+  // The chart sits below the table it filters, so selecting a bucket without
+  // moving the viewport narrows a list the user cannot see. Scrolling back to
+  // the table is what makes the two read as one control.
+  const handleBucketSelect = (bucket: HistogramBucket | null) => {
+    setChangeFilter(bucket);
+    if (bucket) {
+      tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const handleRefresh = () => {
     if (isCrypto) {
@@ -140,10 +163,35 @@ export default function OverviewPage({
         </div>
 
         {/* ===== ASSET TABLE ===== */}
-        <AssetTable marketData={marketData} marketType={marketType} isLoading={isLoading} />
+        {/* `scroll-mt` clears the sticky stats bar. Without it, scrolling the
+            table into view parks its header — and the filter chip that explains
+            why the list is short — underneath that bar. */}
+        <div ref={tableRef} className="scroll-mt-14">
+          <AssetTable
+            marketData={marketData}
+            marketType={marketType}
+            isLoading={isLoading}
+            changeFilter={changeFilter}
+            onClearChangeFilter={() => setChangeFilter(null)}
+          />
+        </div>
 
-        {/* ===== BOTTOM STATS ===== */}
-        <BottomStatsGrid marketData={marketData} marketType={marketType} />
+        {/* ===== MARKET INTERNALS =====
+            Three readings the totals in the stats bar cannot give: how many
+            moved, how the moves are spread, and which names contradict their
+            own week. All derived from the payload the table above already
+            renders. */}
+        <MarketBreadthStrip marketData={marketData} marketType={marketType} isLoading={isLoading} />
+
+        <ChangeDistribution
+          marketData={marketData}
+          marketType={marketType}
+          isLoading={isLoading}
+          selected={changeFilter}
+          onSelect={handleBucketSelect}
+        />
+
+        <DivergenceBoard marketData={marketData} marketType={marketType} isLoading={isLoading} />
       </div>
     </div>
   );

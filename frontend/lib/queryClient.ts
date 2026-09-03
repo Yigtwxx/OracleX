@@ -19,6 +19,22 @@ export function showToast(message: string) {
   toastCallback?.(message);
 }
 
+let alarmToastCallback: ((message: string) => void) | null = null;
+
+/**
+ * Register the alarm channel. Separate from `setToastCallback` because that one
+ * is hardwired to raise errors — routing an alarm through it would render a
+ * fired alarm as a failure.
+ */
+export function setAlarmToastCallback(cb: (message: string) => void) {
+  alarmToastCallback = cb;
+}
+
+/** Announce a fired alarm in-app. No-ops until ToastProvider has mounted. */
+export function showAlarmToast(message: string) {
+  alarmToastCallback?.(message);
+}
+
 /**
  * Opt a query or mutation out of the global error toast by setting
  * `meta: { silentError: true }`. Use it where the caller shows a message of its
