@@ -96,6 +96,15 @@ def stubbed_startup(monkeypatch):
 
     monkeypatch.setattr(kap_service, "fetch_tape", no_tape)
 
+    # The BIST ownership warm-up walks a hundred İş Yatırım cards when no board
+    # is stored, which on a test machine is exactly the case.
+    from services.bist.ownership import board as bist_ownership_board
+
+    async def no_board(*args, **kwargs) -> None:
+        return None
+
+    monkeypatch.setattr(bist_ownership_board, "ensure_board", no_board)
+
 
 async def test_startup_yields_before_the_slow_warm_ups_finish(stubbed_startup):
     """
@@ -139,6 +148,7 @@ async def test_readiness_reports_every_step_as_soon_as_startup_yields(stubbed_st
         "ownership",
         "kap",
         "viop_bulletin",
+        "bist_ownership",
         "llm",
         "rag",
     ], "Every step must be listed before any of them has finished"

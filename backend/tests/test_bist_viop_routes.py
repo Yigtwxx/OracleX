@@ -139,3 +139,46 @@ def test_the_note_is_its_own_endpoint_so_a_model_outage_costs_no_board(client, b
 
     monkeypatch.setattr("routers.bist.build_viop_facts", facts)
     assert client.get("/api/bist/viop").status_code == 200
+
+
+# ── The margin map note ──────────────────────────────────────────────────────
+
+
+def test_the_map_note_endpoint_is_scoped_like_the_map(client, monkeypatch):
+    seen = {}
+
+    async def facts(ticker, sessions):
+        seen["ticker"], seen["sessions"] = ticker, sessions
+        return {"stance": "long_heavy", "ticker": ticker}
+
+    async def note(given):
+        return {"status": "ready", "note": "Kitap", "generated_at": None, "reason": None}
+
+    monkeypatch.setattr("routers.bist.build_viop_map_facts", facts)
+    monkeypatch.setattr("routers.bist.viop_map_note", note)
+
+    payload = client.get("/api/bist/viop-map/THYAO/note", params={"sessions": 60}).json()
+    assert seen == {"ticker": "THYAO", "sessions": 60}
+    assert payload["facts"]["stance"] == "long_heavy"
+    assert payload["note"]["status"] == "ready"
+
+
+def test_a_field_that_cannot_be_drawn_answers_null_facts_rather_than_an_error(client, monkeypatch):
+    """The map route 404s and 503s because a field is either drawn or not; the
+    note is a paragraph, and its absence is a null the page renders as nothing."""
+
+    async def facts(ticker, sessions):
+        return None
+
+    monkeypatch.setattr("routers.bist.build_viop_map_facts", facts)
+
+    response = client.get("/api/bist/viop-map/NOPE/note")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["facts"] is None
+    assert payload["note"]["status"] == "unavailable"
+    assert payload["note"]["reason"] == "insufficient_data"
+
+
+def test_the_map_note_window_is_bounded_like_the_map(client):
+    assert client.get("/api/bist/viop-map/THYAO/note", params={"sessions": 5}).status_code == 422

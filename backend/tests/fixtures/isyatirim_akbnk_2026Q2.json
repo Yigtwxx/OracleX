@@ -1,0 +1,68 @@
+{
+ "ok": true,
+ "value": [
+  {
+   "itemCode": "1Z",
+   "itemDescTr": "AKTİF TOPLAMI",
+   "itemDescEng": "TOTAL ASSETS",
+   "value1": "3727680000000",
+   "value2": "3419802978000",
+   "value3": "3336006508000",
+   "value4": "3028775669000"
+  },
+  {
+   "itemCode": "2O",
+   "itemDescTr": "XVI. ÖZKAYNAKLAR",
+   "itemDescEng": "XVI. SHAREHOLDERS' EQUITY",
+   "value1": "324746000000",
+   "value2": "302597564000",
+   "value3": "310158190000",
+   "value4": "277363065000"
+  },
+  {
+   "itemCode": "3A",
+   "itemDescTr": "I. FAİZ GELİRLERİ",
+   "itemDescEng": "I. INTEREST INCOME",
+   "value1": "349461000000",
+   "value2": "162844257000",
+   "value3": "628173603000",
+   "value4": "461610498000"
+  },
+  {
+   "itemCode": "3C",
+   "itemDescTr": "III. NET FAİZ GELİRİ/GİDERİ (I - II)",
+   "itemDescEng": "III. NET INTEREST INCOME/EXPENSES (I - II)",
+   "value1": "83173000000",
+   "value2": "40596842000",
+   "value3": "101215006000",
+   "value4": "65059013000"
+  },
+  {
+   "itemCode": "3CA",
+   "itemDescTr": "IV. NET ÜCRET VE KOMİSYON GELİRLERİ/GİDERLERİ",
+   "itemDescEng": "IV. NET FEES AND COMMISSIONS INCOME/EXPENSES",
+   "value1": "64433000000",
+   "value2": "30158371000",
+   "value3": "114402397000",
+   "value4": "81900830000"
+  },
+  {
+   "itemCode": "3CH",
+   "itemDescTr": "XI. NET FAALİYET KARI/ZARARI (VIII-IX-X)",
+   "itemDescEng": "XI. NET OPERATING INCOME (IX-X-XI)",
+   "value1": "37931000000",
+   "value2": "22802941000",
+   "value3": "62692296000",
+   "value4": "38639761000"
+  },
+  {
+   "itemCode": "3Z",
+   "itemDescTr": "XXIII. NET DÖNEM KARI/ZARARI (XVII+XXII)",
+   "itemDescEng": "XXIII. NET PROFIT/LOSSES (XVII+XXII)",
+   "value1": "34378000000",
+   "value2": "19178575000",
+   "value3": "57247061000",
+   "value4": "38915968000"
+  }
+ ]
+}

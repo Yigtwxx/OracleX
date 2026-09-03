@@ -1,0 +1,167 @@
+{
+ "ok": true,
+ "value": [
+  {
+   "itemCode": "1A",
+   "itemDescTr": "Dönen Varlıklar",
+   "itemDescEng": "CURRENT ASSETS",
+   "value1": "512191000000",
+   "value2": "485646000000",
+   "value3": "513912099203",
+   "value4": "425657000000"
+  },
+  {
+   "itemCode": "1AA",
+   "itemDescTr": "  Nakit ve Nakit Benzerleri",
+   "itemDescEng": "Cash and Cash Equivalents",
+   "value1": "80346000000",
+   "value2": "71141000000",
+   "value3": "101313500671",
+   "value4": "100325000000"
+  },
+  {
+   "itemCode": "1BL",
+   "itemDescTr": "TOPLAM VARLIKLAR",
+   "itemDescEng": "TOTAL ASSETS",
+   "value1": "2360037000000",
+   "value2": "2158033000000",
+   "value3": "2351336385167",
+   "value4": "1794446000000"
+  },
+  {
+   "itemCode": "2A",
+   "itemDescTr": "Kısa Vadeli Yükümlülükler",
+   "itemDescEng": "SHORT TERM LIABILITIES",
+   "value1": "566751000000",
+   "value2": "498369000000",
+   "value3": "520581939010",
+   "value4": "433401000000"
+  },
+  {
+   "itemCode": "2AA",
+   "itemDescTr": "  Finansal Borçlar",
+   "itemDescEng": "Short-Term Financial Loans",
+   "value1": "187257000000",
+   "value2": "166590000000",
+   "value3": "191282150230",
+   "value4": "150890000000"
+  },
+  {
+   "itemCode": "2BA",
+   "itemDescTr": "  Finansal Borçlar",
+   "itemDescEng": "Long-Term Financial Loans",
+   "value1": "726977000000",
+   "value2": "647365000000",
+   "value3": "708690498442",
+   "value4": "493725000000"
+  },
+  {
+   "itemCode": "2N",
+   "itemDescTr": "Özkaynaklar",
+   "itemDescEng": "SHAREHOLDERS EQUITY",
+   "value1": "1018453000000",
+   "value2": "966363000000",
+   "value3": "1073081134047",
+   "value4": "843951000000"
+  },
+  {
+   "itemCode": "3C",
+   "itemDescTr": "Satış Gelirleri",
+   "itemDescEng": "Net Sales",
+   "value1": "585069000000",
+   "value2": "257961000000",
+   "value3": "1125149219659",
+   "value4": "690825000000"
+  },
+  {
+   "itemCode": "3D",
+   "itemDescTr": "BRÜT KAR (ZARAR)",
+   "itemDescEng": "GROSS PROFIT (LOSS)",
+   "value1": "42587000000",
+   "value2": "21568000000",
+   "value3": "183185077752",
+   "value4": "118687000000"
+  },
+  {
+   "itemCode": "3DF",
+   "itemDescTr": "FAALİYET KARI (ZARARI)",
+   "itemDescEng": "OPERATING PROFITS",
+   "value1": "-5098000000",
+   "value2": "-2451000000",
+   "value3": "106134532481",
+   "value4": "67607000000"
+  },
+  {
+   "itemCode": "3HC",
+   "itemDescTr": "(Esas Faaliyet Dışı) Finansal Giderler (-)",
+   "itemDescEng": "Financial Expenses (from Other Operations) (-)",
+   "value1": "-30739000000",
+   "value2": "-14407000000",
+   "value3": "-49140610019",
+   "value4": "-38135000000"
+  },
+  {
+   "itemCode": "3L",
+   "itemDescTr": "DÖNEM KARI (ZARARI)",
+   "itemDescEng": "NET PROFIT AFTER TAXES",
+   "value1": "18766000000",
+   "value2": "9856000000",
+   "value3": "139092773392",
+   "value4": "80951000000"
+  },
+  {
+   "itemCode": "3Z",
+   "itemDescTr": "Ana Ortaklık Payları",
+   "itemDescEng": "Parent Shares",
+   "value1": "18864000000",
+   "value2": "9915000000",
+   "value3": "139199933601",
+   "value4": "81064000000"
+  },
+  {
+   "itemCode": "4B",
+   "itemDescTr": "Amortisman Giderleri",
+   "itemDescEng": "Depreciation & Amortization",
+   "value1": "58665000000",
+   "value2": "28358000000",
+   "value3": "111496075673",
+   "value4": "67762000000"
+  },
+  {
+   "itemCode": "4C",
+   "itemDescTr": " İşletme Faaliyetlerinden Kaynaklanan Net Nakit",
+   "itemDescEng": " Net Cash from Operations",
+   "value1": "74326000000",
+   "value2": "43336000000",
+   "value3": "218810548035",
+   "value4": "140149000000"
+  },
+  {
+   "itemCode": "4CAI",
+   "itemDescTr": "  Sabit Sermaye Yatırımları",
+   "itemDescEng": "  Capital Expenditures (CapEx)",
+   "value1": "-43613000000",
+   "value2": "-20125000000",
+   "value3": "-90457347214",
+   "value4": "-51663000000"
+  },
+  {
+   "itemCode": "4CB",
+   "itemDescTr": "Serbest Nakit Akım",
+   "itemDescEng": "Free Cash Flow",
+   "value1": "13887000000",
+   "value2": "-2921000000",
+   "value3": "48450545378",
+   "value4": "82650000000"
+  },
+  {
+   "itemCode": "4CBB",
+   "itemDescTr": "Temettü Ödemeleri",
+   "itemDescEng": "Dividends Paid",
+   "value1": "0",
+   "value2": "0",
+   "value3": "-10540560754",
+   "value4": "-8951000000"
+  }
+ ]
+}

@@ -1,7 +1,10 @@
 """The BIST fear-and-greed index, and what it refuses to answer."""
 
+import pytest
+
 from services.bist.equity_service import SectorStat, sector_performance
 from services.bist.sentiment_service import (
+    HORIZONS,
     MIN_MEASURED,
     band_label,
     breadth_component,
@@ -9,8 +12,12 @@ from services.bist.sentiment_service import (
     compute_sentiment,
     flow_component,
     limit_component,
+    long_trend_component,
     momentum_component,
+    monthly_breadth_component,
     range_component,
+    trend_component,
+    weekly_breadth_component,
 )
 from services.bist.tradingview_client import EquityRow
 
@@ -27,6 +34,10 @@ def row(
     market_cap: float | None = 1_000.0,
     traded_value: float | None = 1_000.0,
     sector: str = "Finans",
+    perf_1w: float | None = None,
+    perf_1m: float | None = None,
+    sma50: float | None = None,
+    sma200: float | None = None,
 ) -> EquityRow:
     return EquityRow(
         ticker=ticker,
@@ -47,6 +58,10 @@ def row(
         week52_low=low,
         rsi=rsi,
         relative_volume=relative_volume,
+        perf_1w=perf_1w,
+        perf_1m=perf_1m,
+        sma50=sma50,
+        sma200=sma200,
     )
 
 
@@ -140,7 +155,118 @@ def test_flow_needs_both_sides_before_it_can_compare_them():
     assert flow_component(board(30, change_pct=0.01)) is None
 
 
+def test_weekly_and_monthly_breadth_read_their_own_columns_not_todays():
+    # Down on the day, up on the week and the month: the slow components must
+    # not notice the session at all.
+    rows = board(30, change_pct=-0.05, perf_1w=0.02, perf_1m=0.10)
+    assert weekly_breadth_component(rows).score == 100.0
+    assert monthly_breadth_component(rows).score == 100.0
+    assert breadth_component(rows).score == 0.0
+
+
+def test_period_breadth_refuses_a_column_the_scanner_did_not_fill():
+    assert weekly_breadth_component(board(40)) is None
+    assert monthly_breadth_component(board(40)) is None
+
+
+def test_trend_counts_shares_above_their_moving_average():
+    rows = board(30, price=100.0, sma50=90.0) + board(10, price=100.0, sma50=110.0)
+    component = trend_component(rows)
+    assert component is not None
+    assert component.score == 75.0
+    assert "50 günlük" in component.reading
+
+
+def test_a_share_sitting_on_its_average_has_not_broken_out():
+    assert trend_component(board(30, price=100.0, sma50=100.0)).score == 0.0
+
+
+def test_long_trend_uses_the_two_hundred_day_line_and_belongs_to_the_year():
+    component = long_trend_component(board(30, price=100.0, sma200=80.0))
+    assert component is not None
+    assert component.score == 100.0
+    assert component.horizon == "year"
+    assert trend_component(board(30, price=100.0, sma50=80.0)).horizon == "trend"
+
+
 # ── The index ────────────────────────────────────────────────────────────────
+
+
+def full_board(n: int = 40, **overrides) -> list[EquityRow]:
+    """A board on which every component can answer."""
+    base = {
+        "change_pct": 0.01,
+        "rsi": 50.0,
+        "price": 100.0,
+        "relative_volume": 1.0,
+        "perf_1w": 0.01,
+        "perf_1m": 0.01,
+        "sma50": 90.0,
+        "sma200": 90.0,
+    }
+    base.update(overrides)
+    up = [row(f"U{i}", **base) for i in range(n)]
+    # A few fallers so the flow component has both sides to compare.
+    down = [row(f"D{i}", **{**base, "change_pct": -0.01}) for i in range(5)]
+    return up + down
+
+
+def test_every_horizon_carries_the_same_share_of_the_index():
+    sentiment = compute_sentiment(full_board())
+    assert sentiment is not None
+    assert {c.horizon for c in sentiment.components} == {code for code, _ in HORIZONS}
+    by_horizon = {
+        code: sum(c.weight for c in sentiment.components if c.horizon == code)
+        for code, _ in HORIZONS
+    }
+    for share in by_horizon.values():
+        assert share == pytest.approx(1 / 3)
+    assert sum(c.weight for c in sentiment.components) == pytest.approx(1.0)
+
+
+def test_the_score_is_the_weighted_average_a_reader_can_recompute():
+    sentiment = compute_sentiment(full_board())
+    assert sentiment is not None
+    expected = round(sum(c.score * c.weight for c in sentiment.components))
+    assert sentiment.score == expected
+
+
+def test_a_session_alone_cannot_move_the_index_more_than_a_third():
+    # Same trend, same year; the only thing that changes between the two boards
+    # is today's tape, and it swings from limit-down to limit-up.
+    slow = {
+        "rsi": 50.0,
+        "price": 100.0,
+        "perf_1w": 0.0,
+        "perf_1m": 0.0,
+        "sma50": 100.0,
+        "sma200": 100.0,
+    }
+    calm_day = compute_sentiment(full_board(change_pct=0.0, relative_volume=1.0, **slow))
+    panic = compute_sentiment(full_board(change_pct=-0.10, relative_volume=3.0, **slow))
+    euphoria = compute_sentiment(full_board(change_pct=0.10, relative_volume=3.0, **slow))
+    assert calm_day is not None and panic is not None and euphoria is not None
+    assert euphoria.score - panic.score <= 34
+    assert abs(calm_day.score - panic.score) <= 34
+
+
+def test_a_missing_horizon_hands_its_share_to_the_others():
+    # No moving averages and no period performance: the trend horizon is left
+    # with momentum alone and the year with the range; both still get a third.
+    rows = board(40, change_pct=0.01, relative_volume=1.0, rsi=50.0, price=100.0)
+    sentiment = compute_sentiment(rows)
+    assert sentiment is not None
+    assert sum(c.weight for c in sentiment.components) == pytest.approx(1.0)
+    momentum = next(c for c in sentiment.components if c.key == "momentum")
+    assert momentum.weight == pytest.approx(1 / 3)
+
+
+def test_the_index_refuses_a_single_horizon():
+    # Only today's tape can answer. That is a tape, not a mood.
+    rows = board(40, change_pct=0.01, relative_volume=1.0, rsi=None, price=None) + board(
+        5, change_pct=-0.01, relative_volume=1.0, rsi=None, price=None
+    )
+    assert compute_sentiment(rows) is None
 
 
 def test_a_board_at_its_lows_and_limit_down_reads_as_extreme_fear():
