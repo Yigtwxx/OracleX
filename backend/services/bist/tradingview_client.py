@@ -63,9 +63,25 @@ _STOCK_COLUMNS: tuple[str, ...] = (
     "indexes",
     "Perf.YTD",
     "Perf.Y",
+    # The shorter horizons and the two moving averages feed the sentiment
+    # index's slower components: a session's advance-decline line resets every
+    # morning, and an index built only from it swung thirty points a day.
+    "Perf.W",
+    "Perf.1M",
+    "SMA50",
+    "SMA200",
     "price_52_week_high",
     "price_52_week_low",
     "RSI",
+    # Both relative-volume columns, because they answer different questions and
+    # only one of them is right during the session. `relative_volume_10d_calc`
+    # divides today's volume *so far* by a full day's average, so at 10:30 every
+    # listing reads a tenth of normal and the crowding score — which needs
+    # turnover at least at par — scores five names out of six hundred. The
+    # `_intraday` column compares cumulative volume with the average cumulative
+    # volume at the same time of day, which is what "unusual volume" means at
+    # any hour; it converges on the plain figure at the close.
+    "relative_volume_intraday|5",
     "relative_volume_10d_calc",
     "beta_1_year",
     # Calendar. Unix seconds, and sparsely populated — TradingView carries an
@@ -77,6 +93,26 @@ _STOCK_COLUMNS: tuple[str, ...] = (
     "dividend_ex_date_upcoming",
     "dividend_amount_recent",
     "dividends_yield",
+    # Fundamentals and the analyst consensus, for the Radar. Percentages arrive
+    # as percentages (12.66 for a 12.66% ROE) and are turned into fractions like
+    # every other ratio in this package; the price targets are lira.
+    "industry.tr",
+    "return_on_equity",
+    "debt_to_equity",
+    "total_revenue_yoy_growth_ttm",
+    "net_income_yoy_growth_ttm",
+    "gross_margin",
+    "operating_margin",
+    "net_margin",
+    "current_ratio",
+    # `recommendation_mark` runs 1 (strong buy) to 5 (strong sell) and
+    # `recommendation_total` is the number of analysts behind it. Both are
+    # sparse outside the XU030.
+    "recommendation_mark",
+    "recommendation_total",
+    "price_target_average",
+    "price_target_high",
+    "price_target_low",
 )
 
 _INDEX_COLUMNS: tuple[str, ...] = (
@@ -135,6 +171,11 @@ class EquityRow:
     """Bare index codes this stock belongs to — `("XU100", "XU030", …)`."""
     perf_ytd: Optional[float] = None
     perf_1y: Optional[float] = None
+    perf_1w: Optional[float] = None
+    perf_1m: Optional[float] = None
+    sma50: Optional[float] = None
+    """Fifty-day simple moving average of the close, in price units."""
+    sma200: Optional[float] = None
     week52_high: Optional[float] = None
     week52_low: Optional[float] = None
     rsi: Optional[float] = None
@@ -146,6 +187,24 @@ class EquityRow:
     ex_dividend_date: Optional[str] = None
     dividend_amount: Optional[float] = None
     dividend_yield: Optional[float] = None
+    industry: str = ""
+    """Turkish industry label — finer than `sector`: `Bölgesel bankalar`."""
+    roe: Optional[float] = None
+    """Return on equity, trailing, as a fraction."""
+    debt_to_equity: Optional[float] = None
+    revenue_growth: Optional[float] = None
+    """Trailing-twelve-month revenue against the year before, nominal fraction."""
+    net_income_growth: Optional[float] = None
+    gross_margin: Optional[float] = None
+    operating_margin: Optional[float] = None
+    net_margin: Optional[float] = None
+    current_ratio: Optional[float] = None
+    analyst_mark: Optional[float] = None
+    """Consensus rating, 1 = strong buy … 5 = strong sell."""
+    analyst_count: Optional[int] = None
+    target_avg: Optional[float] = None
+    target_high: Optional[float] = None
+    target_low: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -171,6 +230,12 @@ def _number(value: Any) -> Optional[float]:
     # sorting a column containing one produces an order that depends on the
     # input order rather than on the values.
     return None if result != result else result
+
+
+def _count(value: Any) -> Optional[int]:
+    """A whole number, or None. Zero analysts is a real answer and is kept."""
+    number = _number(value)
+    return None if number is None or number < 0 else int(number)
 
 
 def _pct(value: Any) -> Optional[float]:
@@ -208,6 +273,23 @@ def _index_codes(cell: Any) -> tuple[str, ...]:
             continue
         codes.append(proname.split(":", 1)[1])
     return tuple(codes)
+
+
+def _relative_volume(cell: dict) -> Optional[float]:
+    """
+    Turnover against the usual turnover *at this time of day*.
+
+    The time-of-day column is preferred and the full-day one is the fallback
+    rather than the other way round: at the close the two agree, and during the
+    session only the first says anything about whether a name is busy. The
+    fallback is there because the intraday column has only been observed with
+    the market open; if it comes back empty outside the session, the full-day
+    figure is the right answer at that hour anyway.
+    """
+    at_time = _number(cell.get("relative_volume_intraday|5"))
+    if at_time is not None:
+        return at_time
+    return _number(cell.get("relative_volume_10d_calc"))
 
 
 async def _scan(payload: dict) -> list[dict]:
@@ -273,16 +355,34 @@ async def fetch_equities() -> list[EquityRow]:
                 indices=_index_codes(cell.get("indexes")),
                 perf_ytd=_pct(cell.get("Perf.YTD")),
                 perf_1y=_pct(cell.get("Perf.Y")),
+                perf_1w=_pct(cell.get("Perf.W")),
+                perf_1m=_pct(cell.get("Perf.1M")),
+                sma50=_number(cell.get("SMA50")),
+                sma200=_number(cell.get("SMA200")),
                 week52_high=_number(cell.get("price_52_week_high")),
                 week52_low=_number(cell.get("price_52_week_low")),
                 rsi=_number(cell.get("RSI")),
-                relative_volume=_number(cell.get("relative_volume_10d_calc")),
+                relative_volume=_relative_volume(cell),
                 beta=_number(cell.get("beta_1_year")),
                 next_earnings=_epoch_date(cell.get("earnings_release_next_date")),
                 last_earnings=_epoch_date(cell.get("earnings_release_date")),
                 ex_dividend_date=_epoch_date(cell.get("dividend_ex_date_upcoming")),
                 dividend_amount=_number(cell.get("dividend_amount_recent")),
                 dividend_yield=_pct(cell.get("dividends_yield")),
+                industry=(cell.get("industry.tr") or "").strip(),
+                roe=_pct(cell.get("return_on_equity")),
+                debt_to_equity=_number(cell.get("debt_to_equity")),
+                revenue_growth=_pct(cell.get("total_revenue_yoy_growth_ttm")),
+                net_income_growth=_pct(cell.get("net_income_yoy_growth_ttm")),
+                gross_margin=_pct(cell.get("gross_margin")),
+                operating_margin=_pct(cell.get("operating_margin")),
+                net_margin=_pct(cell.get("net_margin")),
+                current_ratio=_number(cell.get("current_ratio")),
+                analyst_mark=_number(cell.get("recommendation_mark")),
+                analyst_count=_count(cell.get("recommendation_total")),
+                target_avg=_number(cell.get("price_target_average")),
+                target_high=_number(cell.get("price_target_high")),
+                target_low=_number(cell.get("price_target_low")),
             )
         )
     return equities
