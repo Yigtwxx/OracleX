@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { rollCaret, type Caret } from '@/lib/landing/caret';
 
 /**
  * Milliseconds per character.
@@ -17,29 +18,6 @@ const LINE_PAUSE_MS = 220;
 
 /** The frame budget, so a backgrounded tab does not fast-forward on return. */
 const MAX_FRAME_MS = 64;
-
-interface Caret {
-  readonly tone: 'up' | 'down';
-  /** Where the body starts inside the wick, and how much of it the body is. */
-  readonly bodyTop: number;
-  readonly bodyHeight: number;
-}
-
-/**
- * A new candle for the write head.
- *
- * Direction, body size and where the body sits on the wick are all independent
- * draws, because a caret that only flipped colour would read as a two-frame
- * blink rather than as a tape printing.
- */
-function rollCaret(): Caret {
-  const bodyHeight = 0.22 + Math.random() * 0.44;
-  return {
-    tone: Math.random() < 0.5 ? 'up' : 'down',
-    bodyTop: Math.random() * (1 - bodyHeight),
-    bodyHeight,
-  };
-}
 
 interface TypedPointsProps {
   items: readonly string[];

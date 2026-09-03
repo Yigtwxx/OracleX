@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import AuthCard, { type AuthMode } from '@/components/auth/AuthCard';
 import Modal from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
+import { realmFor, resolveRealm } from '@/lib/nav-items';
 
 interface AuthModalProps {
   mode: AuthMode | null;
@@ -22,6 +23,7 @@ const TITLES: Record<AuthMode, string> = {
 export default function AuthModal({ mode, onClose, returnFocusTo }: AuthModalProps) {
   const paneRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
   const { user } = useAuth();
   const open = mode !== null;
 
@@ -32,8 +34,11 @@ export default function AuthModal({ mode, onClose, returnFocusTo }: AuthModalPro
   useEffect(() => {
     if (!open || !user) return;
     onClose();
-    router.push('/home');
-  }, [open, user, onClose, router]);
+    // The terminal for the product they signed up from. Someone who read the
+    // BIST page and created an account there has said which board they came
+    // for; dropping them on the crypto home would discard that.
+    router.push(realmFor(resolveRealm(pathname)).href);
+  }, [open, user, onClose, router, pathname]);
 
   // Modal supplies the scrim, Escape and the scroll lock but no focus handling,
   // so the dialog moves focus in and hands it back here rather than changing

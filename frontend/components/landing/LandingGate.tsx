@@ -16,6 +16,11 @@ interface LandingGateProps {
 /**
  * Holds the page behind an opaque cover until the scene is actually running.
  *
+ * This belongs to `/` alone. The other marketing routes render through
+ * `MarketingChrome`, which does not mount it: they are complete in the server
+ * HTML, so there is nothing for a cover to hide and no canvas to report ready —
+ * the gate would simply black them out until `MAX_HOLD_MS` expired.
+ *
  * The landing page is server-rendered, so the copy and the empty board are on
  * screen well before the bundle that drives the canvas is. Scrolling in that
  * window scrolls a dead page — the tape does not print, the annotations do not

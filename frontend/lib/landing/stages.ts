@@ -1,3 +1,5 @@
+import { LLM } from '@/lib/generated/repo-facts';
+
 export type StageKey =
   'hero' | 'print' | 'ai' | 'chat' | 'live' | 'heatmap' | 'macro' | 'ownership' | 'social' | 'tail';
 
@@ -198,7 +200,7 @@ export const FEATURES: readonly Feature[] = [
     ],
     metrics: [
       { value: '3', label: 'passes per report' },
-      { value: '14', label: 'LLM providers' },
+      { value: String(LLM.presets), label: 'LLM providers' },
       { value: 'local', label: 'first, via Ollama' },
     ],
   },

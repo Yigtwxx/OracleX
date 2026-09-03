@@ -10,6 +10,8 @@
  * the three steps read as a list, and a list does not have a direction.
  */
 
+import { ramp } from './ramp';
+
 export const PASS_VIEW = { width: 140, height: 80 } as const;
 
 export interface PassBox {
@@ -135,11 +137,6 @@ export interface PassPhases {
   readonly review: number;
   readonly flowBack: number;
   readonly revised: number;
-}
-
-function ramp(progress: number, from: number, span: number): number {
-  const t = (progress - from) / span;
-  return t < 0 ? 0 : t > 1 ? 1 : t;
 }
 
 /**

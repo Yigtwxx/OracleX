@@ -2,12 +2,16 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Github } from 'lucide-react';
 import type { AuthMode } from '@/components/auth/AuthCard';
-import Logo from '@/components/ui/Logo';
+import SessionBadge from '@/components/borsa/SessionBadge';
+import RealmSwitcher from '@/components/RealmSwitcher';
 import ShinyText from '@/components/ui/ShinyText';
 import { useAuth } from '@/contexts/AuthContext';
+import LandingTabs from './LandingTabs';
 import { REPO_URL } from '@/lib/landing/links';
+import { realmFor, resolveRealm } from '@/lib/nav-items';
 
 interface LandingHeaderProps {
   onOpenAuth: (mode: AuthMode, trigger: HTMLElement) => void;
@@ -18,6 +22,7 @@ const GHOST_BUTTON =
 
 export default function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
   const { user, loading } = useAuth();
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const signInRef = useRef<HTMLButtonElement>(null);
@@ -41,42 +46,63 @@ export default function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
     return () => query.removeEventListener('change', sync);
   }, []);
 
+  // Which product the reader is looking at. It decides both what the logo menu
+  // offers and where "Open terminal" actually goes — sending someone reading
+  // about Borsa İstanbul into the crypto board would be the wrong door.
+  const realm = realmFor(resolveRealm(pathname));
+
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 flex h-14 items-center gap-2 px-4 transition-colors duration-200 sm:px-6 ${
         scrolled ? 'border-b border-line bg-bg/85 backdrop-blur' : 'border-b border-transparent'
       }`}
     >
-      <Link href="/" className="flex shrink-0 items-center gap-2" aria-label="Oracle-X home">
-        <Logo size={18} className="shrink-0 text-fg" />
-        <span className="text-md font-semibold tracking-tight text-fg">Oracle-X</span>
-      </Link>
+      <RealmSwitcher activeRealm={realm.key} surface="marketing" className="" />
 
-      <div className="flex-1" />
-
-      <div className="flex-1" />
+      {/* The section tabs are the global product's — Product, Developers, FAQ,
+          all in English. The BIST page is a single Turkish page and reaches
+          them through the logo menu, so it takes a session status line instead:
+          the bar keeps its three-part layout, and the middle of it says
+          something rather than holding a spacer open. */}
+      {realm.key === 'global' ? <LandingTabs /> : <SessionBadge />}
 
       {/* Fixed width so resolving `loading` cannot shift the rest of the bar. */}
       <div className="flex min-w-[168px] items-center justify-end gap-1">
         {loading ? null : user ? (
           <Link
-            href="/home"
-            className="rounded-md border border-line px-3 py-1.5 text-base transition-colors hover:border-line-strong"
+            href={realm.href}
+            className="landing-ultra rounded-md border border-line px-3 py-1.5 text-base transition-colors hover:border-line-strong"
           >
             {/* React Bits' shine. The base colour is the page's own `--fg` so
                 the label still reads as a header control between sweeps, and
                 the highlight is white rather than tinted — a sheen crossing
                 the glyphs, not a second accent competing with the CTA. */}
-            <ShinyText
-              text="Open terminal"
-              disabled={reduceMotion}
-              speed={4}
-              delay={2}
-              spread={110}
-              color="var(--fg)"
-              shineColor="#ffffff"
-              className="text-base"
-            />
+            <span className="landing-ultra-slot">
+              {/* The sweep is a screen effect and its highlight is white. On the
+                  BIST page's paper ground that is a white streak crossing dark
+                  ink, which reads as a rendering fault rather than as a sheen —
+                  and a printed board does not shimmer. */}
+              <ShinyText
+                text={realm.copy.openTerminal}
+                disabled={reduceMotion || realm.key === 'bist'}
+                speed={4}
+                delay={2}
+                spread={110}
+                color="var(--fg)"
+                shineColor="#ffffff"
+                className="landing-ultra-base text-base"
+              />
+              {/* The hover state, as a second copy stacked over the first rather
+                  than as a restyling of it: ShinyText paints its gradient through
+                  inline styles that a CSS rule cannot outrank, so the only way to
+                  hand the label a different gradient is to hand it a different
+                  element. Same trick the GitHub mark below already uses.
+                  aria-hidden because it is the same word twice — a screen reader
+                  should hear one control, not two. */}
+              <span aria-hidden="true" className="landing-ultra-ink">
+                {realm.copy.openTerminal}
+              </span>
+            </span>
           </Link>
         ) : (
           <>
@@ -86,7 +112,7 @@ export default function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
               onClick={() => signInRef.current && onOpenAuth('signin', signInRef.current)}
               className={GHOST_BUTTON}
             >
-              Sign in
+              {realm.copy.signIn}
             </button>
             <button
               ref={signUpRef}
@@ -94,7 +120,7 @@ export default function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
               onClick={() => signUpRef.current && onOpenAuth('signup', signUpRef.current)}
               className="rounded-md border border-line px-3 py-1.5 text-base text-fg transition-colors hover:border-line-strong"
             >
-              Sign up
+              {realm.copy.signUp}
             </button>
           </>
         )}
@@ -105,7 +131,10 @@ export default function LandingHeader({ onOpenAuth }: LandingHeaderProps) {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Oracle-X on GitHub"
-        className="landing-riser ml-1 rounded-md p-1.5 text-fg-muted transition-colors"
+        // Hidden on a phone. The bar has to fit a logo, three tabs and two auth
+        // controls inside 56px of height and whatever width is left, and this is
+        // the one item already reachable from the footer on the same screen.
+        className="landing-riser ml-1 hidden rounded-md p-1.5 text-fg-muted transition-colors sm:block"
       >
         <Github className="h-[18px] w-[18px]" aria-hidden="true" />
         <span aria-hidden="true" data-tone="mark" className="landing-riser-fill">

@@ -290,23 +290,13 @@ function drawLastPrice(
   ctx.restore();
 }
 
-export function renderScene(
+/** The tape itself: every printed candle and its volume, and nothing else. */
+function drawBars(
   frame: RenderFrame,
   state: SceneState,
-  series: CandleSeries,
-  /** Copy-panel boxes in viewport pixels, for the leaders that tie them to bars. */
-  notes: readonly NoteRect[] = []
-  /** Returns which bar each panel ended up wired to, so the panel can tint. */
-): NoteTone[] {
-  const { ctx } = frame;
-  ctx.clearRect(0, 0, frame.width, frame.height);
-  // The whole "clean hero" rule, enforced once more at the last possible moment.
-  if (state.gridAlpha <= 0 && state.printedCount <= 0) return [];
-
-  const layout = buildLayout(frame, state);
-  drawGrid(frame, state, layout);
-  if (state.printedCount <= 0) return [];
-
+  layout: Layout,
+  series: CandleSeries
+): void {
   const complete = Math.floor(state.printedCount);
   const lastVisible = Math.min(complete, state.windowFrom + state.slots);
 
@@ -325,10 +315,55 @@ export function renderScene(
     drawCandle(frame, layout, series.candles[complete], x, partial, 1);
     drawVolume(frame, layout, series.candles[complete], series.maxVolume, x, partial);
   }
+}
+
+export function renderScene(
+  frame: RenderFrame,
+  state: SceneState,
+  series: CandleSeries,
+  /** Copy-panel boxes in viewport pixels, for the leaders that tie them to bars. */
+  notes: readonly NoteRect[] = []
+  /** Returns which bar each panel ended up wired to, so the panel can tint. */
+): NoteTone[] {
+  const { ctx } = frame;
+  ctx.clearRect(0, 0, frame.width, frame.height);
+  // The whole "clean hero" rule, enforced once more at the last possible moment.
+  if (state.gridAlpha <= 0 && state.printedCount <= 0) return [];
+
+  const layout = buildLayout(frame, state);
+  drawGrid(frame, state, layout);
+  if (state.printedCount <= 0) return [];
+
+  drawBars(frame, state, layout, series);
 
   renderMarks(frame, state, layout, series);
   const tones = drawNoteLeaders(frame, state, layout, series, notes);
   drawPriceScale(frame, state, layout);
   drawLastPrice(frame, state, layout, series);
   return tones;
+}
+
+/**
+ * The board with nothing said about it: bars, volume, and the grid.
+ *
+ * The documentation pages sit a column of prose on top of this, and the full
+ * scene is not a backdrop — it is a chart with eight pattern annotations, a
+ * price scale and a last-price tag, every one of which is a piece of type
+ * competing with the paragraph over it. Turning the alpha down far enough to
+ * fix that turned the tape down with it, so the annotations come off instead.
+ *
+ * Deliberately not a flag on `renderScene`. That function's contract is "draw
+ * the scene the landing page is about", and a boolean that removes half of it
+ * would make every future reader check which half they were getting.
+ */
+export function renderTape(frame: RenderFrame, state: SceneState, series: CandleSeries): void {
+  const { ctx } = frame;
+  ctx.clearRect(0, 0, frame.width, frame.height);
+  if (state.gridAlpha <= 0 && state.printedCount <= 0) return;
+
+  const layout = buildLayout(frame, state);
+  drawGrid(frame, state, layout);
+  if (state.printedCount <= 0) return;
+
+  drawBars(frame, state, layout, series);
 }

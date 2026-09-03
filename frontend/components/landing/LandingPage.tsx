@@ -1,15 +1,12 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import type { AuthMode } from '@/components/auth/AuthCard';
 import { figureOf } from '@/lib/landing/imagery';
 import { FEATURES, STAGES, type StageKey } from '@/lib/landing/stages';
-import AuthModal from './AuthModal';
 import FeatureSection from './FeatureSection';
 import GoTerminalButton from './GoTerminalButton';
 import LandingFooter from './LandingFooter';
 import LandingGate from './LandingGate';
-import LandingHeader from './LandingHeader';
 import LandingHero from './LandingHero';
 import Reveal from './Reveal';
 import PassDiagram from './PassDiagram';
@@ -40,22 +37,14 @@ const OPEN_QUESTIONS: readonly string[] = [
 
 export default function LandingPage() {
   const trackRef = useRef<HTMLDivElement>(null);
-  const [authMode, setAuthMode] = useState<AuthMode | null>(null);
-  const [authTrigger, setAuthTrigger] = useState<HTMLElement | null>(null);
   const [sceneReady, setSceneReady] = useState(false);
 
   const markSceneReady = useCallback(() => setSceneReady(true), []);
 
-  const openAuth = useCallback((mode: AuthMode, trigger: HTMLElement) => {
-    setAuthTrigger(trigger);
-    setAuthMode(mode);
-  }, []);
-
-  const closeAuth = useCallback(() => setAuthMode(null), []);
-
   return (
     <>
-      <LandingHeader onOpenAuth={openAuth} />
+      {/* The header and the auth modal are in the route group's layout, so they
+          survive a navigation to the other tabs and the underline can slide. */}
       <ScrollCanvas trackRef={trackRef} onReady={markSceneReady} />
 
       {/* The canvas track. Progress 0 → 1 is this element's scroll span, which is
@@ -162,8 +151,6 @@ export default function LandingPage() {
       </div>
 
       <LandingFooter />
-
-      <AuthModal mode={authMode} onClose={closeAuth} returnFocusTo={authTrigger} />
 
       {/* Last in the tree so it wins the stacking order without a z-index race. */}
       <LandingGate sceneReady={sceneReady} />

@@ -1,10 +1,8 @@
 'use client';
 
-import GoTerminalButton from './GoTerminalButton';
 import HeroAsk from './HeroAsk';
 import HeroBoard from './HeroBoard';
 import MetricStrip from './MetricStrip';
-import { REPO_URL } from '@/lib/landing/links';
 
 /**
  * `min-h-svh`, not `min-h-screen`: on mobile the dynamic viewport unit is what
@@ -48,18 +46,10 @@ export default function LandingHero() {
             plain language, and post what you find where other people can push back on it.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <GoTerminalButton size="lg" />
-            <a
-              href={REPO_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-md border border-line px-5 py-2.5 text-md text-fg-muted transition-colors duration-200 hover:border-line-strong hover:text-fg"
-            >
-              View source
-            </a>
-          </div>
-
+          {/* No control here. The header carries one and the closing screen
+              carries the other, and a third on the first screen asked the reader
+              to leave before the page had made its case. What the hero ends on
+              instead is the specification. */}
           <div className="mt-10">
             <MetricStrip />
           </div>
