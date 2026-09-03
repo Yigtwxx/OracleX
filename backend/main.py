@@ -32,6 +32,7 @@ from routers import (
     alarms,
     auth,
     bist,
+    bist_ownership,
     news,
     llm as llm_router,
     market,
@@ -300,6 +301,23 @@ async def lifespan(app: FastAPI):
 
     _spawn(_warm_viop_bulletin())
 
+    # Build the BIST ownership board if the stored one has aged out: a hundred
+    # İş Yatırım cards half a second apart and ten KAP fund reports, about a
+    # minute. Same shape as the global ownership warm-up — the daily rebuild is
+    # the normal path and this covers a fresh install or a machine that was off.
+    async def _warm_bist_ownership():
+        readiness.start("bist_ownership")
+        try:
+            from services.bist.ownership.board import ensure_board as ensure_bist_board
+
+            await ensure_bist_board()
+            readiness.succeed("bist_ownership")
+        except Exception as e:
+            logger.warning("BIST ownership warm-up failed: %s", e)
+            readiness.fail("bist_ownership", e)
+
+    _spawn(_warm_bist_ownership())
+
     # Warm the RAG embedding model in a background thread so the first AI
     # request never blocks the event loop downloading/loading it. Non-fatal:
     # if it fails (e.g. offline), RAG simply degrades to empty context.
@@ -452,6 +470,8 @@ def create_app() -> FastAPI:
     app.include_router(home.router)  # /api/home/*, /api/onchain/whales
     app.include_router(macro.router)  # /api/macro/board
     app.include_router(bist.router)  # /api/bist/* — Borsa İstanbul, TEFAS, KAP
+    app.include_router(bist_ownership.router)  # /api/bist/ownership/* — who holds the XU100
+    app.include_router(bist_ownership.admin_router)  # /api/admin/bist/ownership/refresh
     app.include_router(live.router)  # /api/live/events, /api/live/streams, /api/live/tape
     app.include_router(chains.router)  # /api/chains/board
     app.include_router(polymarket.router)  # /api/polymarket/board, /api/polymarket/markets/*
