@@ -189,5 +189,6 @@ def register_startup_steps() -> None:
     readiness.register("ownership", "Varlık sahiplikleri", OPTIONAL)
     readiness.register("kap", "KAP bildirim akışı", OPTIONAL)
     readiness.register("viop_bulletin", "VİOP bülteni", OPTIONAL)
+    readiness.register("bist_ownership", "BIST ortaklık yapısı", OPTIONAL)
     readiness.register("llm", "Yerel model", OPTIONAL)
     readiness.register("rag", "RAG embedding modeli", OPTIONAL)
