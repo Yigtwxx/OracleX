@@ -41,6 +41,10 @@ KIND_POLYMARKET = "polymarket"
 # distinct kind the single-flight lock would dedup one into the other and the
 # second click would re-attach to a job answering a different question.
 KIND_POLYMARKET_ORIGIN = "polymarket_origin"
+# The BIST Radar scan. Keyed by horizon, so a second click on "Tara" while a
+# swing scan is running joins it rather than fanning out a second walk over a
+# hundred companies.
+KIND_RADAR = "radar"
 
 # A report is worth re-reading half an hour later; a chat answer is collected by
 # the poll that is already running and is dead weight after that. Holding
