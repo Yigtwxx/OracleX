@@ -27,6 +27,14 @@ SLOW_STEP_SECONDS = 1.5
 # 2 x SLOW_STEP_SECONDS so a loaded CI box cannot make this flap.
 STARTUP_BUDGET_SECONDS = 0.5
 
+# How long the loop may go without coming back to a waiting coroutine. Derived
+# from SLOW_STEP_SECONDS rather than fixed, because the failure this guards has
+# a known size: run the synchronous warm-up on the loop and the gap is a full
+# SLOW_STEP_SECONDS. Half of that separates the regression from scheduler noise
+# with room on both sides. A hardcoded 0.2 did not — a shared runner produced
+# 0.36s of ordinary jitter and failed a green build.
+STALL_BUDGET_SECONDS = SLOW_STEP_SECONDS / 2
+
 
 @pytest.fixture
 def stubbed_startup(monkeypatch):
@@ -192,7 +200,7 @@ async def test_warm_ups_do_not_stall_the_event_loop(stubbed_startup):
             await asyncio.sleep(0.01)
             worst_gap = max(worst_gap, time.monotonic() - before - 0.01)
 
-    assert worst_gap < 0.2, (
+    assert worst_gap < STALL_BUDGET_SECONDS, (
         f"Event loop stalled for {worst_gap:.2f}s during startup; a request "
         f"arriving then would have waited that long for a reply"
     )
