@@ -37,7 +37,14 @@ server = MCPServer(
         "zone by how many horizons confirm it; deriving your own levels from "
         "get_candles produces numbers that disagree with the terminal.\n\n"
         "Symbols carry their venue: crypto pairs are BTCUSDT or "
-        "BINANCE:ETHUSDT, equities are the plain ticker (NVDA)."
+        "BINANCE:ETHUSDT, equities are the plain ticker (NVDA). Borsa "
+        "İstanbul is the exception and has its own tools — a bare Turkish "
+        "ticker will not resolve through get_price.\n\n"
+        "Every Borsa İstanbul return arrives as nominal, real and usd "
+        "together. Quote the lira figure alone and you have reported "
+        "inflation as performance; say which frame you are quoting, and when "
+        "real is null say it is unavailable rather than passing the nominal "
+        "number off in its place."
     ),
 )
 
@@ -628,6 +635,225 @@ async def get_watchlist() -> dict[str, Any]:
     except OracleXError as error:
         return _fail(error)
     return {"ok": True, "watchlists": payload}
+
+
+# ── Borsa İstanbul ──────────────────────────────────────────────────────────
+
+# Six tools for thirty-two endpoints, on the same reasoning as the prediction
+# markets above: a tool list is context every turn pays for, so what is here is
+# the questions a person actually asks about this market. Deliberately absent —
+# the ownership book, the entity-level positioning detail and the radar screen.
+# The first two are second-order questions best reached through the HTTP API
+# once the board has raised them, and the radar is a job that has to be polled,
+# which is a poor shape for a tool the model expects to answer in one turn.
+
+
+@server.tool()
+async def get_bist_overview() -> dict[str, Any]:
+    """The Turkish market in one payload: the indices, the movers and the
+    written read of the session.
+
+    The tool for "how is Borsa İstanbul doing" when no ticker was named.
+    Quotes here are delayed at least fifteen minutes and the payload says so
+    in `delay_minutes` — never present one as live.
+    """
+    try:
+        return {"ok": True, **await client.get("/api/bist/overview")}
+    except OracleXError as error:
+        return _fail(error)
+
+
+@server.tool()
+async def get_bist_stock(ticker: str) -> dict[str, Any]:
+    """One Borsa İstanbul name: price, and what it actually returned.
+
+    Pass the bare ticker — `THYAO`, `ASELS`, `GARAN`. Everywhere else in this
+    terminal a symbol carries its venue, and a bare Turkish ticker will not
+    resolve through get_price; this tool is the Turkish branch.
+
+    **Read the return frames before quoting a number.** Every window comes back
+    as `nominal`, `real` and `usd` together. Over a year in which consumer
+    prices rose about a third, quoting the lira figure alone reports inflation
+    as performance — it is the most common way to be wrong about this market
+    and it looks entirely reasonable on the page. A null `real` means the
+    window could not be deflated, never that inflation was zero.
+    """
+    try:
+        return {"ok": True, **await client.get(f"/api/bist/stocks/{ticker}")}
+    except NotFound:
+        return {
+            "ok": False,
+            "reason": f"{ticker!r} did not resolve on Borsa İstanbul. Check the "
+            "spelling rather than substituting a figure — this is a refusal, "
+            "not a gap.",
+        }
+    except OracleXError as error:
+        return _fail(error)
+
+
+@server.tool()
+async def get_bist_fund(code: str) -> dict[str, Any]:
+    """A TEFAS fund: its own numbers, and what it is actually holding.
+
+    Two calls behind one tool, because "how did this fund do" and "what is in
+    it" are never asked apart. The same three return frames apply as for a
+    stock. If the holdings call fails the fund's own figures are still
+    returned, with the gap named rather than left blank.
+    """
+    try:
+        fund = await client.get(f"/api/bist/funds/{code}")
+    except NotFound:
+        return {"ok": False, "reason": f"No TEFAS fund with code {code!r}."}
+    except OracleXError as error:
+        return _fail(error)
+
+    result: dict[str, Any] = {"ok": True, "fund": fund}
+    try:
+        result["holdings"] = await client.get(f"/api/bist/funds/{code}/holdings")
+    except OracleXError as error:
+        result["holdings_unavailable"] = str(error)
+    return result
+
+
+@server.tool()
+async def get_bist_disclosures(limit: int = 20) -> dict[str, Any]:
+    """KAP filings — what listed companies have formally disclosed.
+
+    The tool for "did anything happen at this company". Material disclosures
+    move Turkish equities more reliably than news coverage does, because the
+    coverage is usually downstream of the filing.
+    """
+    try:
+        return {"ok": True, **await client.get("/api/bist/kap", {"limit": limit})}
+    except OracleXError as error:
+        return _fail(error)
+
+
+@server.tool()
+async def get_turkish_macro() -> dict[str, Any]:
+    """The Turkish macro backdrop: inflation, the policy rate and the exchange
+    rate.
+
+    These are the series every `real` figure elsewhere in this market is
+    deflated by, so this is the tool that explains why a nominal return and a
+    real one disagree, rather than a separate subject.
+    """
+    try:
+        return {"ok": True, **await client.get("/api/bist/macro")}
+    except OracleXError as error:
+        return _fail(error)
+
+
+@server.tool()
+async def get_viop_positioning(ticker: str, top_bands: int = 6) -> dict[str, Any]:
+    """Where VİOP positions sit for one underlying, and how far each cohort is
+    from the scan range its margin was sized against.
+
+    **The band is not a margin call and must never be reported as one.** It is
+    Takasbank's published price scan range: the one-day, 99% confidence move
+    the clearing house collateralised a position's *initial* margin against.
+    VİOP publishes no maintenance margin rate — the CCP procedure leaves the
+    level to a General Letter and states maintenance is not applied at end of
+    day — so the price at which a call actually fires cannot be computed from
+    anything public. The "75% of initial" figure that circulates online traces
+    to one undated guide.
+
+    Direction is inferred rather than published: open interest rising into a
+    rising settlement reads as longs opening, rising against a falling one as
+    shorts. Everything else — exposure, entry price, the swept range, the band
+    itself — comes from the exchange or the clearing house.
+
+    Returns the heaviest bands per side rather than the raw grid, which is a
+    rendering object of thousands of cells.
+    """
+    try:
+        payload = await client.get(f"/api/bist/viop-map/{ticker}")
+    except NotFound:
+        return {
+            "ok": False,
+            "reason": f"No VİOP map for {ticker!r}. The map is built only where "
+            "the data supports it and coverage is narrower than the exchange's "
+            "contract list, so this may be a covered market with too little "
+            "open interest rather than a bad ticker.",
+        }
+    except OracleXError as error:
+        return _fail(error)
+    return _summarize_viop_map(payload, top_bands)
+
+
+def _summarize_viop_map(payload: dict[str, Any], top: int) -> dict[str, Any]:
+    """Reduce the positioning grid to the bands carrying the most notional.
+
+    Cells are `{column, bin_index, long_try, short_try}` and the map
+    accumulates across sessions, so a level that survived ten sessions appears
+    in ten cells. Summing every column would therefore count the same exposure
+    ten times; the current state is the newest column alone.
+    """
+    cells = payload.get("cells") or []
+    bin_size = payload.get("bin_size")
+    price_min = payload.get("price_min")
+
+    if not cells or not bin_size or price_min is None:
+        return {"ok": False, "reason": "The map came back without a usable grid."}
+
+    latest = max(cell["column"] for cell in cells)
+    bands: list[dict[str, Any]] = []
+    for cell in cells:
+        if cell["column"] != latest:
+            continue
+        long_try = cell.get("long_try") or 0.0
+        short_try = cell.get("short_try") or 0.0
+        if not (long_try or short_try):
+            continue
+        low = price_min + cell["bin_index"] * bin_size
+        bands.append(
+            {
+                "price_low": round(low, 2),
+                "price_high": round(low + bin_size, 2),
+                "long_try": round(long_try),
+                "short_try": round(short_try),
+                "side": "long" if long_try >= short_try else "short",
+            }
+        )
+
+    bands.sort(key=lambda b: -(b["long_try"] + b["short_try"]))
+    psr = payload.get("psr")
+
+    result: dict[str, Any] = {
+        "ok": True,
+        "underlying": payload.get("underlying"),
+        "price_scan_range_percent": round(psr * 100, 2) if isinstance(psr, (int, float)) else psr,
+        "open_interest": payload.get("open_interest"),
+        "thin": payload.get("thin"),
+        "price_range": [payload.get("price_min"), payload.get("price_max")],
+        "longs": [b for b in bands if b["side"] == "long"][:top],
+        "shorts": [b for b in bands if b["side"] == "short"][:top],
+        "caveat": (
+            "price_scan_range_percent is the move initial margin was sized "
+            "for, not a margin-call level. VİOP publishes no maintenance "
+            "margin rate, so no call price can be derived from this."
+        ),
+        "note": (
+            f"Summarized from {len(cells)} grid cells across "
+            f"{len(payload.get('sessions') or [])} sessions; the newest session "
+            f"alone, since the map accumulates and older columns repeat the "
+            f"same exposure."
+        ),
+    }
+
+    # A session whose settlement did not move yields no cohort at all rather
+    # than a hedged split, so an unclassified count is expected and saying how
+    # much went unread is the difference between a thin map and a wrong one.
+    if payload.get("undirected_sessions"):
+        result["undirected_sessions"] = payload["undirected_sessions"]
+        result["note"] += (
+            f" {payload['undirected_sessions']} session(s) closed flat and could "
+            "not be assigned a direction; their exposure is not in the bands."
+        )
+    if payload.get("thin"):
+        result["note"] += " Open interest is below the floor this map is reliable at."
+
+    return result
 
 
 # ── Prediction markets ──────────────────────────────────────────────────────

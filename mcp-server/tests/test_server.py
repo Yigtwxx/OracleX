@@ -297,3 +297,112 @@ class TestLiquidationSummary:
         result = server._summarize_liquidation_map({"cells": []}, top=5)
 
         assert result["ok"] is False
+
+
+class TestBorsaIstanbul:
+    """The Turkish tools have one failure mode the others do not.
+
+    Everywhere else a wrong number is wrong. Here a *right* number in the wrong
+    frame is wrong — a lira return quoted without saying it is nominal reports
+    inflation as performance — and the second guard is the VİOP band, which
+    reads as a liquidation level to anyone who has used the crypto map.
+    """
+
+    async def test_an_unresolved_ticker_is_a_refusal_not_a_gap(self, monkeypatch):
+        monkeypatch.setattr(server.client, "get", _raiser(NotFound("no data")))
+
+        result = await server.get_bist_stock("NOTATICKER")
+
+        assert result["ok"] is False
+        assert "NOTATICKER" in result["reason"]
+        # A model that reads this as "lookup failed" will substitute a figure.
+        assert "refusal" in result["reason"]
+
+    async def test_the_return_frames_are_named_in_the_description(self):
+        tools = {tool.name: tool.description for tool in await server.server.list_tools()}
+
+        described = tools["get_bist_stock"]
+        for frame in ("nominal", "real", "usd"):
+            assert frame in described, f"{frame} frame is not named"
+
+    async def test_a_fund_survives_its_holdings_failing(self, monkeypatch):
+        async def _get(path: str, *args: Any, **kwargs: Any) -> Any:
+            if path.endswith("/holdings"):
+                raise OracleXError("holdings upstream is down")
+            return {"code": "AFA", "name": "A fund"}
+
+        monkeypatch.setattr(server.client, "get", _get)
+
+        result = await server.get_bist_fund("AFA")
+
+        # The fund's own numbers are still an answer; the gap is named rather
+        # than left as a silently missing key.
+        assert result["ok"] is True
+        assert result["fund"]["code"] == "AFA"
+        assert "holdings" not in result
+        assert "down" in result["holdings_unavailable"]
+
+    async def test_every_bist_failure_arrives_as_data(self, monkeypatch):
+        monkeypatch.setattr(server.client, "get", _raiser(InstanceUnreachable("nothing there")))
+
+        for name in ("get_bist_stock", "get_bist_fund", "get_viop_positioning"):
+            assert (await getattr(server, name)("THYAO"))["ok"] is False
+        for name in ("get_bist_overview", "get_bist_disclosures", "get_turkish_macro"):
+            assert (await getattr(server, name)())["ok"] is False
+
+
+class TestViopSummary:
+    """The scan range is not a margin call, and the grid accumulates."""
+
+    @staticmethod
+    def _map() -> dict[str, Any]:
+        # Two sessions. The older one carries different numbers so a summariser
+        # that sums both columns is visible in the totals.
+        return {
+            "underlying": "THYAO",
+            "price_min": 100.0,
+            "price_max": 200.0,
+            "bin_size": 10.0,
+            "sessions": ["2026-09-01", "2026-09-02"],
+            "psr": 0.134,
+            "open_interest": 50_000.0,
+            "thin": False,
+            "undirected_sessions": 2,
+            "cells": [
+                {"column": 0, "bin_index": 1, "long_try": 5_000, "short_try": 0},
+                {"column": 1, "bin_index": 1, "long_try": 900_000, "short_try": 0},
+                {"column": 1, "bin_index": 5, "long_try": 0, "short_try": 300_000},
+                {"column": 1, "bin_index": 9, "long_try": 0, "short_try": 0},
+            ],
+        }
+
+    def test_only_the_newest_session_counts(self):
+        result = server._summarize_viop_map(self._map(), top=5)
+
+        assert result["ok"] is True
+        assert [b["long_try"] for b in result["longs"]] == [900_000]
+
+    def test_empty_bins_are_not_reported_as_bands(self):
+        result = server._summarize_viop_map(self._map(), top=5)
+
+        for band in result["longs"] + result["shorts"]:
+            assert band["long_try"] or band["short_try"]
+
+    def test_the_scan_range_carries_its_caveat(self):
+        result = server._summarize_viop_map(self._map(), top=5)
+
+        assert result["price_scan_range_percent"] == 13.4
+        # Without this the band reads as a liquidation level.
+        assert "not a margin-call level" in result["caveat"]
+        assert "maintenance" in result["caveat"]
+
+    def test_flat_sessions_are_reported_rather_than_dropped_silently(self):
+        result = server._summarize_viop_map(self._map(), top=5)
+
+        assert result["undirected_sessions"] == 2
+        assert "flat" in result["note"]
+
+    def test_a_map_without_a_grid_is_a_failure(self):
+        result = server._summarize_viop_map({"cells": []}, top=5)
+
+        assert result["ok"] is False

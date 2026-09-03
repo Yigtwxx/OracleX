@@ -28,6 +28,14 @@ env/
 ENV/
 *.egg-info/
 dist/
+build/
+
+# uv writes this whenever mcp-server/ is run or tested through `uv run`.
+# mcp-server is a library rather than an application — its dependency floors
+# live in pyproject.toml, and the plugin installs it with `uvx --from`, which
+# resolves fresh. A committed lock would pin every consumer to whatever version
+# happened to be current on the machine that last ran the tests.
+mcp-server/uv.lock
 
 # IDE
 .idea/

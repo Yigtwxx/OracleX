@@ -1,6 +1,6 @@
 # Oracle-X MCP Server
 
-Exposes a running Oracle-X instance to any MCP client as 30 tools — prices,
+Exposes a running Oracle-X instance to any MCP client as 36 tools — prices,
 technical zones, news analysis, macro regime, chain metrics, liquidations,
 ownership, and the vector memory.
 
