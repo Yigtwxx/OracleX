@@ -58,6 +58,9 @@ lxml>=5.0.0
 yfinance>=0.2.35
 ccxt>=4.0.0
 feedparser>=6.0.10
+# Turkish auto-captions for the Radar's commentator check. No API key; the
+# library replays the player's own caption request.
+youtube-transcript-api>=1.2.0
 
 # ── Retrieval ────────────────────────────────────────────────────────────────
 # Lexical half of hybrid retrieval. Market questions are full of tickers, dates
