@@ -677,7 +677,7 @@ Get Ownership Board
 Every tracked entity with its allocation and source badge.
 
 
-Returns `OwnershipBoard`: `entities`, `latest_moves`, `category_counts`, `sources`, `as_of`, `last_refresh_at`, `next_refresh_at`, `stale`
+Returns `models__ownership__OwnershipBoard`: `entities`, `latest_moves`, `category_counts`, `sources`, `as_of`, `last_refresh_at`, `next_refresh_at`, `stale`
 
 ### `GET /api/ownership/consensus`
 
@@ -717,7 +717,7 @@ Parameters:
 - `category` (query, string?, optional)
 - `entity_id` (query, string?, optional)
 
-Returns `Move[]`.
+Returns `models__ownership__Move[]`.
 
 ### `GET /api/ownership/flow-note`
 
@@ -939,6 +939,24 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
+### `GET /api/bist/macro-note`
+
+Get Macro Note
+
+What the backdrop as a whole says, narrated above the tiles that draw it.
+
+Its own route rather than a field on `/macro`, for the reason every note
+here is: the snapshot is cached for half an hour and the page refetches it
+on demand, and a paragraph welded to the payload would either be recomputed
+on every refresh or hold the tiles back to the model's cadence.
+
+`facts` is null when the policy rate or the inflation print could not be
+read — the two figures every other reading hangs off. The client renders
+that as an absent panel rather than as a quiet backdrop.
+
+
+Response shape is not declared on the route — inspect one call.
+
 ### `GET /api/bist/kap`
 
 Get Kap
@@ -1077,6 +1095,28 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
+### `GET /api/bist/viop-map/{ticker}/note`
+
+Get Viop Map Note
+
+Where this underlying's book stands against its scan range, narrated.
+
+Scoped the way the map is — one underlying, one window — and fingerprinted
+on both plus the newest session day, so a note about one name over one
+window is never served for another. Split from `/viop-map/{ticker}` for
+the reason every note here is: the field is polled at the equity cadence
+and the paragraph is written once a session.
+
+`facts` is null when the book is too thin to draw or one of its three
+upstreams did not answer. Never a 404 or a 503: the page has already drawn
+or declined the field on its own, and a note's absence is a paragraph.
+
+Parameters:
+- `ticker` (path, string, required)
+- `sessions` (query, integer, optional, default `120`)
+
+Response shape is not declared on the route — inspect one call.
+
 ### `GET /api/bist/positioning`
 
 Get Positioning
@@ -1112,6 +1152,124 @@ facts are computed across every listing instead, because "the board is at the
 top of its year" answered over the busiest hundred names is a wrong answer
 rather than a narrower one.
 
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/ownership/board`
+
+Get Bist Ownership Board
+
+Every tracked holder with its XU100 stakes, valued at the latest market cap.
+
+
+Returns `models__bist_ownership__OwnershipBoard`: `entities`, `latest_moves`, `latest_stake_moves`, `tracking_since`, `category_counts`, `sources`, `universe`, `tickers_covered`, `tickers_total`, `as_of`, `last_refresh_at`, `stale`
+
+### `GET /api/bist/ownership/entities/{entity_id}`
+
+Get Bist Ownership Entity
+
+One holder: every stake, the filings on those companies, and the sources.
+
+Parameters:
+- `entity_id` (path, string, required)
+
+Returns `models__bist_ownership__EntityDetail`: `entity`, `positions`, `moves`, `stake_moves`, `sources`, `tracking_since`
+
+### `GET /api/bist/ownership/assets/{ticker}`
+
+Get Bist Asset Owners
+
+Who holds one company.
+
+Every ≥5% holder from the card, tracked or not; the registry funds whose
+latest report names the ticker; and the ownership-shaped filings on the
+KAP tape. 404 outside the XU100 rather than an empty holder list.
+
+Parameters:
+- `ticker` (path, string, required)
+
+Returns `AssetOwners`: `ticker`, `name`, `market_cap`, `free_float_pct`, `foreign_ratio_pct`, `holders`, `funds`, `moves`, `stake_moves`, `tracking_since`, `as_of`, `stale`, …
+
+### `GET /api/bist/ownership/moves`
+
+Get Bist Ownership Moves
+
+Ownership-shaped KAP filings, newest first. The one route allowed to be empty.
+
+Parameters:
+- `limit` (query, integer, optional, default `20`)
+- `ticker` (query, string?, optional) — Bare code or BIST:CODE
+
+Returns `models__bist_ownership__Move[]`.
+
+### `GET /api/bist/ownership/note`
+
+Get Bist Ownership Note
+
+What the whole board says, narrated.
+
+Its own route rather than a field on `/board`, for the reason every note on
+this realm is: the board is read on every visit and the paragraph is written
+once a day, so folding them together would hold the grid behind a model run.
+`facts` is null when the board is missing or too thin, and the note then
+says `insufficient_data` rather than describing an index nobody holds.
+
+
+Response shape is not declared on the route — inspect one call.
+
+### `POST /api/bist/radar/scan`
+
+Start Radar Scan
+
+Scan the XU100 for pullbacks inside uptrends, in the background.
+
+Returns the job to poll. A scan already running for this horizon is joined
+rather than duplicated; a scan that just finished is returned with a 200 so
+the client can read its result straight away.
+
+Parameters:
+- `horizon` (query, string, optional, default `'swing'`)
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/radar/jobs/{job_id}`
+
+Get Radar Job
+
+Poll a scan for its stage, its progress and — once done — its result.
+
+Parameters:
+- `job_id` (path, string, required)
+
+Response shape is not declared on the route — inspect one call.
+
+### `DELETE /api/bist/radar/jobs/{job_id}`
+
+Cancel Radar Scan
+
+Stop a running scan.
+
+A scan started on the wrong horizon, or by a stray click, should not have to
+run its minute out. The settled job is returned so the button that asked
+sees the outcome without another poll; the last persisted result is left
+untouched, since a cancelled scan wrote nothing.
+
+Parameters:
+- `job_id` (path, string, required)
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/radar`
+
+Get Radar
+
+The last finished scan for a horizon.
+
+404 rather than an empty board when none has ever run: the page then shows
+the button and says so, instead of a result that reads as "nothing passed".
+
+Parameters:
+- `horizon` (query, string, optional, default `'swing'`)
 
 Response shape is not declared on the route — inspect one call.
 
