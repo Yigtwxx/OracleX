@@ -32,6 +32,7 @@ export type NavKey =
   | 'admin'
   | 'bist-overview'
   | 'bist-stocks'
+  | 'bist-financials'
   | 'bist-heatmap'
   | 'bist-funds'
   | 'bist-smart-money'
@@ -162,6 +163,15 @@ export const BIST_NAV_ITEMS: NavItem[] = [
     href: '/bist/hisseler',
     label: 'Hisseler',
     tint: 'var(--nav-bist-stocks)',
+  },
+  // Directly after Hisseler, because that is the order of the question: the
+  // screener says which company, and this says what it earns. A reader arrives
+  // here from a row in that table, not from the top of the bar.
+  {
+    key: 'bist-financials',
+    href: '/bist/bilanco',
+    label: 'Bilanço',
+    tint: 'var(--nav-bist-financials)',
   },
   // Beside Hisseler rather than beside VİOP: the board is the equity screener
   // seen as area instead of as rows, and a reader who has just been through the

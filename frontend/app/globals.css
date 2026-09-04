@@ -213,6 +213,11 @@
   /* Teal, the one wide gap left in this set: it sits between the stocks green
      (~155deg) and the funds blue (~215deg) and is separable from both at 14px,
      which is the size these labels are actually read at. */
+  /* Slate-blue, in the gap between the funds blue and the heatmap cyan.
+     Not the chartreuse the warm side had room for: that sits within a few
+     degrees of --nav-bist-macro and the two labels would not read apart at
+     14px. Clears 4.5:1 on --surface like the rest of the set. */
+  --nav-bist-financials: #7f9fd6;
   --nav-bist-heatmap: #4fd3d8;
   --nav-bist-funds: #6aa9f5;
   --nav-bist-smart-money: #c99bff;

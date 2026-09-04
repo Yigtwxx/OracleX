@@ -2026,3 +2026,120 @@ export async function cancelBistRadarScan(jobId: string): Promise<RadarJob> {
   });
   return toRadarJob(raw);
 }
+
+// ── Financial statements (Bilanço) ──────────────────────────────────────────
+
+/** Which chart of accounts İş Yatırım answered under. Decides what lines exist. */
+export type BistLayout = 'industrial' | 'bank' | 'insurance';
+
+/** Why the board could not restate figures into today's lira. */
+export type BistDeflationReason = 'cpi_key_missing' | 'cpi_unavailable' | 'cpi_too_short';
+
+/**
+ * Every statement line the board can draw.
+ *
+ * A record rather than named fields: the panels iterate over the field list the
+ * API says this company has, and a fixed interface would have to be kept in
+ * step with `FIELD_KEYS` in Python by hand.
+ */
+export type BistStatementValues = Record<string, number | null>;
+
+export interface BistQuarter {
+  period: string;
+  year: number;
+  quarter: number;
+  nominal: BistStatementValues;
+  /** Null when this quarter predates the price index — never a dict of nulls. */
+  real: BistStatementValues | null;
+  deflator: number | null;
+  /** Restated with the newest published index rather than its own month. */
+  provisional: boolean;
+}
+
+export interface BistFinancialRatios {
+  period: string;
+  gross_margin: number | null;
+  operating_margin: number | null;
+  ebitda_margin: number | null;
+  net_margin: number | null;
+  current_ratio: number | null;
+  short_debt_share: number | null;
+  cash_conversion: number | null;
+  net_debt_ebitda: number | null;
+  roe_ttm: number | null;
+}
+
+export interface BistFinancialTtm {
+  revenue: number | null;
+  ebitda: number | null;
+  net_income: number | null;
+  real_revenue_growth: number | null;
+  real_ebitda_growth: number | null;
+  real_net_income_growth: number | null;
+  real_equity_growth: number | null;
+  nominal_revenue_growth: number | null;
+  margin_trend: number | null;
+  inflation_yoy: number | null;
+  loss_quarters: number | null;
+}
+
+export interface BistDeflation {
+  available: boolean;
+  reason: BistDeflationReason | null;
+  base_period: string | null;
+  base_month: string | null;
+  cpi_latest_month: string | null;
+  cpi_series: string;
+  provisional_periods: string[];
+  uncovered_periods: string[];
+}
+
+export interface BistFinancials {
+  ticker: string;
+  name: string | null;
+  sector: string | null;
+  layout: BistLayout;
+  layout_label: string;
+  /** What this chart of accounts can carry at all. */
+  layout_fields: string[];
+  /** Of those, what this company actually reported. */
+  available_fields: string[];
+  latest_period: string | null;
+  fetched_at: string;
+  source_url: string;
+  /** Oldest first — charts consume in order. */
+  quarters: BistQuarter[];
+  ratios: BistFinancialRatios[];
+  ttm: BistFinancialTtm;
+  deflation: BistDeflation;
+  market: {
+    price: number | null;
+    market_cap: number | null;
+    pe: number | null;
+    pb: number | null;
+    delay_minutes: number;
+  } | null;
+  stale: boolean;
+}
+
+export interface BistFinancialsNoteResponse {
+  facts: Record<string, unknown> | null;
+  note: AiNote;
+}
+
+export async function fetchBistFinancials(
+  ticker: string,
+  quarters: number = 12
+): Promise<BistFinancials> {
+  return apiFetch<BistFinancials>(`/api/bist/financials/${encodeURIComponent(ticker)}`, {
+    params: { quarters },
+    anonymous: true,
+  });
+}
+
+export async function fetchBistFinancialsNote(ticker: string): Promise<BistFinancialsNoteResponse> {
+  return apiFetch<BistFinancialsNoteResponse>(
+    `/api/bist/financials/${encodeURIComponent(ticker)}/note`,
+    { anonymous: true }
+  );
+}

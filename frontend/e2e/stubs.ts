@@ -79,7 +79,101 @@ const json = (route: Route, body: unknown, status = 200) =>
  * than 200-with-nothing because the app is written to survive a missing
  * upstream — every panel has an error state — but not a well-formed lie.
  */
-export async function stubBackend(page: Page): Promise<void> {
+/**
+ * A Bilanço payload with the inflation frame switched off.
+ *
+ * The one state worth driving a browser for: with no CPI series the board must
+ * fall back to nominal and disable the toggle, and nothing on the page may be
+ * labelled "Reel". That failure is silent — every number still renders, just in
+ * the wrong frame — so a unit test on the selector is not enough on its own.
+ */
+export function financialsPayload(deflated: boolean) {
+  const periods = ['2024Q3', '2024Q4', '2025Q1', '2025Q2', '2025Q3', '2025Q4'];
+  const fields = [
+    'revenue',
+    'gross_profit',
+    'operating_profit',
+    'ebitda',
+    'net_income',
+    'financing_expense',
+    'ocf',
+    'capex',
+    'fcf',
+    'dividends_paid',
+    'equity',
+    'total_assets',
+    'total_debt',
+    'short_term_debt',
+    'cash',
+    'current_assets',
+    'current_liabilities',
+  ];
+  const values = (scale: number) =>
+    Object.fromEntries(fields.map((field, index) => [field, (index + 1) * 1e9 * scale]));
+
+  return {
+    ticker: 'THYAO',
+    name: 'Türk Hava Yolları',
+    sector: 'Ulaştırma',
+    layout: 'industrial',
+    layout_label: 'Sanayi/ticaret şablonu',
+    layout_fields: fields,
+    available_fields: fields,
+    latest_period: '2025Q4',
+    fetched_at: NOW,
+    source_url: 'https://example.invalid',
+    quarters: periods.map((period, index) => ({
+      period,
+      year: Number(period.slice(0, 4)),
+      quarter: Number(period.slice(5)),
+      nominal: values(1 + index * 0.1),
+      real: deflated ? values(1.4 - index * 0.05) : null,
+      deflator: deflated ? 1.4 - index * 0.05 : null,
+      provisional: false,
+    })),
+    ratios: periods.map((period) => ({
+      period,
+      gross_margin: 0.3,
+      operating_margin: 0.2,
+      ebitda_margin: 0.25,
+      net_margin: 0.1,
+      current_ratio: 1.1,
+      short_debt_share: 0.4,
+      cash_conversion: 1.2,
+      net_debt_ebitda: 2.1,
+      roe_ttm: 0.18,
+    })),
+    ttm: {
+      revenue: 4e12,
+      ebitda: 1e12,
+      net_income: 4e11,
+      real_revenue_growth: deflated ? -0.08 : null,
+      real_ebitda_growth: deflated ? -0.1 : null,
+      real_net_income_growth: deflated ? -0.05 : null,
+      real_equity_growth: deflated ? 0.02 : null,
+      nominal_revenue_growth: 0.35,
+      margin_trend: -0.01,
+      inflation_yoy: deflated ? 0.42 : null,
+      loss_quarters: 0,
+    },
+    deflation: {
+      available: deflated,
+      reason: deflated ? null : 'cpi_key_missing',
+      base_period: deflated ? '2025Q4' : null,
+      base_month: deflated ? '2025-12' : null,
+      cpi_latest_month: deflated ? '2025-12' : null,
+      cpi_series: 'TP.FG.J0',
+      provisional_periods: [],
+      uncovered_periods: [],
+    },
+    market: { price: 312.5, market_cap: 4.2e11, pe: 6.1, pb: 1.3, delay_minutes: 15 },
+    stale: false,
+  };
+}
+
+const EMPTY_NOTE = { status: 'unavailable', note: null, generated_at: null, reason: 'stub' };
+
+export async function stubBackend(page: Page, { deflated = true } = {}): Promise<void> {
   await page.route('**/api/**', (route) => json(route, { detail: 'not stubbed in e2e' }, 404));
 
   await page.route('**/api/system/readiness', (route) =>
@@ -102,6 +196,15 @@ export async function stubBackend(page: Page): Promise<void> {
   await page.route('**/api/fear-greed', (route) =>
     json(route, { value: 55, classification: 'Neutral', timestamp: NOW, history: [] })
   );
+
+  // The BIST boards the realm-switcher spec walks past. Without these the
+  // catch-all answers 404 and the pages render their cold-error state, which
+  // is a different page from the one under test.
+  await page.route('**/api/bist/stocks*', (route) => json(route, { stocks: [], count: 0 }));
+  await page.route('**/api/bist/financials/*/note', (route) =>
+    json(route, { facts: null, note: EMPTY_NOTE })
+  );
+  await page.route('**/api/bist/financials/*', (route) => json(route, financialsPayload(deflated)));
 }
 
 /** The shape of the account Supabase would hand back on a successful sign-in. */

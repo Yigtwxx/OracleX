@@ -6,6 +6,8 @@ import { queryKeys } from '@/hooks/queries';
 import { aiNotePollInterval } from '@/lib/ai-note';
 import {
   fetchBistCalendar,
+  fetchBistFinancials,
+  fetchBistFinancialsNote,
   fetchBistFund,
   fetchBistFundHoldings,
   fetchBistFundComparison,
@@ -373,6 +375,36 @@ export function useBistViopMap(ticker: string, sessions: number = 120, enabled: 
  * old one, which is why there is no `placeholderData` here: a paragraph about
  * THYAO shown under SASA's field for a second would be worse than a shimmer.
  */
+/**
+ * One company's statements.
+ *
+ * A long stale time and no poll: İş Yatırım publishes four times a year, and
+ * the price header beside the charts is the only thing on the page that moves
+ * intraday — it arrives with this payload rather than through a second query,
+ * because a header refreshing on its own cadence would retire the whole board's
+ * cache every two minutes for one number.
+ */
+export function useBistFinancials(ticker: string, quarters: number = 12, enabled: boolean = true) {
+  return useQuery({
+    queryKey: queryKeys.bistFinancials(ticker, quarters),
+    queryFn: () => fetchBistFinancials(ticker, quarters),
+    staleTime: FUND_STALE_MS,
+    enabled: enabled && !!ticker,
+    meta: SILENT,
+  });
+}
+
+export function useBistFinancialsNote(ticker: string, enabled: boolean = true) {
+  return useQuery({
+    queryKey: queryKeys.bistFinancialsNote(ticker),
+    queryFn: () => fetchBistFinancialsNote(ticker),
+    staleTime: FUND_STALE_MS,
+    enabled: enabled && !!ticker,
+    meta: SILENT,
+    refetchInterval: (query) => aiNotePollInterval(query.state.data?.note),
+  });
+}
+
 export function useBistViopMapNote(
   ticker: string,
   sessions: number = 120,

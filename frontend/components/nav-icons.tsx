@@ -6,6 +6,7 @@ import {
   Building2,
   CalendarDays,
   CandlestickChart,
+  FileSpreadsheet,
   Crosshair,
   Gauge,
   Gem,
@@ -76,6 +77,9 @@ export const NAV_ICONS: Record<NavKey, NavIcon> = {
 
   'bist-overview': Gauge,
   'bist-stocks': CandlestickChart,
+  // A ruled sheet, not another chart glyph: this tab is the only one in the
+  // realm whose subject is a filed document rather than a price series.
+  'bist-financials': FileSpreadsheet,
   // LayoutGrid is the treemap's own shape — nested rectangles of unequal size.
   // Distinct from the candlesticks next to it and from Layers, which the global
   // realm's derivatives tab already holds.

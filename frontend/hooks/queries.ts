@@ -203,6 +203,9 @@ export const queryKeys = {
   bistKapNote: (index: number) => ['bistKapNote', index] as const,
   bistRestrictions: (limit: number) => ['bistRestrictions', limit] as const,
   bistViop: (underlying?: string) => ['bistViop', underlying ?? null] as const,
+  bistFinancials: (ticker: string, quarters: number) =>
+    ['bistFinancials', ticker, quarters] as const,
+  bistFinancialsNote: (ticker: string) => ['bistFinancialsNote', ticker] as const,
   bistViopMap: (ticker: string, sessions: number) => ['bistViopMap', ticker, sessions] as const,
   bistViopMapNote: (ticker: string, sessions: number) =>
     ['bistViopMapNote', ticker, sessions] as const,

@@ -305,6 +305,39 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
+### `GET /api/bist/financials/{ticker}`
+
+Get Financials
+
+Twelve quarters of statements, in both nominal and inflation-adjusted lira.
+
+404 rather than an empty board when İş Yatırım has nothing for the code. A
+company page rendered full of dashes reads as a company that reported
+nothing, which is a different and much worse claim than "this code could not
+be resolved" — and it is the claim a reader would act on.
+
+Parameters:
+- `ticker` (path, string, required)
+- `quarters` (query, integer, optional, default `12`)
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/financials/{ticker}/note`
+
+Get Financials Note
+
+The model's read of the same statements.
+
+Split from the board because the two have different cadences: statements
+move four times a year and the paragraph is cached against them, while the
+price header beside it refreshes on the board's own poll. Welding them would
+tie the cheap request to the expensive one.
+
+Parameters:
+- `ticker` (path, string, required)
+
+Response shape is not declared on the route — inspect one call.
+
 ### `GET /api/bist/viop`
 
 Get Viop

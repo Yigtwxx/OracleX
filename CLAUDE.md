@@ -144,6 +144,19 @@ lowering the bar or by letting a thin evidence base through. The facts and
 microstructure are computed without a model and are served either way, which is
 what keeps a refusal from reading as a broken page.
 
+**Deflating a level is not deflating a return, and the two live in different
+modules.** `real_return.deflate` applies the Fisher relation to a *return* — the
+right tool for a post-IPO gain over a window. `services/bist/deflator.py`
+restates a *level*: one figure moved from its own quarter's lira into another,
+which is a ratio of CPI index values. Using either on the other's input produces
+a plausible number that is wrong. Two things about the index itself bite: EVDS
+returns an unpadded `2026-6`, so a lookup keyed on `2026-06` misses silently and
+every quarter reads as uncovered; and the series runs months behind the
+statements — eight months behind when this was written — which is why the
+deflation base falls back to the newest quarter the index can actually reach
+rather than pinning to the newest quarter on the board and taking the whole page
+nominal over one unreachable bar.
+
 **Symbols carry their venue.** Crypto is `BTCUSDT` or `BINANCE:ETHUSDT`,
 equities are the plain ticker. An unprefixed ticker forced down the crypto path
 once read AAPL off a tokenised-equity market; the resolution logic is deliberate

@@ -69,6 +69,12 @@ from services.bist.macro_service import (
     fetch_usdtry_series,
 )
 from services.bist.calendar_service import CalendarEvent, build_calendar, group_by_day
+from services.bist.financials_note import note_for_financials
+from services.bist.financials_service import (
+    MAX_QUARTERS,
+    FinancialsUnavailable,
+    build_financials,
+)
 from services.bist.kap_materiality import classify
 from services.bist.kap_note import note_for_disclosure
 from services.bist.kap_service import (
@@ -1460,6 +1466,54 @@ def _positioning(row: PositioningRow) -> dict:
         "open_interest_change": row.open_interest_change,
         "crowding": row.crowding,
     }
+
+
+# ── Financial statements ────────────────────────────────────────────────────
+
+
+@router.get("/financials/{ticker}")
+async def get_financials(
+    ticker: str,
+    quarters: int = Query(MAX_QUARTERS, ge=4, le=MAX_QUARTERS),
+):
+    """
+    Twelve quarters of statements, in both nominal and inflation-adjusted lira.
+
+    404 rather than an empty board when İş Yatırım has nothing for the code. A
+    company page rendered full of dashes reads as a company that reported
+    nothing, which is a different and much worse claim than "this code could not
+    be resolved" — and it is the claim a reader would act on.
+    """
+    try:
+        return await build_financials(ticker, quarters=quarters)
+    except FinancialsUnavailable as e:
+        raise HTTPException(
+            status_code=404,
+            detail=f"{ticker.strip().upper()} için finansal tablo bulunamadı.",
+        ) from e
+
+
+@router.get("/financials/{ticker}/note")
+async def get_financials_note(ticker: str):
+    """
+    The model's read of the same statements.
+
+    Split from the board because the two have different cadences: statements
+    move four times a year and the paragraph is cached against them, while the
+    price header beside it refreshes on the board's own poll. Welding them would
+    tie the cheap request to the expensive one.
+    """
+    try:
+        payload = await build_financials(ticker)
+    except FinancialsUnavailable as e:
+        raise HTTPException(
+            status_code=404,
+            detail=f"{ticker.strip().upper()} için finansal tablo bulunamadı.",
+        ) from e
+
+    from services.bist.financials_note import financials_facts
+
+    return {"facts": financials_facts(payload), "note": await note_for_financials(payload)}
 
 
 @router.get("/positioning")
