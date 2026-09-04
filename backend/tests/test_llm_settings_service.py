@@ -144,3 +144,48 @@ async def test_delete_removes_the_row(db):
     await svc.save_settings("u1", provider="groq", api_key="gsk_secret_abcd")
     assert await svc.delete_settings("u1") is True
     assert await svc.get_settings("u1") is None
+
+
+async def test_switching_to_a_keyless_provider_needs_no_key(db):
+    """
+    The way back to Ollama.
+
+    A user who stored a cloud key could not return to the local daemon, because
+    the form demanded a credential Ollama has never issued.
+    """
+    await svc.save_settings("u1", provider="mistral", api_key="ms_secret_abcd")
+
+    await svc.save_settings("u1", provider="ollama", model="qwen3.6:35b-a3b")
+
+    public = await svc.get_settings("u1")
+    assert public["provider"] == "ollama"
+    assert public["requires_key"] is False
+
+
+async def test_leaving_a_keyed_provider_drops_its_key(db):
+    """The old provider's credential must not survive the move."""
+    await svc.save_settings("u1", provider="mistral", api_key="ms_secret_abcd")
+    await svc.save_settings("u1", provider="ollama")
+
+    assert not db.rows["u1"]["encrypted_key"]
+    assert db.rows["u1"]["key_hint"] == ""
+    public = await svc.get_settings("u1")
+    assert public["configured"] is False
+
+
+async def test_keyed_provider_still_requires_a_key(db):
+    """The exemption is for keyless providers only, not for everyone."""
+    await svc.save_settings("u1", provider="ollama")
+
+    with pytest.raises(svc.KeyRequired):
+        await svc.save_settings("u1", provider="mistral")
+
+
+async def test_first_save_of_a_keyless_provider_is_allowed(db):
+    await svc.save_settings("u1", provider="ollama", model="qwen3.6:35b-a3b")
+    assert (await svc.get_settings("u1"))["provider"] == "ollama"
+
+
+async def test_requires_key_is_reported_for_keyed_providers(db):
+    await svc.save_settings("u1", provider="mistral", api_key="ms_secret_abcd")
+    assert (await svc.get_settings("u1"))["requires_key"] is True

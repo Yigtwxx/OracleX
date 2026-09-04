@@ -2399,11 +2399,15 @@ export interface LLMSettings {
   model: string;
   key_hint: string;
   configured: boolean;
+  /** Whether the stored provider authenticates with a key at all. */
+  requires_key: boolean;
   use_for_chat: boolean;
   use_for_news: boolean;
   use_for_reports: boolean;
   encryption_available: boolean;
   supported_providers: string[];
+  /** The subset of `supported_providers` that needs no key — the local ones. */
+  keyless_providers: string[];
 }
 
 export interface LLMSettingsUpdate {
@@ -2440,7 +2444,7 @@ export async function deleteLLMSettings(): Promise<{ success: boolean }> {
 export async function testLLMSettings(
   provider: string,
   model: string,
-  apiKey: string
+  apiKey = ''
 ): Promise<LLMTestResult> {
   return apiFetch<LLMTestResult>('/api/profile/llm/test', {
     method: 'POST',

@@ -125,11 +125,17 @@ class LLMSettingsUpdate(BaseModel):
 
 
 class LLMTestRequest(BaseModel):
-    """A candidate provider/key to validate before storing it."""
+    """
+    A candidate provider/key to validate before storing it.
+
+    `api_key` defaults to empty because the local providers have none, and a
+    user moving back to Ollama still deserves to confirm the daemon answers
+    before saving.
+    """
 
     provider: str
     model: str = ""
-    api_key: str
+    api_key: str = ""
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -406,6 +412,7 @@ _EMPTY_LLM_SETTINGS = {
     "model": "",
     "key_hint": "",
     "configured": False,
+    "requires_key": True,
     "use_for_chat": False,
     "use_for_news": False,
     "use_for_reports": False,
@@ -420,13 +427,20 @@ async def get_llm_settings(user: AuthUser = Depends(get_current_user)):
         **(settings or _EMPTY_LLM_SETTINGS),
         "encryption_available": secret_box.is_configured(),
         "supported_providers": llm.preset_names(),
+        # So the form can drop the key requirement for the provider the user is
+        # about to pick, not just the one already stored.
+        "keyless_providers": llm.keyless_provider_names(),
     }
 
 
 @router.put("/api/profile/llm")
 async def update_llm_settings(data: LLMSettingsUpdate, user: AuthUser = Depends(get_current_user)):
     """Store the caller's provider choice and (optionally) a new API key."""
-    if not secret_box.is_configured():
+    # Encryption is only in the way when there is something to encrypt. Refusing
+    # a keyless provider here would contradict the settings service, which lets
+    # one be saved without a key, and would strand a user on an unset
+    # LLM_KEY_ENCRYPTION_SECRET with no way to select their local daemon.
+    if data.api_key and not secret_box.is_configured():
         raise _NOT_CONFIGURED
 
     try:

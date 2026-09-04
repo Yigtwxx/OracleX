@@ -34,6 +34,12 @@ class KeyRequired(ValueError):
     """An API key must be supplied for this change to be valid."""
 
 
+def _requires_key(provider: str) -> bool:
+    """Whether this provider needs a credential. Unknown names are assumed to."""
+    preset = PRESETS.get(provider.strip().lower())
+    return preset is None or preset.key_env is not None
+
+
 def _public_view(row: Dict[str, Any]) -> Dict[str, Any]:
     """The shape safe to return to a client — never the key or its ciphertext."""
     return {
@@ -41,6 +47,7 @@ def _public_view(row: Dict[str, Any]) -> Dict[str, Any]:
         "model": row.get("model", ""),
         "key_hint": row.get("key_hint", ""),
         "configured": bool(row.get("encrypted_key")),
+        "requires_key": _requires_key(row.get("provider", "")),
         "use_for_chat": bool(row.get("use_for_chat", False)),
         "use_for_news": bool(row.get("use_for_news", False)),
         "use_for_reports": bool(row.get("use_for_reports", False)),
@@ -120,7 +127,13 @@ async def save_settings(
     existing = _fetch_row(user_id)
     provider_changed = bool(existing) and existing.get("provider") != provider
 
-    if not api_key and (existing is None or provider_changed):
+    # Ollama authenticates with nothing, so demanding a key for it is a demand
+    # that cannot be met: a user who moved to a cloud provider could never move
+    # back through this form. `key_env is None` is the registry's own statement
+    # that a provider is keyless, which keeps the rule in one place.
+    requires_key = PRESETS[provider].key_env is not None
+
+    if requires_key and not api_key and (existing is None or provider_changed):
         raise KeyRequired("An API key is required for this provider.")
 
     values: Dict[str, Any] = {
@@ -133,6 +146,12 @@ async def save_settings(
     if api_key:
         values["encrypted_key"] = secret_box.encrypt(api_key)
         values["key_hint"] = secret_box.key_hint(api_key)
+    elif provider_changed and not requires_key:
+        # The stored key belongs to the provider being left. Keeping it would
+        # leave a live credential at rest for an account that no longer uses it,
+        # and would report `configured` for a provider that never needed one.
+        values["encrypted_key"] = None
+        values["key_hint"] = ""
 
     for feature, requested in (
         ("chat", use_for_chat),

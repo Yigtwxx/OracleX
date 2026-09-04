@@ -43,6 +43,13 @@ export default function AIProviderSettings() {
     void load();
   }, [load]);
 
+  // Derived from the dropdown rather than the stored row, because the whole
+  // point of the form is to change providers — gating on what is already saved
+  // is what made Ollama unreachable once a cloud key had been stored.
+  const needsKey = !(settings?.keyless_providers ?? []).includes(provider);
+  // The toggles act on what is saved, so they follow the saved provider.
+  const savedUsable = settings ? settings.configured || !settings.requires_key : false;
+
   if (!settings) {
     // A shimmer at the loaded card's footprint, matching the rest of the app —
     // a bare spinner leaves the page height jumping when the data lands.
@@ -50,7 +57,7 @@ export default function AIProviderSettings() {
   }
 
   const handleTest = async () => {
-    if (!apiKey) {
+    if (needsKey && !apiKey) {
       setMessage({ ok: false, text: 'Enter a key to test.' });
       return;
     }
@@ -114,7 +121,7 @@ export default function AIProviderSettings() {
   return (
     <ProfileCard title="AI Provider" icon={Bot}>
       <div className="space-y-5">
-        {!settings.encryption_available && (
+        {!settings.encryption_available && needsKey && (
           <div className="flex items-start gap-2 p-3 rounded-md bg-warn-bg border border-warn text-warn text-base">
             <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             <span>
@@ -160,11 +167,14 @@ export default function AIProviderSettings() {
         <label className="block">
           <span className="label">
             API key
-            {settings.configured && ` — saved (…${settings.key_hint})`}
+            {needsKey
+              ? settings.configured && ` — saved (…${settings.key_hint})`
+              : ' — not needed for this provider'}
           </span>
           <input
             type="password"
             value={apiKey}
+            disabled={!needsKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder={
               settings.configured ? 'Enter a new key to replace it' : 'Paste your API key'
@@ -181,7 +191,7 @@ export default function AIProviderSettings() {
               <button
                 key={key}
                 type="button"
-                disabled={busy || !settings.configured}
+                disabled={busy || !savedUsable}
                 onClick={() => void save({ [key]: !settings[key] })}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-md border text-base transition-colors disabled:opacity-40 ${
                   settings[key]
@@ -218,7 +228,7 @@ export default function AIProviderSettings() {
           </button>
           <button
             type="button"
-            disabled={busy || !settings.encryption_available}
+            disabled={busy || (needsKey && !settings.encryption_available)}
             onClick={() => void save()}
             className="px-3 py-1.5 rounded-md bg-accent text-white text-base hover:opacity-90 transition-opacity disabled:opacity-40"
           >

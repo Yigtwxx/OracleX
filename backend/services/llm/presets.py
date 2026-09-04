@@ -82,3 +82,15 @@ PRESETS: dict[str, ProviderPreset] = {
 def preset_names() -> list[str]:
     """All configurable provider names, for error messages and status output."""
     return sorted(PRESETS)
+
+
+def keyless_provider_names() -> list[str]:
+    """
+    Providers that authenticate with nothing — the local ones.
+
+    Callers need this to tell "no key supplied" apart from "no key exists". A
+    settings form that demands one unconditionally locks a user into whichever
+    cloud provider they picked first, because the only way back to Ollama is to
+    produce a credential Ollama has never had.
+    """
+    return sorted(name for name, preset in PRESETS.items() if preset.key_env is None)
