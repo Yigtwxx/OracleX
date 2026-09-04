@@ -203,7 +203,7 @@ class TestKapNoteRoute:
         async def _share(ticker: str):
             return share()
 
-        async def _note(disclosure, equity=None):
+        async def _note(disclosure, equity=None, user_id=None):
             assert equity is not None, "the session should have been looked up"
             return {"status": "ready", "note": "Bir cümle.", "generated_at": None, "reason": None}
 
@@ -225,7 +225,7 @@ class TestKapNoteRoute:
         async def _down(ticker: str):
             raise EquityDataUnavailable("scanner is down")
 
-        async def _note(disclosure, equity=None):
+        async def _note(disclosure, equity=None, user_id=None):
             assert equity is None
             return {"status": "generating", "note": None, "generated_at": None, "reason": None}
 

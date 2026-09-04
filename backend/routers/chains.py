@@ -17,7 +17,9 @@ providers and can be partly right — a chain that failed carries `error` on its
 own row while the other seven report normally.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from dependencies.auth import AuthUser, get_optional_user
 
 from services.chains.anomaly import anomaly_note, detect
 from services.chains.service import fetch_board, stale_board
@@ -46,7 +48,7 @@ async def get_chains_board():
 
 
 @router.get("/api/chains/anomalies")
-async def get_chain_anomalies():
+async def get_chain_anomalies(user: AuthUser | None = Depends(get_optional_user)):
     """
     What on the board is not normal, and a note explaining why they co-occur.
 
@@ -66,4 +68,4 @@ async def get_chain_anomalies():
         board = stale_board() or {}
 
     detection = detect(board)
-    return {**detection, "note": await anomaly_note(detection)}
+    return {**detection, "note": await anomaly_note(detection, user.id if user else None)}

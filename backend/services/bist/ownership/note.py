@@ -370,8 +370,10 @@ def ownership_values(facts: dict[str, Any]) -> dict[str, str]:
     }
 
 
-async def ownership_note(facts: dict[str, Any] | None) -> dict[str, Any]:
+async def ownership_note(
+    facts: dict[str, Any] | None, user_id: str | None = None
+) -> dict[str, Any]:
     """The note for this board, or `unavailable` when there is nothing to read."""
     if not facts:
         return unavailable(REASON_INSUFFICIENT_DATA)
-    return await get_note(OWNERSHIP_SPEC, facts, ownership_values(facts))
+    return await get_note(OWNERSHIP_SPEC, facts, ownership_values(facts), user_id)

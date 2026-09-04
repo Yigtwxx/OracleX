@@ -343,10 +343,10 @@ def note_values(facts: dict[str, Any]) -> dict[str, str]:
     }
 
 
-async def regime_note(regime: dict[str, Any]) -> dict[str, Any]:
+async def regime_note(regime: dict[str, Any], user_id: str | None = None) -> dict[str, Any]:
     """The note for this regime read, or `unavailable` when there is nothing to say."""
     if regime["label"] == LABEL_UNAVAILABLE or not regime["components"]:
         return unavailable(REASON_INSUFFICIENT_DATA)
 
     facts = note_facts(regime)
-    return await get_note(NOTE_SPEC, facts, note_values(facts))
+    return await get_note(NOTE_SPEC, facts, note_values(facts), user_id)

@@ -134,3 +134,51 @@ async def test_provider_for_returns_none_when_unconfigured(monkeypatch):
 
     monkeypatch.setattr(llm_settings_service, "get_credentials", no_credentials)
     assert await user_prefs.provider_for("u1", "chat") is None
+
+
+# ── notes ────────────────────────────────────────────────────────────────────
+#
+# Notes are the widest surface behind one toggle — seventeen call sites share
+# `ai_notes` — and were the last place a user who had switched everything on
+# still met the server's model.
+
+
+async def test_provider_for_resolves_the_notes_feature(monkeypatch):
+    async def fake_credentials(_user_id):
+        return {
+            "provider": "groq",
+            "model": "llama-3.3-70b-versatile",
+            "api_key": "gsk_x",
+            "use_for_chat": False,
+            "use_for_news": False,
+            "use_for_reports": False,
+            "use_for_notes": True,
+        }
+
+    monkeypatch.setattr(llm_settings_service, "get_credentials", fake_credentials)
+
+    provider = await user_prefs.provider_for("u1", "notes")
+    assert provider is not None
+    assert provider.name == "groq"
+
+
+async def test_notes_stay_on_the_server_chain_when_the_toggle_is_off(monkeypatch):
+    async def fake_credentials(_user_id):
+        return {
+            "provider": "groq",
+            "model": "",
+            "api_key": "gsk_x",
+            "use_for_chat": True,
+            "use_for_news": True,
+            "use_for_reports": True,
+            "use_for_notes": False,
+        }
+
+    monkeypatch.setattr(llm_settings_service, "get_credentials", fake_credentials)
+
+    assert await user_prefs.provider_for("u1", "notes") is None
+
+
+def test_notes_is_a_recognised_feature():
+    """`provider_for` silently returns None for a name outside FEATURES."""
+    assert "notes" in llm_settings_service.FEATURES

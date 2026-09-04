@@ -376,10 +376,12 @@ def financials_values(facts: dict[str, Any]) -> dict[str, str]:
 # ── Entry point ──────────────────────────────────────────────────────────────
 
 
-async def note_for_financials(payload: dict[str, Any]) -> dict[str, Any]:
+async def note_for_financials(
+    payload: dict[str, Any], user_id: str | None = None
+) -> dict[str, Any]:
     facts = financials_facts(payload)
     if facts is None:
         from services.ai_notes import unavailable
 
         return unavailable("insufficient_history")
-    return await get_note(NOTE_SPEC, facts, financials_values(facts))
+    return await get_note(NOTE_SPEC, facts, financials_values(facts), user_id)

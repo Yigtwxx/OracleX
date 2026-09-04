@@ -113,7 +113,7 @@ async def get_asset_owners(symbol: str):
 
 
 @router.get("/flow-note")
-async def get_flow_note():
+async def get_flow_note(user: AuthUser | None = Depends(get_optional_user)):
     """
     What the tracked institutions did last quarter, narrated.
 
@@ -126,7 +126,7 @@ async def get_flow_note():
     note itself arrives.
     """
     facts = build_flow_facts()
-    return {"facts": facts, "note": await flow_note(facts)}
+    return {"facts": facts, "note": await flow_note(facts, user.id if user else None)}
 
 
 @router.get("/watchlist-overlap")

@@ -304,6 +304,7 @@ def disclosure_values(facts: dict[str, Any]) -> dict[str, str]:
 async def note_for_disclosure(
     disclosure: Disclosure,
     equity: Any | None = None,
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     facts = disclosure_facts(disclosure, equity)
-    return await get_note(NOTE_SPEC, facts, disclosure_values(facts))
+    return await get_note(NOTE_SPEC, facts, disclosure_values(facts), user_id)

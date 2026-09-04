@@ -536,10 +536,10 @@ def note_values(facts: dict[str, Any]) -> dict[str, str]:
     }
 
 
-async def anomaly_note(detection: dict[str, Any]) -> dict[str, Any]:
+async def anomaly_note(detection: dict[str, Any], user_id: str | None = None) -> dict[str, Any]:
     """The note explaining the flags, or `unavailable` when there are none."""
     if not detection["anomalies"]:
         return unavailable(REASON_NOTHING_FLAGGED)
 
     facts = note_facts(detection)
-    return await get_note(NOTE_SPEC, facts, note_values(facts))
+    return await get_note(NOTE_SPEC, facts, note_values(facts), user_id)

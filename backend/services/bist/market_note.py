@@ -653,11 +653,11 @@ def market_values(facts: dict[str, Any]) -> dict[str, str]:
     }
 
 
-async def market_note(facts: dict[str, Any] | None) -> dict[str, Any]:
+async def market_note(facts: dict[str, Any] | None, user_id: str | None = None) -> dict[str, Any]:
     """The note for this board, or `unavailable` when there is nothing to read."""
     if not facts:
         return unavailable(REASON_INSUFFICIENT_DATA)
-    return await get_note(MARKET_SPEC, facts, market_values(facts))
+    return await get_note(MARKET_SPEC, facts, market_values(facts), user_id)
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -960,8 +960,10 @@ def funds_market_values(facts: dict[str, Any]) -> dict[str, str]:
     }
 
 
-async def funds_market_note(facts: dict[str, Any] | None) -> dict[str, Any]:
+async def funds_market_note(
+    facts: dict[str, Any] | None, user_id: str | None = None
+) -> dict[str, Any]:
     """The note for this fund board, or `unavailable` when it cannot be read."""
     if not facts:
         return unavailable(REASON_INSUFFICIENT_DATA)
-    return await get_note(FUNDS_MARKET_SPEC, facts, funds_market_values(facts))
+    return await get_note(FUNDS_MARKET_SPEC, facts, funds_market_values(facts), user_id)

@@ -304,6 +304,7 @@ async def get_note(
     spec: NoteSpec,
     facts: Dict[str, Any],
     values: Dict[str, str],
+    user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     The note for these facts: cached, being written, or unavailable.
@@ -312,6 +313,12 @@ async def get_note(
     prompt's ``{{placeholders}}``, and **must be rendered from `facts` alone**.
     Deriving it from anything fresher would let a cached note cite a figure that
     has since moved, which is the one failure this whole design exists to avoid.
+
+    `user_id` reaches the model call so a reader who has configured their own
+    provider gets it here too. It changes who writes the note, never which note
+    is written: the fingerprint ignores it, so two providers still share one
+    cache entry and the first reader through the lock is the one who pays. That
+    asymmetry is accepted deliberately — see `_generate`.
     """
     from config import settings
 
@@ -334,14 +341,16 @@ async def get_note(
         # Past its age but still about the current read, so it is served while a
         # replacement is written. Showing a spinner over an accurate sentence
         # would be a downgrade.
-        await _start(spec, key, values)
+        await _start(spec, key, values, user_id)
         return ready(entry)
 
-    await _start(spec, key, values)
+    await _start(spec, key, values, user_id)
     return generating()
 
 
-async def _start(spec: NoteSpec, key: str, values: Dict[str, str]) -> None:
+async def _start(
+    spec: NoteSpec, key: str, values: Dict[str, str], user_id: Optional[str] = None
+) -> None:
     """
     Take the single-flight lock for this fingerprint and write the note.
 
@@ -362,7 +371,7 @@ async def _start(spec: NoteSpec, key: str, values: Dict[str, str]) -> None:
         if existing and existing.get("note"):
             return {"note": existing["note"]}
 
-        note = await _generate(spec, values)
+        note = await _generate(spec, values, user_id)
         if note:
             _put(key, spec, note)
         else:
@@ -375,7 +384,7 @@ async def _start(spec: NoteSpec, key: str, values: Dict[str, str]) -> None:
         logger.warning("Could not start note generation for %s: %s", key, e)
 
 
-async def _generate(spec: NoteSpec, values: Dict[str, str]) -> str:
+async def _generate(spec: NoteSpec, values: Dict[str, str], user_id: Optional[str] = None) -> str:
     """Render the prompt, ask the model, and return clean prose or ""."""
     from config import settings
     from services import llm
@@ -403,10 +412,17 @@ async def _generate(spec: NoteSpec, values: Dict[str, str]) -> str:
             # chat and report paths all pass this; `generate_completion` is the
             # one call site that does not, and a note must not inherit that.
             extra={"num_ctx": settings.LLM_NUM_CTX, "repeat_penalty": 1.1},
-            # Always the server chain. One note is written per read and served to
-            # every visitor from cache, so billing a signed-in user's own key for
-            # text that anonymous readers then collect would be wrong.
-            prefer=None,
+            # The reader's own provider when they have asked for one, which is
+            # what "use this provider for" is taken to mean: every surface that
+            # needs a model, not a chosen three.
+            #
+            # The cost is real and was weighed rather than missed. Notes are
+            # single-flighted on the fingerprint and stored globally, so whoever
+            # arrives first writes the copy that everyone — including anonymous
+            # readers — then collects. Per-user caching would fix the asymmetry
+            # and multiply generation by the number of readers, which for a
+            # self-hosted terminal is the worse trade.
+            prefer=await llm.provider_for(user_id, "notes"),
         )
     except Exception as e:  # noqa: BLE001 — a note must not take a page down
         logger.warning("Note %s could not be generated: %s", spec.kind, e)

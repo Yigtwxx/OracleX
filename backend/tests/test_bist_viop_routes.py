@@ -103,7 +103,7 @@ def test_the_note_endpoint_answers_facts_and_prose(client, monkeypatch):
     async def facts():
         return {"stance": "long_build"}
 
-    async def note(given):
+    async def note(given, user_id=None):
         assert given == {"stance": "long_build"}
         return {"status": "ready", "note": "VİOP", "generated_at": None, "reason": None}
 
@@ -151,7 +151,7 @@ def test_the_map_note_endpoint_is_scoped_like_the_map(client, monkeypatch):
         seen["ticker"], seen["sessions"] = ticker, sessions
         return {"stance": "long_heavy", "ticker": ticker}
 
-    async def note(given):
+    async def note(given, user_id=None):
         return {"status": "ready", "note": "Kitap", "generated_at": None, "reason": None}
 
     monkeypatch.setattr("routers.bist.build_viop_map_facts", facts)

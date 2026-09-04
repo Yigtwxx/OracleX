@@ -243,11 +243,11 @@ def fund_values(facts: dict[str, Any]) -> dict[str, str]:
 # ── Entry points ─────────────────────────────────────────────────────────────
 
 
-async def note_for_stock(payload: dict[str, Any]) -> dict[str, Any]:
+async def note_for_stock(payload: dict[str, Any], user_id: str | None = None) -> dict[str, Any]:
     facts = stock_facts(payload)
-    return await get_note(NOTE_SPEC, facts, stock_values(facts))
+    return await get_note(NOTE_SPEC, facts, stock_values(facts), user_id)
 
 
-async def note_for_fund(payload: dict[str, Any]) -> dict[str, Any]:
+async def note_for_fund(payload: dict[str, Any], user_id: str | None = None) -> dict[str, Any]:
     facts = fund_facts(payload)
-    return await get_note(NOTE_SPEC, facts, fund_values(facts))
+    return await get_note(NOTE_SPEC, facts, fund_values(facts), user_id)

@@ -13,7 +13,9 @@ than in spite of it. An empty board would misrepresent the outage; an explicit
 it, so a second failure here would only make the page report one outage twice.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+
+from dependencies.auth import AuthUser, get_optional_user
 
 from services.elections.service import fetch_elections
 from services.home_service import UpstreamUnavailable
@@ -56,7 +58,7 @@ async def get_elections():
 
 
 @router.get("/api/macro/regime")
-async def get_macro_regime():
+async def get_macro_regime(user: AuthUser | None = Depends(get_optional_user)):
     """
     The cross-asset regime read, plus the note explaining it.
 
@@ -77,7 +79,7 @@ async def get_macro_regime():
         board = {}
 
     regime = build_regime(board)
-    return {**regime, "note": await regime_note(regime)}
+    return {**regime, "note": await regime_note(regime, user.id if user else None)}
 
 
 @router.get("/api/macro/pizza-index")

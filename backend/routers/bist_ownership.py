@@ -20,7 +20,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from dependencies.auth import require_admin
+from dependencies.auth import AuthUser, get_optional_user, require_admin
 from models.bist_ownership import AssetOwners, EntityDetail, Move, OwnershipBoard
 from services.bist.ownership import board as board_service
 from services.bist.ownership.note import build_ownership_facts, ownership_note
@@ -69,7 +69,7 @@ async def get_bist_ownership_moves(
 
 
 @router.get("/note")
-async def get_bist_ownership_note():
+async def get_bist_ownership_note(user: AuthUser | None = Depends(get_optional_user)):
     """
     What the whole board says, narrated.
 
@@ -80,7 +80,7 @@ async def get_bist_ownership_note():
     says `insufficient_data` rather than describing an index nobody holds.
     """
     facts = await build_ownership_facts()
-    return {"facts": facts, "note": await ownership_note(facts)}
+    return {"facts": facts, "note": await ownership_note(facts, user.id if user else None)}
 
 
 @router.get("/entities/{entity_id}", response_model=EntityDetail)

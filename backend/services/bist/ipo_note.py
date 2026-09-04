@@ -367,8 +367,8 @@ def ipo_values(facts: dict[str, Any]) -> dict[str, str]:
 # ── Entry point ──────────────────────────────────────────────────────────────
 
 
-async def note_for_ipos(payload: dict[str, Any]) -> dict[str, Any]:
+async def note_for_ipos(payload: dict[str, Any], user_id: str | None = None) -> dict[str, Any]:
     facts = ipo_facts(payload)
     if facts is None:
         return unavailable("insufficient_sample")
-    return await get_note(NOTE_SPEC, facts, ipo_values(facts))
+    return await get_note(NOTE_SPEC, facts, ipo_values(facts), user_id)

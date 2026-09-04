@@ -255,3 +255,68 @@ def test_model_markup_is_stripped_to_prose():
 
 def test_a_runaway_answer_is_truncated():
     assert len(ai_notes._clean("word " * 5000)) <= ai_notes.MAX_NOTE_CHARS
+
+
+# ── the reader's own provider ────────────────────────────────────────────────
+#
+# `use_for_notes` is the widest of the four toggles: one code path, seventeen
+# call sites. Before it existed, a user who had switched on everything the form
+# offered still met the server's model on every page that shows generated prose.
+
+
+async def test_a_readers_own_provider_reaches_the_model(model, monkeypatch):
+    from services import llm
+
+    async def fake_provider_for(user_id, feature):
+        assert feature == "notes"
+        return f"provider-for-{user_id}"
+
+    monkeypatch.setattr(llm, "provider_for", fake_provider_for)
+
+    await ai_notes.get_note(SPEC, FACTS, VALUES, "u1")
+    await _settle()
+
+    assert model.prefer == "provider-for-u1"
+
+
+async def test_an_anonymous_read_uses_the_server_chain(model, monkeypatch):
+    """
+    Most note routes are public, so `user_id` is None more often than not and
+    must resolve to the server chain rather than raising.
+    """
+    from services import llm
+
+    async def fake_provider_for(_user_id, _feature):
+        return None
+
+    monkeypatch.setattr(llm, "provider_for", fake_provider_for)
+
+    await ai_notes.get_note(SPEC, FACTS, VALUES)
+    await _settle()
+
+    assert model.prefer is None
+
+
+async def test_the_reader_is_not_part_of_the_fingerprint(model, monkeypatch):
+    """
+    Two users reading the same facts share one note, and one generation.
+
+    This is the accepted cost of a global note cache: whoever arrives first
+    writes the copy everyone collects. Keying the store by user instead would
+    multiply generation by the number of readers.
+    """
+    from services import llm
+
+    monkeypatch.setattr(llm, "provider_for", lambda _u, _f: _none())
+
+    await ai_notes.get_note(SPEC, FACTS, VALUES, "u1")
+    await _settle()
+    result = await ai_notes.get_note(SPEC, FACTS, VALUES, "u2")
+    await _settle()
+
+    assert result["status"] == ai_notes.STATUS_READY
+    assert model.calls == 1
+
+
+async def _none():
+    return None

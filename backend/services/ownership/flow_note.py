@@ -278,8 +278,8 @@ def note_values(facts: dict[str, Any]) -> dict[str, str]:
     }
 
 
-async def flow_note(facts: Optional[dict[str, Any]]) -> dict[str, Any]:
+async def flow_note(facts: Optional[dict[str, Any]], user_id: str | None = None) -> dict[str, Any]:
     """The note for this quarter's filings, or `unavailable` when there are none."""
     if not facts:
         return unavailable(REASON_INSUFFICIENT_DATA)
-    return await get_note(NOTE_SPEC, facts, note_values(facts))
+    return await get_note(NOTE_SPEC, facts, note_values(facts), user_id)

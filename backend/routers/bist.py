@@ -19,7 +19,9 @@ Two conventions this surface holds to, both inherited from the rest of the API:
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+
+from dependencies.auth import AuthUser, get_optional_user
 
 from services import analysis_jobs
 from services.analysis_jobs import KIND_RADAR
@@ -364,6 +366,7 @@ async def get_fund_comparison(
 @router.get("/funds/market-note")
 async def get_funds_market_note(
     fund_type: str = Query("YAT", description=f"One of {FUND_TYPES}"),
+    user: AuthUser | None = Depends(get_optional_user),
 ):
     """
     What this whole fund universe looks like, narrated.
@@ -382,11 +385,15 @@ async def get_funds_market_note(
     be reporting the same outage twice.
     """
     facts = await build_funds_market_facts(fund_type)
-    return {"facts": facts, "note": await funds_market_note(facts)}
+    return {"facts": facts, "note": await funds_market_note(facts, user.id if user else None)}
 
 
 @router.get("/funds/{code}")
-async def get_fund(code: str, months: int = Query(12, ge=1, le=60)):
+async def get_fund(
+    code: str,
+    months: int = Query(12, ge=1, le=60),
+    user: AuthUser | None = Depends(get_optional_user),
+):
     """One fund: its net asset value history and the statistics derived from it."""
     try:
         detail = await fetch_fund_detail(code, months)
@@ -409,7 +416,7 @@ async def get_fund(code: str, months: int = Query(12, ge=1, le=60)):
         **_detail(detail, framed),
         "real_return": _real_return_meta(snapshot, deflators),
     }
-    payload["ai_note"] = await note_for_fund(payload)
+    payload["ai_note"] = await note_for_fund(payload, user.id if user else None)
     return payload
 
 
@@ -610,6 +617,7 @@ async def get_stocks(
 async def get_stock(
     ticker: str,
     range_: str = Query("1y", alias="range", description="Yahoo chart range, e.g. 6mo, 1y, 5y"),
+    user: AuthUser | None = Depends(get_optional_user),
 ):
     """One company: quote, fundamentals, index membership and a price history."""
     try:
@@ -639,7 +647,7 @@ async def get_stock(
     # Last, and from the finished payload: the note may only speak about figures
     # this response actually carries, and building it from the payload is what
     # makes that structural rather than a convention to remember.
-    payload["ai_note"] = await note_for_stock(payload)
+    payload["ai_note"] = await note_for_stock(payload, user.id if user else None)
     return payload
 
 
@@ -859,7 +867,7 @@ async def get_overview():
 
 
 @router.get("/market-note")
-async def get_market_note():
+async def get_market_note(user: AuthUser | None = Depends(get_optional_user)):
     """
     What the equity board as a whole looks like, narrated.
 
@@ -873,7 +881,7 @@ async def get_market_note():
     a broken panel.
     """
     facts = await build_market_facts()
-    return {"facts": facts, "note": await market_note(facts)}
+    return {"facts": facts, "note": await market_note(facts, user.id if user else None)}
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -933,7 +941,7 @@ async def get_macro(fx_range: str = Query("5y", description="Yahoo range for the
 
 
 @router.get("/macro-note")
-async def get_macro_note():
+async def get_macro_note(user: AuthUser | None = Depends(get_optional_user)):
     """
     What the backdrop as a whole says, narrated above the tiles that draw it.
 
@@ -947,7 +955,7 @@ async def get_macro_note():
     that as an absent panel rather than as a quiet backdrop.
     """
     facts = await build_macro_facts()
-    return {"facts": facts, "note": await macro_note(facts)}
+    return {"facts": facts, "note": await macro_note(facts, user.id if user else None)}
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -1029,7 +1037,7 @@ async def get_kap(
 
 
 @router.get("/kap/{index}/note")
-async def get_kap_note(index: int):
+async def get_kap_note(index: int, user: AuthUser | None = Depends(get_optional_user)):
     """
     What one filing means, narrated.
 
@@ -1055,7 +1063,7 @@ async def get_kap_note(index: int):
 
     return {
         "disclosure": _disclosure(disclosure),
-        "note": await note_for_disclosure(disclosure, equity),
+        "note": await note_for_disclosure(disclosure, equity, user.id if user else None),
     }
 
 
@@ -1139,7 +1147,7 @@ async def get_viop(underlying: Optional[str] = Query(None)):
 
 
 @router.get("/viop-note")
-async def get_viop_note():
+async def get_viop_note(user: AuthUser | None = Depends(get_optional_user)):
     """
     What the derivatives board says as a whole, above the panels that draw it.
 
@@ -1155,7 +1163,7 @@ async def get_viop_note():
     an outage than a market.
     """
     facts = await build_viop_facts()
-    return {"facts": facts, "note": await viop_note(facts)}
+    return {"facts": facts, "note": await viop_note(facts, user.id if user else None)}
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -1367,6 +1375,7 @@ async def get_viop_map(
 async def get_viop_map_note(
     ticker: str,
     sessions: int = Query(120, ge=30, le=160),
+    user: AuthUser | None = Depends(get_optional_user),
 ):
     """
     Where this underlying's book stands against its scan range, narrated.
@@ -1382,7 +1391,7 @@ async def get_viop_map_note(
     or declined the field on its own, and a note's absence is a paragraph.
     """
     facts = await build_viop_map_facts(ticker, sessions)
-    return {"facts": facts, "note": await viop_map_note(facts)}
+    return {"facts": facts, "note": await viop_map_note(facts, user.id if user else None)}
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -1497,7 +1506,7 @@ async def get_financials(
 
 
 @router.get("/financials/{ticker}/note")
-async def get_financials_note(ticker: str):
+async def get_financials_note(ticker: str, user: AuthUser | None = Depends(get_optional_user)):
     """
     The model's read of the same statements.
 
@@ -1516,7 +1525,10 @@ async def get_financials_note(ticker: str):
 
     from services.bist.financials_note import financials_facts
 
-    return {"facts": financials_facts(payload), "note": await note_for_financials(payload)}
+    return {
+        "facts": financials_facts(payload),
+        "note": await note_for_financials(payload, user.id if user else None),
+    }
 
 
 # ── Halka arz ───────────────────────────────────────────────────────────────
@@ -1554,6 +1566,7 @@ async def get_ipos(
 async def get_ipos_note(
     months_back: int = Query(24, ge=3, le=120),
     days_ahead: int = Query(120, ge=7, le=365),
+    user: AuthUser | None = Depends(get_optional_user),
 ):
     """The model's read of the same board."""
     try:
@@ -1564,7 +1577,10 @@ async def get_ipos_note(
             detail="Halka arz takvimine şu anda ulaşılamıyor.",
         ) from e
 
-    return {"facts": ipo_facts(payload), "note": await note_for_ipos(payload)}
+    return {
+        "facts": ipo_facts(payload),
+        "note": await note_for_ipos(payload, user.id if user else None),
+    }
 
 
 @router.get("/positioning")
@@ -1603,7 +1619,7 @@ async def get_positioning(limit: int = Query(50, ge=1, le=500)):
 
 
 @router.get("/positioning-note")
-async def get_positioning_note():
+async def get_positioning_note(user: AuthUser | None = Depends(get_optional_user)):
     """
     What the positioning board as a whole looks like, narrated.
 
@@ -1619,7 +1635,7 @@ async def get_positioning_note():
     rather than a narrower one.
     """
     facts = await build_positioning_facts()
-    return {"facts": facts, "note": await positioning_note(facts)}
+    return {"facts": facts, "note": await positioning_note(facts, user.id if user else None)}
 
 
 # ══════════════════════════════════════════════════════════════════════════

@@ -532,8 +532,8 @@ def viop_map_values(facts: dict[str, Any]) -> dict[str, str]:
     }
 
 
-async def viop_map_note(facts: dict[str, Any] | None) -> dict[str, Any]:
+async def viop_map_note(facts: dict[str, Any] | None, user_id: str | None = None) -> dict[str, Any]:
     """The note for this field, or `unavailable` when there is nothing to read."""
     if not facts:
         return unavailable(REASON_INSUFFICIENT_DATA)
-    return await get_note(VIOP_MAP_SPEC, facts, viop_map_values(facts))
+    return await get_note(VIOP_MAP_SPEC, facts, viop_map_values(facts), user_id)

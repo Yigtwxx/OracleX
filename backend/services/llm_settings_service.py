@@ -21,7 +21,7 @@ TABLE = "user_llm_settings"
 
 # Feature flags a user can toggle. Background/scheduler work is deliberately
 # absent: it has no user context and always uses the server's .env chain.
-FEATURES: Tuple[str, ...] = ("chat", "news", "reports")
+FEATURES: Tuple[str, ...] = ("chat", "news", "reports", "notes")
 
 _TOGGLE_COLUMNS = {feature: f"use_for_{feature}" for feature in FEATURES}
 
@@ -51,6 +51,7 @@ def _public_view(row: Dict[str, Any]) -> Dict[str, Any]:
         "use_for_chat": bool(row.get("use_for_chat", False)),
         "use_for_news": bool(row.get("use_for_news", False)),
         "use_for_reports": bool(row.get("use_for_reports", False)),
+        "use_for_notes": bool(row.get("use_for_notes", False)),
     }
 
 
@@ -98,6 +99,7 @@ async def get_credentials(user_id: str) -> Optional[Dict[str, Any]]:
         "use_for_chat": bool(row.get("use_for_chat", False)),
         "use_for_news": bool(row.get("use_for_news", False)),
         "use_for_reports": bool(row.get("use_for_reports", False)),
+        "use_for_notes": bool(row.get("use_for_notes", False)),
     }
 
 
@@ -110,6 +112,7 @@ async def save_settings(
     use_for_chat: Optional[bool] = None,
     use_for_news: Optional[bool] = None,
     use_for_reports: Optional[bool] = None,
+    use_for_notes: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """
     Create or update a user's LLM settings.
@@ -161,6 +164,7 @@ async def save_settings(
         ("chat", use_for_chat),
         ("news", use_for_news),
         ("reports", use_for_reports),
+        ("notes", use_for_notes),
     ):
         column = _TOGGLE_COLUMNS[feature]
         if requested is not None:

@@ -414,7 +414,7 @@ def note_values(facts: dict[str, Any]) -> dict[str, str]:
 # ── Entry point ──────────────────────────────────────────────────────────────
 
 
-async def build_brief(candidate: str) -> dict[str, Any]:
+async def build_brief(candidate: str, user_id: str | None = None) -> dict[str, Any]:
     """
     The Home card's payload for one symbol.
 
@@ -477,5 +477,5 @@ async def build_brief(candidate: str) -> dict[str, Any]:
     }
 
     note_input = note_facts(brief)
-    brief["ai_note"] = await get_note(NOTE_SPEC, note_input, note_values(note_input))
+    brief["ai_note"] = await get_note(NOTE_SPEC, note_input, note_values(note_input), user_id)
     return brief

@@ -122,6 +122,7 @@ class LLMSettingsUpdate(BaseModel):
     use_for_chat: Optional[bool] = None
     use_for_news: Optional[bool] = None
     use_for_reports: Optional[bool] = None
+    use_for_notes: Optional[bool] = None
 
 
 class LLMTestRequest(BaseModel):
@@ -416,6 +417,7 @@ _EMPTY_LLM_SETTINGS = {
     "use_for_chat": False,
     "use_for_news": False,
     "use_for_reports": False,
+    "use_for_notes": False,
 }
 
 
@@ -455,6 +457,7 @@ async def update_llm_settings(data: LLMSettingsUpdate, user: AuthUser = Depends(
             use_for_chat=data.use_for_chat,
             use_for_news=data.use_for_news,
             use_for_reports=data.use_for_reports,
+            use_for_notes=data.use_for_notes,
         )
     except (llm_settings_service.UnknownProvider, llm_settings_service.KeyRequired) as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

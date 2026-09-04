@@ -366,7 +366,7 @@ def test_the_macro_note_endpoint_answers_facts_and_prose(monkeypatch):
     async def facts():
         return {"stance": "real_positive"}
 
-    async def note(given):
+    async def note(given, user_id=None):
         assert given == {"stance": "real_positive"}
         return {"status": "ready", "note": "Reel faiz", "generated_at": None, "reason": None}
 

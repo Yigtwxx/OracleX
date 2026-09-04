@@ -8,7 +8,9 @@ returned as an empty list or a payload of zeros — the widgets render those as
 real readings ("no events this week", "0 Gwei / Low cost").
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+
+from dependencies.auth import AuthUser, get_optional_user
 
 from services.asset_brief_service import SymbolNotFound, build_brief
 from services.home_service import (
@@ -58,7 +60,7 @@ async def get_onchain_data():
 
 
 @router.get("/api/home/asset-brief/{symbol}")
-async def get_asset_brief(symbol: str):
+async def get_asset_brief(symbol: str, user: AuthUser | None = Depends(get_optional_user)):
     """
     One asset's daily read: price, series, levels, the class-specific metric and
     a short grounded note.
@@ -69,7 +71,7 @@ async def get_asset_brief(symbol: str):
     200, because a missing RSI is a missing badge and not a missing asset.
     """
     try:
-        return await build_brief(symbol)
+        return await build_brief(symbol, user.id if user else None)
     except SymbolNotFound as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
