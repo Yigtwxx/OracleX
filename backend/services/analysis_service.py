@@ -18,6 +18,7 @@ routers start it explicitly through `analysis_jobs`.
 import hashlib
 import json
 import logging
+import re
 import os
 import time
 from datetime import datetime
@@ -154,6 +155,29 @@ REQUIRED_HEADINGS = (
     "Watchlist & Key Levels",
     "Risk Disclosures & Data Coverage",
 )
+
+
+# Stages 2, 3 and 4 are each told to start directly at `## Executive Summary`.
+# A reasoning model narrates its verification first, and only some of them fence
+# that narration: Qwen wraps it in <think>, which the LLM client already strips,
+# while Mistral writes it as plain prose that nothing recognises. The scratchpad
+# then lands where the report should be. Trimming to the anchor the prompt
+# already mandates is a no-op when the model complied and recovers the report
+# when it did not, without the client having to guess where prose reasoning ends.
+_REPORT_ANCHOR = re.compile(r"^##[ \t]+Executive Summary[ \t]*$", re.MULTILINE)
+
+
+def _trim_to_report(text: str) -> str:
+    """Drop anything a model wrote before the report's first required heading."""
+    match = _REPORT_ANCHOR.search(text)
+    if not match:
+        # No anchor at all is a different failure — a dropped heading, which
+        # `missing_headings` reports and the restore stage repairs. Swallowing
+        # the body here would hide it.
+        return text.strip()
+    if match.start() > 0:
+        logger.warning("Trimmed %d characters of preamble before the report", match.start())
+    return text[match.start() :].strip()
 
 
 def missing_headings(report: str) -> List[str]:
@@ -294,6 +318,7 @@ async def generate_market_report(
         max_tokens=4000,
         user_id=user_id,
     )
+    draft = _trim_to_report(draft)
 
     # 4. Review — strike anything the snapshot does not support.
     report_stage("review")
@@ -313,6 +338,7 @@ async def generate_market_report(
         # the stage that catches invented numbers. It is worth the latency.
         reasoning=True,
     )
+    final = _trim_to_report(final)
 
     # The nine required headings are asked for in two prompts and checked in
     # neither. A review stage that drops one produces a report missing a section
@@ -335,6 +361,7 @@ async def generate_market_report(
             max_tokens=4000,
             user_id=user_id,
         )
+        final = _trim_to_report(final)
         missing = missing_headings(final)
 
     report = {
