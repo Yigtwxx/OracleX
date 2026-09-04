@@ -28,7 +28,12 @@ from services.llm.client import (
     get_chain,
     llm_health,
 )
-from services.llm.presets import PRESETS, keyless_provider_names, preset_names
+from services.llm.presets import (
+    PRESETS,
+    keyless_provider_names,
+    preset_names,
+    provider_default_models,
+)
 from services.llm.user_prefs import provider_for
 
 __all__ = [
@@ -40,6 +45,7 @@ __all__ = [
     "provider_for",
     "keyless_provider_names",
     "preset_names",
+    "provider_default_models",
     "cooldown_remaining",
     "clear_cooldowns",
     "PRESETS",

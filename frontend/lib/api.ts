@@ -2408,6 +2408,8 @@ export interface LLMSettings {
   supported_providers: string[];
   /** The subset of `supported_providers` that needs no key — the local ones. */
   keyless_providers: string[];
+  /** Each provider's default model id, for the model field's placeholder. */
+  provider_defaults: Record<string, string>;
 }
 
 export interface LLMSettingsUpdate {

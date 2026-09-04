@@ -94,3 +94,16 @@ def keyless_provider_names() -> list[str]:
     produce a credential Ollama has never had.
     """
     return sorted(name for name, preset in PRESETS.items() if preset.key_env is None)
+
+
+def provider_default_models() -> dict[str, str]:
+    """
+    Each provider's default model id, for a form that offers "blank = default".
+
+    Without it that offer is unreadable: a user is told a default exists but not
+    what it is, which is how a Mistral id was left sitting in the field while
+    Ollama was selected. Entries are empty for the providers whose model must be
+    chosen (openrouter, together, custom), and the docstring above applies —
+    these go stale, so they belong in a placeholder, never in a saved value.
+    """
+    return {name: preset.default_model for name, preset in PRESETS.items()}

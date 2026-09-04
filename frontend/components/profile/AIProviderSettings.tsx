@@ -28,6 +28,19 @@ export default function AIProviderSettings() {
   const [message, setMessage] = useState<{ ok: boolean; text: string } | undefined>(undefined);
   const [models, setModels] = useState<string[]>([]);
 
+  const changeProvider = (next: string) => {
+    setProvider(next);
+    // Returning to the saved provider restores what was saved; moving to any
+    // other clears the field, which the placeholder then reads as that
+    // provider's default. Carrying the old id over is how `mistral-medium-3-5`
+    // ended up sitting under a selected `ollama`.
+    setModel(next === settings?.provider ? settings.model : '');
+    // The list came from testing the previous provider and does not describe
+    // this one.
+    setModels([]);
+    setMessage(undefined);
+  };
+
   const load = useCallback(async () => {
     try {
       const data = await getLLMSettings();
@@ -136,7 +149,7 @@ export default function AIProviderSettings() {
             <span className="label">Provider</span>
             <select
               value={provider}
-              onChange={(e) => setProvider(e.target.value)}
+              onChange={(e) => changeProvider(e.target.value)}
               className="mt-1 w-full px-2.5 py-1.5 rounded-md bg-surface-2 border border-line text-fg text-base focus:outline-none focus:border-accent"
             >
               {settings.supported_providers.map((name) => (
@@ -153,7 +166,7 @@ export default function AIProviderSettings() {
               list="llm-model-options"
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              placeholder="e.g. qwen/qwen3.6-27b"
+              placeholder={settings.provider_defaults[provider] || 'model id required'}
               className="mt-1 w-full px-2.5 py-1.5 rounded-md bg-surface-2 border border-line text-fg text-base focus:outline-none focus:border-accent"
             />
             <datalist id="llm-model-options">
@@ -164,28 +177,31 @@ export default function AIProviderSettings() {
           </label>
         </div>
 
-        <label className="block">
-          <span className="label">
-            API key
-            {needsKey
-              ? settings.configured && ` — saved (…${settings.key_hint})`
-              : ' — not needed for this provider'}
-          </span>
-          <input
-            type="password"
-            value={apiKey}
-            disabled={!needsKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder={
-              settings.configured ? 'Enter a new key to replace it' : 'Paste your API key'
-            }
-            autoComplete="off"
-            className="mt-1 w-full px-2.5 py-1.5 rounded-md bg-surface-2 border border-line text-fg text-base font-mono focus:outline-none focus:border-accent"
-          />
-        </label>
+        {needsKey ? (
+          <label className="block">
+            <span className="label">
+              API key
+              {settings.configured && ` — saved (…${settings.key_hint})`}
+            </span>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder={
+                settings.configured ? 'Enter a new key to replace it' : 'Paste your API key'
+              }
+              autoComplete="off"
+              className="mt-1 w-full px-2.5 py-1.5 rounded-md bg-surface-2 border border-line text-fg text-base font-mono focus:outline-none focus:border-accent"
+            />
+          </label>
+        ) : (
+          <p className="text-base text-fg-subtle">
+            <code>{provider}</code> runs locally and takes no API key.
+          </p>
+        )}
 
         <div>
-          <p className="label mb-2">Use my key for:</p>
+          <p className="label mb-2">{needsKey ? 'Use my key for:' : 'Use this provider for:'}</p>
           <div className="space-y-2">
             {FEATURE_LABELS.map(({ key, label, hint }) => (
               <button

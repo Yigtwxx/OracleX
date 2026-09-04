@@ -430,6 +430,9 @@ async def get_llm_settings(user: AuthUser = Depends(get_current_user)):
         # So the form can drop the key requirement for the provider the user is
         # about to pick, not just the one already stored.
         "keyless_providers": llm.keyless_provider_names(),
+        # Shown as the model field's placeholder, so "blank = default" says what
+        # the default actually is.
+        "provider_defaults": llm.provider_default_models(),
     }
 
 
