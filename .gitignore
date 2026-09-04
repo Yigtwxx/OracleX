@@ -137,3 +137,9 @@ docs/superpowers/
 # the repo root; anchored here so a stray root-directory launch cannot commit it
 # again. Root-anchored on purpose — a bare `data/` would swallow backend/data.
 /data/
+
+# Playwright output: per-run traces and screenshots, and the HTML report CI
+# uploads as an artifact on failure. Never a source of truth.
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/

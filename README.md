@@ -1809,12 +1809,13 @@ python scripts/build_agent_skill.py --check
 ## Quality Gates
 
 CI (`.github/workflows/ci.yml`) runs on every push and pull request to `main`,
-in four jobs:
+in five jobs:
 
 | Job | Steps |
 |-----|-------|
 | **Backend** (Python 3.11) | `ruff check .` → `python -m compileall` → `pytest` |
 | **Frontend** (Node 20) | `npm ci` → `npm run lint` → `npm run typecheck` → `npm test` → `npm run build` |
+| **Frontend browser tests** | `npx playwright install chromium` → `npm run build` → `npm run e2e` |
 | **Generated files** | `python scripts/build_agent_skill.py --check` → `python scripts/build_repo_facts.py --check` |
 | **MCP server** | `ruff check .` → `ruff format --check .` → `pytest` |
 
@@ -1864,6 +1865,18 @@ panels (`chain-format`, `technical-format`, `ai-note`, `pizza-index`,
 not tested; anything with a branch in it is expected to live in `lib/`.
 `lib/marketing/` is tested for one extra rule: the prose carries no digits, so
 every figure on a marketing page has to come from the generated facts.
+
+What neither suite can see is the chain between them — a router reading the
+URL, a hook fetching, a component rendering, a click lifting state into the
+page — and that is what `frontend/e2e/` covers, in a real Chromium driven by
+Playwright. Every upstream is answered by route stubs inside the browser
+(`e2e/stubs.ts`): the backend cannot start without a Supabase project, so a
+suite that needed one would never run in CI, and its contract is already
+pytest's job. The stubs answer 404 for anything a test did not ask for, on the
+principle that the app is built to survive a missing upstream but not a
+well-formed lie. Three flows are pinned so far: sign-in through supabase-js
+into the profile page, the 24h change histogram filtering the overview table,
+and the realm switcher reading its realm off the path.
 
 `.pre-commit-config.yaml` wires the same tools locally:
 

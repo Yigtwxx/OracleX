@@ -21,6 +21,7 @@ cd frontend
 npm test                        # vitest, ~450 tests
 npm run typecheck               # tsc --noEmit
 npm run lint && npm run build
+npm run e2e                     # playwright, ~15 tests; reuses a running :3100
 
 python scripts/build_agent_skill.py --check   # from repo root
 python scripts/build_repo_facts.py --check    # from repo root
