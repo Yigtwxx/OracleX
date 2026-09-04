@@ -144,6 +144,20 @@ lowering the bar or by letting a thin evidence base through. The facts and
 microstructure are computed without a model and are served either way, which is
 what keeps a refusal from reading as a broken page.
 
+**Borsa İstanbul has no queryable IPO source, and this was tested rather than
+assumed.** KAP's disclosure query API answers 404 (`/tr/api/disclosure/byCriteria`
+and every sibling; only the *fund* surface in `kap_fund_client` is real), its
+company list carries no listing date, and the TradingView scanner backfills a
+trailing-year return for all 626 BIST names so "listed within a year" cannot be
+inferred either. The rolling tape in `kap_service` is a few days deep and sees no
+offering that closed last month. `halkarz_client` therefore reads
+`halkarz.com`, a community-maintained calendar with no contract — parsed by
+label text rather than DOM position, with every field capped and every failure
+recorded per row in `unparsed` so parser rot is countable instead of a board
+that quietly empties. The returns the board leads with are computed here from
+that offering price and our own scanner quote, so the number a reader acts on is
+ours even when the date beside it is not.
+
 **Deflating a level is not deflating a return, and the two live in different
 modules.** `real_return.deflate` applies the Fisher relation to a *return* — the
 right tool for a post-IPO gain over a window. `services/bist/deflator.py`
@@ -156,6 +170,15 @@ statements — eight months behind when this was written — which is why the
 deflation base falls back to the newest quarter the index can actually reach
 rather than pinning to the newest quarter on the board and taking the whole page
 nominal over one unreachable bar.
+
+**Turkish folding needs the dotless i spelled out.** NFKD decomposes ş, ğ, ç, ö
+and ü into a base letter plus a combining mark, so stripping marks folds them. It
+does nothing to `ı` (U+0131), which is its own letter rather than an `i` with
+something removed. A label map written with plain `i` therefore misses every
+Turkish string containing one — "Aracı Kurum" folds to "aracı kurum" and never
+matches "araci kurum" — and nothing raises. `halkarz_client._ascii_fold` maps it
+explicitly; `services/bist/text.fold` alone is not enough when the comparison
+target is ASCII.
 
 **Symbols carry their venue.** Crypto is `BTCUSDT` or `BINANCE:ETHUSDT`,
 equities are the plain ticker. An unprefixed ticker forced down the crypto path

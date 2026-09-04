@@ -6,6 +6,7 @@ import {
   Building2,
   CalendarDays,
   CandlestickChart,
+  Rocket,
   FileSpreadsheet,
   Crosshair,
   Gauge,
@@ -104,6 +105,9 @@ export const NAV_ICONS: Record<NavKey, NavIcon> = {
   // Crosshair, not Radar: Konumlanma already owns the radar dish, and the
   // subject here is a single name lined up at a level rather than a sweep.
   'bist-radar': Crosshair,
+  // A launch, which is the one metaphor the Turkish 'halka arz' surface
+  // already uses everywhere a reader has seen it.
+  'bist-ipo': Rocket,
   'bist-macro': Landmark,
 };
 

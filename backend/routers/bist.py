@@ -70,6 +70,9 @@ from services.bist.macro_service import (
 )
 from services.bist.calendar_service import CalendarEvent, build_calendar, group_by_day
 from services.bist.financials_note import note_for_financials
+from services.bist.halkarz_client import HalkarzUnavailable
+from services.bist.ipo_note import ipo_facts, note_for_ipos
+from services.bist.ipo_service import build_ipos
 from services.bist.financials_service import (
     MAX_QUARTERS,
     FinancialsUnavailable,
@@ -1514,6 +1517,54 @@ async def get_financials_note(ticker: str):
     from services.bist.financials_note import financials_facts
 
     return {"facts": financials_facts(payload), "note": await note_for_financials(payload)}
+
+
+# ── Halka arz ───────────────────────────────────────────────────────────────
+
+
+@router.get("/ipos")
+async def get_ipos(
+    months_back: int = Query(24, ge=3, le=120),
+    days_ahead: int = Query(120, ge=7, le=365),
+):
+    """
+    The offering calendar, and what the recent listings returned.
+
+    `months_back` is a window rather than a top-N, and it is the cutoff for the
+    ranked chart as well as the list. A window is a defensible cut — a period of
+    the market — while "the last forty listings" is an arbitrary one whose
+    meaning drifts with issuance volume. Twenty-four months covers roughly forty
+    to sixty Borsa İstanbul listings: enough to be a distribution, and recent
+    enough that the rate regime is comparable.
+
+    503 rather than an empty board when the source is unreachable. There is no
+    symbol here that failed to resolve — the calendar itself is down — and an
+    empty list would read as a market with no offerings.
+    """
+    try:
+        return await build_ipos(months_back=months_back, days_ahead=days_ahead)
+    except HalkarzUnavailable as e:
+        raise HTTPException(
+            status_code=503,
+            detail="Halka arz takvimine şu anda ulaşılamıyor.",
+        ) from e
+
+
+@router.get("/ipos/note")
+async def get_ipos_note(
+    months_back: int = Query(24, ge=3, le=120),
+    days_ahead: int = Query(120, ge=7, le=365),
+):
+    """The model's read of the same board."""
+    try:
+        payload = await build_ipos(months_back=months_back, days_ahead=days_ahead)
+    except HalkarzUnavailable as e:
+        raise HTTPException(
+            status_code=503,
+            detail="Halka arz takvimine şu anda ulaşılamıyor.",
+        ) from e
+
+    return {"facts": ipo_facts(payload), "note": await note_for_ipos(payload)}
 
 
 @router.get("/positioning")

@@ -102,6 +102,7 @@ backend/data/kap_tape.json
 backend/data/viop_bulletin.json
 backend/data/takasbank_psr.json
 backend/data/bist_fundamentals/
+backend/data/bist_ipos/
 backend/data/bist_voices/
 backend/data/bist_radar_last_*.json
 backend/data/registry/coin_metrics.json

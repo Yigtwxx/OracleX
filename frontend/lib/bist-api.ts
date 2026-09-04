@@ -2143,3 +2143,142 @@ export async function fetchBistFinancialsNote(ticker: string): Promise<BistFinan
     { anonymous: true }
   );
 }
+
+// ── Halka arz (IPOs) ────────────────────────────────────────────────────────
+
+/** Where an offering sits in its own lifecycle. */
+export type IpoState = 'undated' | 'upcoming' | 'book_open' | 'listed';
+
+export interface IpoDates {
+  start: string;
+  end: string;
+  /** What the calendar printed, kept so the board can show it verbatim. */
+  raw: string | null;
+}
+
+export interface IpoPrice {
+  low: number;
+  high: number;
+  /** A range that has not struck. No return is computed against a band. */
+  is_band: boolean;
+  raw: string | null;
+}
+
+export interface IpoResultGroup {
+  key:
+    | 'domestic_retail'
+    | 'domestic_institutional'
+    | 'foreign_retail'
+    | 'foreign_institutional'
+    | 'other';
+  /** The calendar's own Turkish wording, for display. */
+  label: string;
+  investors: number | null;
+  lots: number | null;
+  share: number | null;
+}
+
+export interface IpoResults {
+  groups: IpoResultGroup[];
+  total_investors: number | null;
+  total_lots: number | null;
+}
+
+export interface IpoStructure {
+  capital_increase_lots: number | null;
+  share_sale_lots: number | null;
+  capital_increase_share: number | null;
+  spk_bulletin: string | null;
+}
+
+export interface IpoProceedsLine {
+  label: string;
+  share: number | null;
+}
+
+export interface IpoPerformance {
+  price: number;
+  nominal: number;
+  /** Null where the window could not be deflated. Never zero. */
+  real: number | null;
+  days_listed: number;
+  /** False for a listing too new to be a track record; still drawn. */
+  seasoned: boolean;
+  market_cap: number | null;
+  sector: string | null;
+  measured_at: string;
+}
+
+export interface Ipo {
+  slug: string;
+  url: string;
+  company: string;
+  /** Null until Borsa İstanbul assigns a code. */
+  ticker: string | null;
+  state: IpoState;
+  is_new: boolean;
+  offer_dates: IpoDates | null;
+  listing_date: string | null;
+  price: IpoPrice | null;
+  lots: number | null;
+  free_float_lots: number | null;
+  free_float_pct: number | null;
+  broker: string | null;
+  method: string | null;
+  market: string | null;
+  structure: IpoStructure | null;
+  use_of_proceeds: IpoProceedsLine[] | null;
+  proceeds_source: string | null;
+  results: IpoResults | null;
+  performance: IpoPerformance | null;
+  updated_at: string | null;
+  /** Fields the calendar listed but we could not read. Makes rot countable. */
+  unparsed: string[];
+}
+
+export interface IpoBoard {
+  upcoming: Ipo[];
+  past: Ipo[];
+  as_of: string;
+  source: string;
+  /** The calendar's own stamp, not our fetch time. */
+  source_updated_at: string | null;
+  window: { months_back: number; days_ahead: number };
+  coverage: {
+    index_rows: number;
+    in_window: number;
+    detail_pages_read: number;
+    detail_pages_failed: number;
+    returns_measured: number;
+    returns_unmeasured: number;
+    undated: number;
+  };
+  inflation: { available: boolean; reason: string | null };
+  delay_minutes: number;
+  stale: boolean;
+}
+
+export interface BistIpoNoteResponse {
+  facts: Record<string, unknown> | null;
+  note: AiNote;
+}
+
+export async function fetchBistIpos(
+  monthsBack: number = 24,
+  daysAhead: number = 120
+): Promise<IpoBoard> {
+  return apiFetch<IpoBoard>('/api/bist/ipos', {
+    params: { months_back: monthsBack, days_ahead: daysAhead },
+    anonymous: true,
+  });
+}
+
+export async function fetchBistIposNote(
+  monthsBack: number = 24,
+  daysAhead: number = 120
+): Promise<BistIpoNoteResponse> {
+  return apiFetch<BistIpoNoteResponse>('/api/bist/ipos/note', {
+    params: { months_back: monthsBack, days_ahead: daysAhead },
+    anonymous: true,
+  });
+}

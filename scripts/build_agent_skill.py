@@ -187,6 +187,8 @@ ENDPOINT_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
             ("GET", "/api/bist/calendar"),
             ("GET", "/api/bist/financials/{ticker}"),
             ("GET", "/api/bist/financials/{ticker}/note"),
+            ("GET", "/api/bist/ipos"),
+            ("GET", "/api/bist/ipos/note"),
             ("GET", "/api/bist/viop"),
             ("GET", "/api/bist/viop-note"),
             ("GET", "/api/bist/viop-map/underlyings"),

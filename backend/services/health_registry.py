@@ -179,6 +179,11 @@ _HOST_MAP: dict[str, str] = {
     # bands at. A separate host from the exchange and a separate outage.
     "takasbank.com.tr": "bist",
     "isyatirim.com.tr": "bist",
+    # A community-maintained IPO calendar, not a regulator. It is the only
+    # populated source for Borsa İstanbul offering dates — KAP publishes no
+    # queryable disclosure API and carries no listing dates — so its outage
+    # costs one board and nothing else on the badge.
+    "halkarz.com": "bist",
     # The equity board's quote source. The specific subdomain, not
     # tradingview.com: the economic calendar above is a different host on the
     # same domain and belongs to `macro`, and a bare suffix here would swallow

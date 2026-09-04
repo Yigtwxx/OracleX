@@ -8,6 +8,8 @@ import {
   fetchBistCalendar,
   fetchBistFinancials,
   fetchBistFinancialsNote,
+  fetchBistIpos,
+  fetchBistIposNote,
   fetchBistFund,
   fetchBistFundHoldings,
   fetchBistFundComparison,
@@ -400,6 +402,32 @@ export function useBistFinancialsNote(ticker: string, enabled: boolean = true) {
     queryFn: () => fetchBistFinancialsNote(ticker),
     staleTime: FUND_STALE_MS,
     enabled: enabled && !!ticker,
+    meta: SILENT,
+    refetchInterval: (query) => aiNotePollInterval(query.state.data?.note),
+  });
+}
+
+/**
+ * The offering calendar.
+ *
+ * A long stale time: offerings are announced days ahead and the post-listing
+ * returns come from a quote feed that is fifteen minutes delayed anyway, so a
+ * tighter cadence would only re-walk the detail cache for nothing.
+ */
+export function useBistIpos(monthsBack: number = 24, daysAhead: number = 120) {
+  return useQuery({
+    queryKey: queryKeys.bistIpos(monthsBack, daysAhead),
+    queryFn: () => fetchBistIpos(monthsBack, daysAhead),
+    staleTime: FUND_STALE_MS,
+    meta: SILENT,
+  });
+}
+
+export function useBistIposNote(monthsBack: number = 24, daysAhead: number = 120) {
+  return useQuery({
+    queryKey: queryKeys.bistIposNote(monthsBack, daysAhead),
+    queryFn: () => fetchBistIposNote(monthsBack, daysAhead),
+    staleTime: FUND_STALE_MS,
     meta: SILENT,
     refetchInterval: (query) => aiNotePollInterval(query.state.data?.note),
   });

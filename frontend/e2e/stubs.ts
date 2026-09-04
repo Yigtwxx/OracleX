@@ -171,6 +171,29 @@ export function financialsPayload(deflated: boolean) {
   };
 }
 
+export function iposPayload() {
+  return {
+    upcoming: [],
+    past: [],
+    as_of: NOW,
+    source: 'halkarz.com',
+    source_updated_at: NOW,
+    window: { months_back: 24, days_ahead: 120 },
+    coverage: {
+      index_rows: 0,
+      in_window: 0,
+      detail_pages_read: 0,
+      detail_pages_failed: 0,
+      returns_measured: 0,
+      returns_unmeasured: 0,
+      undated: 0,
+    },
+    inflation: { available: true, reason: null },
+    delay_minutes: 15,
+    stale: false,
+  };
+}
+
 const EMPTY_NOTE = { status: 'unavailable', note: null, generated_at: null, reason: 'stub' };
 
 export async function stubBackend(page: Page, { deflated = true } = {}): Promise<void> {
@@ -205,6 +228,10 @@ export async function stubBackend(page: Page, { deflated = true } = {}): Promise
     json(route, { facts: null, note: EMPTY_NOTE })
   );
   await page.route('**/api/bist/financials/*', (route) => json(route, financialsPayload(deflated)));
+  await page.route('**/api/bist/ipos/note', (route) =>
+    json(route, { facts: null, note: EMPTY_NOTE })
+  );
+  await page.route('**/api/bist/ipos*', (route) => json(route, iposPayload()));
 }
 
 /** The shape of the account Supabase would hand back on a successful sign-in. */

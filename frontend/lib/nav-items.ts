@@ -41,7 +41,8 @@ export type NavKey =
   | 'bist-viop'
   | 'bist-viop-map'
   | 'bist-radar'
-  | 'bist-macro';
+  | 'bist-macro'
+  | 'bist-ipo';
 
 export interface NavItem {
   key: NavKey;
@@ -253,6 +254,16 @@ export const BIST_NAV_ITEMS: NavItem[] = [
     href: '/bist/makro',
     label: 'Makro',
     tint: 'var(--nav-bist-macro)',
+  },
+  // Last in the set, which is where its question belongs: every tab before it
+  // describes companies already trading, and this one is about the ones that
+  // are not yet. It is also the realm's only board whose calendar comes from a
+  // third-party site rather than from an exchange or a regulator.
+  {
+    key: 'bist-ipo',
+    href: '/bist/halka-arz',
+    label: 'Halka Arz',
+    tint: 'var(--nav-bist-ipo)',
   },
 ];
 

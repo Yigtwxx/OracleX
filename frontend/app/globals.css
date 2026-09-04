@@ -235,6 +235,10 @@
      the only neutral in the row — which suits the tab that reads the others. */
   --nav-bist-radar: #dfeee0;
   --nav-bist-macro: #b8d95c;
+  /* Warm rose, clear of the KAP pink beside it in hue and of the VİOP
+     orange in saturation. Last in the set and the least often visited, so it
+     takes the quietest of the remaining stops. */
+  --nav-bist-ipo: #e08fb0;
 
   /* Heatmap is the one tab that cannot be a single stop: the board it opens is
      a yellow→orange→red ramp, so the tab carries the ramp itself. Stop 2 is

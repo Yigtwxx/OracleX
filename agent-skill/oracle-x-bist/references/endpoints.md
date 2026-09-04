@@ -338,6 +338,41 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
+### `GET /api/bist/ipos`
+
+Get Ipos
+
+The offering calendar, and what the recent listings returned.
+
+`months_back` is a window rather than a top-N, and it is the cutoff for the
+ranked chart as well as the list. A window is a defensible cut — a period of
+the market — while "the last forty listings" is an arbitrary one whose
+meaning drifts with issuance volume. Twenty-four months covers roughly forty
+to sixty Borsa İstanbul listings: enough to be a distribution, and recent
+enough that the rate regime is comparable.
+
+503 rather than an empty board when the source is unreachable. There is no
+symbol here that failed to resolve — the calendar itself is down — and an
+empty list would read as a market with no offerings.
+
+Parameters:
+- `months_back` (query, integer, optional, default `24`)
+- `days_ahead` (query, integer, optional, default `120`)
+
+Response shape is not declared on the route — inspect one call.
+
+### `GET /api/bist/ipos/note`
+
+Get Ipos Note
+
+The model's read of the same board.
+
+Parameters:
+- `months_back` (query, integer, optional, default `24`)
+- `days_ahead` (query, integer, optional, default `120`)
+
+Response shape is not declared on the route — inspect one call.
+
 ### `GET /api/bist/viop`
 
 Get Viop
