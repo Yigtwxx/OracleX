@@ -19,7 +19,7 @@ import statistics
 from dataclasses import dataclass
 from typing import Optional
 
-from services.bist.radar.fundamentals import Fundamentals, Quarter
+from services.bist.fundamentals import Fundamentals, Quarter
 from services.bist.radar.profiles import Profile
 from services.bist.radar.technical import Levels
 from services.bist.real_return import deflate

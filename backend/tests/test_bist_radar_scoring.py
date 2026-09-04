@@ -8,7 +8,7 @@ inflation ate it.
 """
 
 from services.bist.radar import scoring
-from services.bist.radar.fundamentals import Fundamentals, Quarter
+from services.bist.fundamentals import Fundamentals, Quarter
 from services.bist.radar.profiles import PROFILES
 from services.bist.radar.technical import Levels
 from services.bist.tradingview_client import EquityRow

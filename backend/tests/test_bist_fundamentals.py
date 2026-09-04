@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from services.bist.radar import fundamentals as f
+from services.bist import fundamentals as f
 
 FIXTURES = Path(__file__).parent / "fixtures"
 PERIODS = [(2026, 6), (2026, 3), (2025, 12), (2025, 9)]

@@ -31,7 +31,7 @@ from services.bist.kap_materiality import classify
 from services.bist.kap_service import KapUnavailable, fetch_tape, filter_restrictions
 from services.bist.macro_service import MacroUnavailable, fetch_macro_snapshot
 from services.bist.radar import scoring, technical, voices
-from services.bist.radar.fundamentals import Fundamentals, fetch_many
+from services.bist.fundamentals import Fundamentals, fetch_many
 from services.bist.radar.memo import memo_for
 from services.bist.radar.profiles import Profile, get_profile
 from services.bist.radar.store import read_last, write_last

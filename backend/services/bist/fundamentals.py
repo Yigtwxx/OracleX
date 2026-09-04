@@ -26,6 +26,12 @@ Cached on disk per ticker. Statements change four times a year, so the cache is
 judged against the calendar rather than a TTL: a file is refetched when the most
 recent quarter that should have been published by now is not in it, and at
 least every 45 days in case of a restatement.
+
+Lives beside the rest of the BIST services rather than under `radar/`, where it
+started. The scan was its only reader for as long as statements were only ever a
+scoring input; the Bilanço board reads the same quarters directly, and a module
+two consumers import from a third's package is a module whose location has
+stopped describing it.
 """
 
 from __future__ import annotations
