@@ -192,7 +192,7 @@ export default function AIProviderSettings() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <label className="block">
             <span className="label mb-1.5 block">Provider</span>
             <select
@@ -228,38 +228,45 @@ export default function AIProviderSettings() {
                 : 'This provider has no default — a model id is required.'}
             </p>
           </label>
-        </div>
 
-        {needsKey ? (
-          <label className="block">
-            <span className="label mb-1.5 block">
-              API key
-              {settings.configured && ` — saved …${settings.key_hint}`}
-            </span>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder={
-                settings.configured ? 'Enter a new key to replace it' : 'Paste your API key'
-              }
-              autoComplete="off"
-              className={`${INPUT_CLASS} font-mono`}
-            />
-          </label>
-        ) : (
-          <p className="text-base text-fg-muted">
-            <code className="text-fg">{provider}</code> runs on this machine and takes no API key.
-          </p>
-        )}
+          {needsKey ? (
+            <label className="block">
+              <span className="label mb-1.5 block">
+                API key
+                {settings.configured && ` — saved …${settings.key_hint}`}
+              </span>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder={
+                  settings.configured ? 'Enter a new key to replace it' : 'Paste your API key'
+                }
+                autoComplete="off"
+                className={`${INPUT_CLASS} font-mono`}
+              />
+            </label>
+          ) : (
+            <p className="self-end pb-2 text-base text-fg-muted">
+              <code className="text-fg">{provider}</code> runs on this machine and takes no API key.
+            </p>
+          )}
+        </div>
 
         <div>
           <p className="label mb-1">{needsKey ? 'Use my key for' : 'Use this provider for'}</p>
-          <div className="divide-y divide-line border-y border-line">
+          {/* Two up on a wide screen. In one column a row stretches to the full
+              card, leaving most of a 2000px monitor as dead space between a
+              label and its switch; splitting the four keeps each pair together
+              and gives the width something to hold. */}
+          <div className="grid border-t border-line xl:grid-cols-2 xl:gap-x-10">
             {FEATURES.map(({ key, label, hint }) => {
               const on = settings[key];
               return (
-                <div key={key} className="flex items-center justify-between gap-4 py-2.5">
+                <div
+                  key={key}
+                  className="flex items-center justify-between gap-4 border-b border-line py-2.5"
+                >
                   <div className="min-w-0">
                     <p className="text-base text-fg">{label}</p>
                     <p className="mt-0.5 text-xs text-fg-subtle">{hint}</p>
@@ -276,7 +283,7 @@ export default function AIProviderSettings() {
                     }`}
                   >
                     <span
-                      className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                      className={`absolute left-0 top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
                         on ? 'translate-x-[1.125rem]' : 'translate-x-0.5'
                       }`}
                     />
@@ -285,7 +292,9 @@ export default function AIProviderSettings() {
               );
             })}
           </div>
-          <p className="mt-2.5 text-xs text-fg-subtle">
+          {/* Capped on its own: the grid above wants the full card, but a
+              paragraph run to 1900px is past any readable measure. */}
+          <p className="mt-2.5 max-w-3xl text-xs text-fg-subtle">
             What is left runs with no reader behind it and stays on the server provider: the
             two-minute news scan, the BIST radar voice pass and symbol detection. Notes are cached
             per set of facts, so the first reader through writes the copy everyone sees.
