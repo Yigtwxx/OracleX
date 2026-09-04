@@ -90,7 +90,7 @@ backend/data/*.bak-*/
 # their upstream APIs when a cache file is missing, so a fresh clone still boots.
 # Hand-maintained seed data next to them stays tracked: registry/streamers.json,
 # registry/ownership_entities.json, registry/ownership_manual_positions.json,
-# watchlist.json, eth_address_history.json, analysis_reports.json.
+# watchlist.json, analysis_reports.json.
 backend/data/liquidations.json
 backend/data/ai_notes.json
 backend/data/user_notes.json
