@@ -167,7 +167,10 @@ async def test_leaving_a_keyed_provider_drops_its_key(db):
     await svc.save_settings("u1", provider="mistral", api_key="ms_secret_abcd")
     await svc.save_settings("u1", provider="ollama")
 
-    assert not db.rows["u1"]["encrypted_key"]
+    # Asserted as an empty string, not merely falsey: the column is NOT NULL in
+    # the live table, so writing None passes against this in-memory fake and
+    # fails with a 23502 against Postgres.
+    assert db.rows["u1"]["encrypted_key"] == ""
     assert db.rows["u1"]["key_hint"] == ""
     public = await svc.get_settings("u1")
     assert public["configured"] is False

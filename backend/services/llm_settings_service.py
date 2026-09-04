@@ -150,7 +150,11 @@ async def save_settings(
         # The stored key belongs to the provider being left. Keeping it would
         # leave a live credential at rest for an account that no longer uses it,
         # and would report `configured` for a provider that never needed one.
-        values["encrypted_key"] = None
+        #
+        # Blanked rather than nulled: `encrypted_key` is NOT NULL in the live
+        # table, and every reader here tests it for truthiness rather than for
+        # None, so an empty string clears it without a schema change.
+        values["encrypted_key"] = ""
         values["key_hint"] = ""
 
     for feature, requested in (
