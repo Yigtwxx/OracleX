@@ -402,7 +402,14 @@ def render(spec: dict[str, Any], groups: list, header: str) -> str:
             if operation is None:
                 missing.append(f"{method} {path}")
                 continue
-            auth = " · **auth**" if operation.get("security") else ""
+            if operation.get("x-auth-optional"):
+                # Answers anonymously; a signed-in caller gets their own
+                # provider and any personalisation the route offers.
+                auth = " · **auth optional**"
+            elif operation.get("security"):
+                auth = " · **auth**"
+            else:
+                auth = ""
             summary = operation.get("summary", "").strip()
             out.append(f"### `{method} {path}`{auth}")
             out.append("")
@@ -443,9 +450,7 @@ def build_zip() -> None:
                 # .ruff_cache, __pycache__, .DS_Store. They are gitignored, so
                 # nothing catches them on the way into a zip that *is*
                 # committed, and they ship to everyone who installs the skill.
-                if any(
-                    part.startswith(".") or part == "__pycache__" for part in path.parts
-                ):
+                if any(part.startswith(".") or part == "__pycache__" for part in path.parts):
                     continue
                 archive.write(path, path.relative_to(skill_dir.parent))
         print(f"wrote {zip_path.relative_to(REPO_ROOT)}")

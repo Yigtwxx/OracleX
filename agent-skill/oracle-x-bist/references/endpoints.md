@@ -35,7 +35,7 @@ heatmap is asking for anyway.
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/market-note`
+### `GET /api/bist/market-note` · **auth optional**
 
 Get Market Note
 
@@ -69,7 +69,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/stocks/{ticker}`
+### `GET /api/bist/stocks/{ticker}` · **auth optional**
 
 Get Stock
 
@@ -126,7 +126,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/funds/{code}`
+### `GET /api/bist/funds/{code}` · **auth optional**
 
 Get Fund
 
@@ -176,7 +176,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/funds/market-note`
+### `GET /api/bist/funds/market-note` · **auth optional**
 
 Get Funds Market Note
 
@@ -216,7 +216,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/macro-note`
+### `GET /api/bist/macro-note` · **auth optional**
 
 Get Macro Note
 
@@ -251,7 +251,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/kap/{index}/note`
+### `GET /api/bist/kap/{index}/note` · **auth optional**
 
 Get Kap Note
 
@@ -322,7 +322,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/financials/{ticker}/note`
+### `GET /api/bist/financials/{ticker}/note` · **auth optional**
 
 Get Financials Note
 
@@ -361,7 +361,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/ipos/note`
+### `GET /api/bist/ipos/note` · **auth optional**
 
 Get Ipos Note
 
@@ -384,7 +384,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/viop-note`
+### `GET /api/bist/viop-note` · **auth optional**
 
 Get Viop Note
 
@@ -440,7 +440,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/viop-map/{ticker}/note`
+### `GET /api/bist/viop-map/{ticker}/note` · **auth optional**
 
 Get Viop Map Note
 
@@ -480,7 +480,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/positioning-note`
+### `GET /api/bist/positioning-note` · **auth optional**
 
 Get Positioning Note
 
@@ -547,7 +547,7 @@ Parameters:
 
 Returns `models__bist_ownership__Move[]`.
 
-### `GET /api/bist/ownership/note`
+### `GET /api/bist/ownership/note` · **auth optional**
 
 Get Bist Ownership Note
 

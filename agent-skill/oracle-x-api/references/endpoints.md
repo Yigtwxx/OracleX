@@ -207,7 +207,7 @@ Parameters:
 
 Returns `NewsAnalysis?`.
 
-### `POST /api/news/{news_id}/analysis/jobs` · **auth**
+### `POST /api/news/{news_id}/analysis/jobs` · **auth optional**
 
 Start News Analysis
 
@@ -233,7 +233,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `POST /api/analyze` · **auth**
+### `POST /api/analyze` · **auth optional**
 
 Analyze News
 
@@ -280,7 +280,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `POST /api/analysis/jobs/{timeframe}` · **auth**
+### `POST /api/analysis/jobs/{timeframe}` · **auth optional**
 
 Start Analysis Job
 
@@ -451,7 +451,7 @@ dates with no prices still say something true.
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/macro/regime`
+### `GET /api/macro/regime` · **auth optional**
 
 Get Macro Regime
 
@@ -517,7 +517,7 @@ truth than nothing.
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/chains/anomalies`
+### `GET /api/chains/anomalies` · **auth optional**
 
 Get Chain Anomalies
 
@@ -721,7 +721,7 @@ Parameters:
 
 Returns `models__ownership__Move[]`.
 
-### `GET /api/ownership/flow-note`
+### `GET /api/ownership/flow-note` · **auth optional**
 
 Get Flow Note
 
@@ -778,7 +778,7 @@ Check if Oracle chat is available, and which provider is serving it.
 
 Response shape is not declared on the route — inspect one call.
 
-### `POST /api/chat` · **auth**
+### `POST /api/chat` · **auth optional**
 
 Oracle Chat
 
@@ -797,7 +797,7 @@ Body (JSON):
 
 Returns `ChatResponse`: `response`, `thinking_time`, `sources`, `detected_symbol`, `focus_inherited`, `intent`, `citations`, `followups`, `session_title`
 
-### `POST /api/chat/jobs` · **auth**
+### `POST /api/chat/jobs` · **auth optional**
 
 Start Chat Job
 
@@ -817,7 +817,7 @@ Body (JSON):
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/chat/jobs/{job_id}` · **auth**
+### `GET /api/chat/jobs/{job_id}` · **auth optional**
 
 Get Chat Job
 
@@ -878,7 +878,7 @@ reader to assume. See `services/polymarket/map_service`.
 
 Response shape is not declared on the route — inspect one call.
 
-### `POST /api/polymarket/markets/{slug}/analysis/jobs` · **auth**
+### `POST /api/polymarket/markets/{slug}/analysis/jobs` · **auth optional**
 
 Start Polymarket Analysis
 
@@ -907,7 +907,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `POST /api/polymarket/markets/{slug}/origin/jobs` · **auth**
+### `POST /api/polymarket/markets/{slug}/origin/jobs` · **auth optional**
 
 Start Polymarket Origin
 
