@@ -33,7 +33,7 @@ export const VERSION = '1.4.0';
 export const API = {
   paths: 178,
   operations: 203,
-  authRequired: 79,
+  authRequired: 95,
   routers: 26,
   websockets: [
     '/ws/prices',
@@ -270,7 +270,7 @@ export const TESTS = {
   suites: [
     {
       name: 'backend',
-      tests: 3223,
+      tests: 3229,
       files: 147,
     },
     {
@@ -284,5 +284,5 @@ export const TESTS = {
       files: 54,
     },
   ],
-  total: 4282,
+  total: 4288,
 } as const;

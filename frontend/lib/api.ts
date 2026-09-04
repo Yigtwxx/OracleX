@@ -2404,6 +2404,7 @@ export interface LLMSettings {
   use_for_chat: boolean;
   use_for_news: boolean;
   use_for_reports: boolean;
+  use_for_notes: boolean;
   encryption_available: boolean;
   supported_providers: string[];
   /** The subset of `supported_providers` that needs no key — the local ones. */
@@ -2419,6 +2420,7 @@ export interface LLMSettingsUpdate {
   use_for_chat?: boolean;
   use_for_news?: boolean;
   use_for_reports?: boolean;
+  use_for_notes?: boolean;
 }
 
 export interface LLMTestResult {
