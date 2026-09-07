@@ -9,12 +9,17 @@ name: Publish packages
 # Nothing here needs a secret: GITHUB_TOKEN is enough to push to GHCR for the
 # repository that owns the workflow.
 
+# A tag is what carries the version, so the tag push is what builds the
+# versioned image. `release: [published]` used to be here as well and produced
+# nothing a tag push had not already produced: both runs resolve the same ref,
+# so the concurrency group below cancelled the tag build partway through as soon
+# as the release was created, throwing away work to arrive at the same digest.
+# Publishing a release now rebuilds nothing, and a tag pushed without a release
+# still gets its image.
 on:
   push:
     branches: [main]
     tags: ["v*"]
-  release:
-    types: [published]
   workflow_dispatch:
 
 concurrency:
