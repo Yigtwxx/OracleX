@@ -199,6 +199,24 @@ def test_tape_survives_a_naive_timestamp(fake_news_cache):
     assert len(lts.fetch_tape()["items"]) == 2
 
 
+def test_a_naive_feed_date_is_read_in_the_frame_it_was_written_in(fake_news_cache):
+    """
+    A naive stamp is Istanbul time, not UTC.
+
+    The tape used to call `replace(tzinfo=UTC)` on it, which is a claim rather
+    than a fallback — and the wrong one, because `news_service.parse_feed_date`
+    returns naive UTC+3. Every headline went out three hours in the future, so
+    the age column under-reported by three hours and, for a reader west of UTC,
+    clamped the last few hours of the wire to "just now".
+    """
+    fake_news_cache([_FakeNews("naive", "CPI beats", published_at=datetime(2026, 8, 11, 9, 0))])
+
+    published = lts.fetch_tape()["items"][0]["published_at"]
+
+    # 09:00 in Istanbul is 06:00 UTC, not 09:00 UTC.
+    assert datetime.fromisoformat(published) == datetime(2026, 8, 11, 6, 0, tzinfo=UTC)
+
+
 def test_tape_flags_an_unfilled_cache_rather_than_calling_it_quiet(fake_news_cache):
     fake_news_cache([])
 
