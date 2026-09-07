@@ -18,16 +18,24 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Default exchanges to query for arbitrage detection
+# Default exchanges to query for arbitrage detection.
+#
+# These are ccxt ids, and ccxt renames them. `coinbasepro`, `gateio` and
+# `huobi` were all valid once and are gone by 4.5 — `getattr(ccxt, id, None)`
+# returns None for a stale one and `fetch_ticker` answers None without logging
+# or reporting to the health registry, so the three simply dropped out of every
+# spread. Nothing broke; the arbitrage board just quietly stopped pricing the
+# US venue whose premium is most of what a spread is. `_assert_known_exchanges`
+# below turns the next rename into an import-time failure instead.
 DEFAULT_EXCHANGES = [
     "binance",
     "okx",
-    "coinbasepro",
+    "coinbaseexchange",
     "kraken",
     "kucoin",
     "bybit",
-    "gateio",
-    "huobi",
+    "gate",
+    "htx",
 ]
 
 # Trading pairs to monitor for arbitrage
@@ -364,8 +372,8 @@ EXCHANGE_INFO = {
         "region": "Global",
         "url": "https://www.binance.com",
     },
-    "coinbasepro": {
-        "name": "Coinbase Pro",
+    "coinbaseexchange": {
+        "name": "Coinbase Exchange",
         "logo": "https://cryptologos.cc/logos/usd-coin-usdc-logo.png",
         "region": "US",
         "url": "https://pro.coinbase.com",
@@ -394,19 +402,35 @@ EXCHANGE_INFO = {
         "region": "Global",
         "url": "https://www.bybit.com",
     },
-    "gateio": {
+    "gate": {
         "name": "Gate.io",
         "logo": "https://www.gate.io/favicon.ico",
         "region": "Global",
         "url": "https://www.gate.io",
     },
-    "huobi": {
-        "name": "Huobi",
+    "htx": {
+        "name": "HTX",
         "logo": "https://www.huobi.com/favicon.ico",
         "region": "Asia",
         "url": "https://www.huobi.com",
     },
 }
+
+
+def _assert_known_exchanges() -> None:
+    """
+    Fail at import if ccxt no longer knows one of the ids above.
+
+    The alternative is what happened before: a renamed id resolves to None deep
+    in `fetch_ticker`, which returns None like any other missing quote, and the
+    venue leaves the board without a single line in the log.
+    """
+    unknown = [name for name in DEFAULT_EXCHANGES if getattr(ccxt, name, None) is None]
+    if unknown:
+        raise RuntimeError(f"ccxt {ccxt.__version__} does not know these exchanges: {unknown}")
+
+
+_assert_known_exchanges()
 
 
 def get_exchange_info(exchange_id: str) -> Optional[Dict]:
