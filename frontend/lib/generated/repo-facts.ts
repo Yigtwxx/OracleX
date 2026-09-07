@@ -33,7 +33,7 @@ export const VERSION = '1.5.0';
 export const API = {
   paths: 178,
   operations: 203,
-  authRequired: 95,
+  authRequired: 98,
   routers: 26,
   websockets: [
     '/ws/prices',
@@ -186,7 +186,7 @@ export const SKILLS = [
 export const HEALTH = {
   categories: 11,
   critical: 3,
-  upstreams: 45,
+  upstreams: 44,
   rows: [
     {
       key: 'prices_crypto',
@@ -252,7 +252,7 @@ export const HEALTH = {
       key: 'bist',
       label: 'BIST & TEFAS',
       critical: false,
-      upstreams: 7,
+      upstreams: 6,
     },
   ],
 } as const;
@@ -270,8 +270,8 @@ export const TESTS = {
   suites: [
     {
       name: 'backend',
-      tests: 3229,
-      files: 147,
+      tests: 3244,
+      files: 149,
     },
     {
       name: 'mcp-server',
@@ -284,5 +284,5 @@ export const TESTS = {
       files: 54,
     },
   ],
-  total: 4288,
+  total: 4303,
 } as const;
