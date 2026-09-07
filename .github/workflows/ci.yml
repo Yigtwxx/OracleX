@@ -6,6 +6,18 @@ on:
   pull_request:
     branches: [main]
 
+# Five jobs fire on every push, and a branch usually gets several pushes before
+# it is ready. Without this the runners spend most of their time finishing runs
+# whose result nobody will ever read.
+#
+# Only pull requests cancel. A push to main is the run that says whether main is
+# green, so two landing close together have to queue rather than have the second
+# discard the first's answer — and the tag that publishes an image reads that
+# answer.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   backend:
     name: Backend (lint + syntax + tests)
