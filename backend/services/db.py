@@ -20,7 +20,7 @@ import asyncio
 import logging
 from typing import Any, Callable, Type, TypeVar
 
-from services.supabase_service import get_supabase
+from services.supabase_service import get_supabase, run_with_reconnect
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,11 @@ class SupabaseOps:
         content or credentials.
         """
         try:
-            return await asyncio.to_thread(operation)
+            # The retry lives inside the worker thread rather than around the
+            # await: a dropped connection is a property of the blocking client,
+            # and re-entering to_thread would pay for a second hop to learn the
+            # same thing.
+            return await asyncio.to_thread(run_with_reconnect, operation)
         except Exception as exc:
             logger.error("%s: %s failed: %s", self._domain, what, exc)
             raise self._wrap(str(exc)) from exc
