@@ -2045,9 +2045,11 @@ Planned:
 - [ ] **Personalization:** migration of watchlists and notes off JSON onto
       Supabase, portfolio allocation views, saved dashboard layouts, and alarms
       that survive a change of browser.
-- [ ] **v2.0 (On-chain track record):** Solidity oracles committing AI price
-      impact probabilities to the Sepolia testnet for immutable track-record
-      tracking.
+- [ ] **Track record:** the multi-horizon outcomes the scorer already records,
+      served as a public accuracy page. An earlier plan committed these to a
+      Sepolia contract, which was dropped: a testnet proves nothing about
+      tamper-resistance, and a real chain would mean paying for every write.
+      The record stays in Postgres, append-only and exportable.
 
 ---
 
