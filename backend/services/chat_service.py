@@ -20,13 +20,29 @@ import re
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple
 
 from config import settings
 from services import chat_focus, chat_memory_service, chat_planner, chat_tools, llm, prompt_budget
 from services.prompts import render_prompt
 
 logger = logging.getLogger(__name__)
+
+# Strong references to fire-and-forget tasks.
+#
+# `asyncio` only holds a weak reference to a running task, so one nobody keeps
+# can be collected mid-await — a memory write scheduled and then dropped, with
+# nothing raised to say so. Holding the handle until the task completes is what
+# makes "fire and forget" mean forgotten rather than cancelled.
+_background_tasks: set[asyncio.Task] = set()
+
+
+def _fire_and_forget(coro: Coroutine[Any, Any, object]) -> None:
+    """Run `coro` off the answer's path, keeping it alive until it finishes."""
+    task = asyncio.create_task(coro)
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+
 
 # The turn is bounded in pieces that add up. The arithmetic used to be stated as
 #
@@ -1099,7 +1115,7 @@ async def chat_with_oracle(
         # market. Fire-and-forget: a memory write must never be something the
         # answer waits on.
         if reflection.remember:
-            asyncio.create_task(chat_memory_service.remember(user_id, reflection.remember))
+            _fire_and_forget(chat_memory_service.remember(user_id, reflection.remember))
 
         if reflection.steps:
             ctx.planned = ctx.planned + tuple(step.tool for step in reflection.steps)
