@@ -26,7 +26,14 @@ function risesFor(name: string): boolean {
  */
 export default function ToolsFigure() {
   return (
-    <FigureFrame eyebrow="MCP tools" footnote={<>{MCP.total} tools · {MCP.groups.length} groups</>}>
+    <FigureFrame
+      eyebrow="MCP tools"
+      footnote={
+        <>
+          {MCP.total} tools · {MCP.groups.length} groups
+        </>
+      }
+    >
       <ul className="space-y-3">
         {MCP.groups.map((group) => (
           <li key={group.label}>

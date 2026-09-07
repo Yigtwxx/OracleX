@@ -35,9 +35,7 @@ export default function DocMasthead({ eyebrow, title, dek, stat }: DocMastheadPr
         <TapeRule />
       </div>
 
-      {stat && (
-        <p className="mt-3 font-mono text-2xs tabnum text-fg-subtle">{stat}</p>
-      )}
+      {stat && <p className="mt-3 font-mono text-2xs tabnum text-fg-subtle">{stat}</p>}
     </header>
   );
 }

@@ -81,9 +81,7 @@ describe('metricValue — the fraction/percent boundary', () => {
     );
     // A mid-board name, to pin that the bounds are read as lira rather than as
     // some scaled multiple of them.
-    expect(bucketForTile(tile({ traded_value: 3e8 }), 'traded_value')).toBe(
-      BIST_TURNOVER_SCALE[2]
-    );
+    expect(bucketForTile(tile({ traded_value: 3e8 }), 'traded_value')).toBe(BIST_TURNOVER_SCALE[2]);
   });
 
   it('converts open interest change and keeps its sign', () => {

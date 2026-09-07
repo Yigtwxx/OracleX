@@ -26,6 +26,13 @@ jobs:
       - name: Ruff lint
         run: ruff check .
 
+      # `ruff check` and `ruff format` disagree about different things: the
+      # first about what the code does, the second about how it reads. Only the
+      # first was gated here, so formatting drifted in whichever direction the
+      # last editor's tooling happened to point.
+      - name: Ruff format
+        run: ruff format --check .
+
       - name: Syntax check (compileall)
         run: python -m compileall -q -x "venv|data" .
 
@@ -58,6 +65,12 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      # `next lint` is eslint, which says nothing about formatting. Without
+      # this the repository has a prettier config and a `format:check` script
+      # that nothing ever ran.
+      - name: Format check
+        run: npm run format:check
 
       - name: Type check
         run: npm run typecheck
@@ -189,3 +202,39 @@ jobs:
       # model from reporting an outage as an answer.
       - name: Tests
         run: pytest
+
+  pr-title:
+    name: PR title (Conventional Commits)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      # The title is what lands in history when a PR is squash-merged, so it is
+      # the subject line the repository's own convention applies to — checking
+      # only the branch commits would gate the text that gets thrown away.
+      #
+      # Read through an environment variable rather than `${{ }}` inside the
+      # script: a title is attacker-controlled on a public repository, and
+      # interpolating it into the shell would let a PR author run commands here.
+      - name: Check title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          fail() { echo "::error::$1"; echo "  title: $PR_TITLE"; exit 1; }
+
+          # The set is deliberately the six in the contributing convention, not
+          # the wider Conventional Commits vocabulary. Adding one is a change to
+          # the convention, which should be a visible edit rather than a silent
+          # widening here.
+          types='feat|fix|refactor|test|docs|chore'
+
+          printf '%s' "$PR_TITLE" | grep -qE "^($types)(\([a-z0-9._/-]+\))?!?: .+$" \
+            || fail "Expected '<type>(<scope>): <description>' with type one of: $types"
+
+          [ "${#PR_TITLE}" -le 72 ] \
+            || fail "Subject is ${#PR_TITLE} characters; the limit is 72"
+
+          description=${PR_TITLE#*: }
+          printf '%s' "$description" | grep -qE '^[a-z0-9]' \
+            || fail "Description should start lowercase"
+          printf '%s' "$description" | grep -qvE '\.$' \
+            || fail "Description should not end with a period"

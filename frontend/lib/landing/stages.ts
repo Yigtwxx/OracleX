@@ -1,7 +1,16 @@
 import { LLM } from '@/lib/generated/repo-facts';
 
 export type StageKey =
-  'hero' | 'print' | 'ai' | 'chat' | 'live' | 'heatmap' | 'macro' | 'ownership' | 'social' | 'tail';
+  | 'hero'
+  | 'print'
+  | 'ai'
+  | 'chat'
+  | 'live'
+  | 'heatmap'
+  | 'macro'
+  | 'ownership'
+  | 'social'
+  | 'tail';
 
 export interface Stage {
   readonly key: StageKey;

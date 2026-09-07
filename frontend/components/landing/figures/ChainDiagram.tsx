@@ -171,10 +171,7 @@ export default function ChainDiagram() {
         }
       };
 
-      const drawStamp = (
-        stamp: (typeof CHAIN_STAMPS)[number],
-        alpha: number
-      ): void => {
+      const drawStamp = (stamp: (typeof CHAIN_STAMPS)[number], alpha: number): void => {
         const shown = clamp01((alpha - 0.55) / 0.45);
         if (shown <= 0) return;
         const x = px(stamp.x);
