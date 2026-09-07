@@ -956,31 +956,48 @@ export function useNewsAnalysisJob(jobId: string | undefined) {
   });
 }
 
+/**
+ * Notes are per account, so the key carries the account.
+ *
+ * Without the user id in it, one viewer's notes stay in the cache under the
+ * same key after a sign-out and are handed to whoever signs in next. `enabled`
+ * keeps a signed-out visitor from firing a request the endpoint now answers
+ * with a 401 — the panel shows its signed-out state instead of an error.
+ */
+function useNotesKey() {
+  const { user } = useOptionalAuth();
+  return { user, key: [...queryKeys.notes, user?.id ?? 'anonymous'] as const };
+}
+
 export function useNotes() {
+  const { user, key } = useNotesKey();
   return useQuery({
-    queryKey: queryKeys.notes,
+    queryKey: key,
     queryFn: fetchNotes,
+    enabled: !!user,
     staleTime: 60 * 1000,
   });
 }
 
 export function useCreateNote() {
   const queryClient = useQueryClient();
+  const { key } = useNotesKey();
   return useMutation({
     mutationFn: ({ title, content }: { title: string; content: string }) =>
       createNote(title, content),
     onSuccess: (notes: Note[]) => {
-      queryClient.setQueryData(queryKeys.notes, notes);
+      queryClient.setQueryData(key, notes);
     },
   });
 }
 
 export function useDeleteNote() {
   const queryClient = useQueryClient();
+  const { key } = useNotesKey();
   return useMutation({
     mutationFn: (id: string) => deleteNote(id),
     onSuccess: (notes: Note[]) => {
-      queryClient.setQueryData(queryKeys.notes, notes);
+      queryClient.setQueryData(key, notes);
     },
   });
 }

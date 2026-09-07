@@ -17,6 +17,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
+from services import news_service
 from utils import get_news_cache
 
 logger = logging.getLogger(__name__)
@@ -96,8 +97,15 @@ def fetch_tape(limit: int = 50) -> dict[str, Any]:
         if isinstance(published_at, datetime):
             # Feed dates arrive naive often enough that sorting them against
             # aware ones would raise partway through a quiet day.
+            #
+            # `news_service.FEED_TZ`, not UTC. Stamping a naive value as UTC is
+            # not a fallback, it is a claim — and the wrong one here, because
+            # every naive stamp this module receives is Istanbul time. The tape
+            # published each headline three hours in the future, so the age
+            # column read "24 dk" for something seven hours old and, for a
+            # reader west of UTC, clamped the whole last few hours to "az önce".
             if published_at.tzinfo is None:
-                published_at = published_at.replace(tzinfo=UTC)
+                published_at = published_at.replace(tzinfo=news_service.FEED_TZ)
             published_iso = published_at.isoformat()
         else:
             published_iso = str(published_at)

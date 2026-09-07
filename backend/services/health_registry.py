@@ -134,7 +134,7 @@ CATEGORIES: tuple[Category, ...] = (
         "bist",
         "BIST & TEFAS",
         False,
-        ("TEFAS", "KAP", "Borsa İstanbul", "Takasbank", "İş Yatırım", "TCMB", "YouTube"),
+        ("TEFAS", "KAP", "Borsa İstanbul", "Takasbank", "İş Yatırım", "TCMB"),
     ),
 )
 
@@ -193,10 +193,15 @@ _HOST_MAP: dict[str, str] = {
     # The central bank's statistical service — policy rate, CPI, USDTRY. The
     # specific host rather than tcmb.gov.tr, which also serves the public site.
     "evds3.tcmb.gov.tr": "bist",
-    # The Radar's commentator check reads channel RSS feeds from YouTube. The
-    # transcripts come through a library with its own HTTP stack and are not
-    # observed; the feed request is the canary for the whole step.
-    "youtube.com": "bist",
+    # YouTube is deliberately absent, for the same reason Yahoo is: it does not
+    # share a failure domain with anything else in a category. It was mapped to
+    # `bist` on the reasoning that the Radar's commentator feed is a canary for
+    # that step — but a category holds one counter for all its providers, and
+    # the live-stream probe hits the same host every three minutes from an
+    # unrelated feature. Each of those successes reset `bist`'s failure counts,
+    # so a real TEFAS outage never survived long enough to reach the badge, and
+    # a YouTube consent wall reported BIST as down while it was fine. A canary
+    # for one step does not belong in a counter that speaks for six upstreams.
     # On-chain
     "mempool.space": "onchain",
     "llamarpc.com": "onchain",

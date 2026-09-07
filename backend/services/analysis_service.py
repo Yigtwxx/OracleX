@@ -32,8 +32,6 @@ from services.prompts import load_prompt, render_prompt
 logger = logging.getLogger(__name__)
 
 REPORTS_FILE = "data/analysis_reports.json"
-NOTES_FILE = "data/user_notes.json"
-
 # How long a report stays fresh, per horizon.
 FRESHNESS_DAYS = {"daily": 1, "weekly": 7, "monthly": 30}
 
@@ -466,32 +464,3 @@ def get_report_summaries() -> Dict[str, Dict[str, Any]]:
             "unavailable": (report or {}).get("unavailable", []),
         }
     return summaries
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# NOTES MANAGEMENT
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
-def get_user_notes() -> List[Dict]:
-    return _load_json(NOTES_FILE, [])
-
-
-def add_user_note(title: str, content: str) -> List[Dict]:
-    notes = get_user_notes()
-    new_note = {
-        "id": str(int(datetime.now().timestamp())),
-        "title": title,
-        "content": content,
-        "date": datetime.now().isoformat(),
-    }
-    notes.insert(0, new_note)  # Newest first
-    _save_json(NOTES_FILE, notes)
-    return notes
-
-
-def delete_user_note(note_id: str) -> List[Dict]:
-    notes = get_user_notes()
-    notes = [n for n in notes if n["id"] != note_id]
-    _save_json(NOTES_FILE, notes)
-    return notes

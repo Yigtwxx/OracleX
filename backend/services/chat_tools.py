@@ -1235,16 +1235,22 @@ async def _run_macro_board(ctx: ToolContext, include_pizza: bool = False) -> Too
         "asset's move, never a substitute for the asset's own data.",
     ]
 
-    for group in ("indices", "commodities", "rates"):
+    # The keys are `macro_board_service._row`'s, not a guess at them. This block
+    # read `change_percent` and `label`, which that row has never carried, so
+    # every line rendered as a bare ticker with `(n/a)` beside it while the
+    # regime read below — which uses `change_24h` — described moves the model
+    # could not see. It also looped over a "rates" group the board does not
+    # build; `ratios` is the third group, and its rows have their own shape.
+    for group in ("indices", "commodities"):
         rows = board.get(group) or []
         if not rows:
             continue
         lines.append(f"- {group.title()}:")
         for row in rows[:6]:
-            change = row.get("change_percent")
+            change = row.get("change_24h")
             change_text = f"{change:+.2f}%" if isinstance(change, (int, float)) else "n/a"
             lines.append(
-                f"  - {row.get('label') or row.get('symbol')}: "
+                f"  - {row.get('name') or row.get('symbol')}: "
                 f"{fmt(row.get('price'))} ({change_text})"
             )
 

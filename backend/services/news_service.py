@@ -32,12 +32,23 @@ from services.symbol_detection_service import (
 )
 
 
+# Every naive `published_at` in this module is in this frame.
+#
+# The feed paths return naive datetimes for compatibility with callers that
+# have always assumed one, and a naive value is only meaningful if every path
+# produces the same one. The Tree of Alpha branch used to build its stamp with
+# `datetime.fromtimestamp()`, which is the *server's* local time — so on a UTC
+# host its items sat three hours behind the RSS ones and `sort` interleaved two
+# different clocks, putting an hour-old headline above a breaking one.
+FEED_TZ = timezone(timedelta(hours=3))
+
+
 def parse_feed_date(entry) -> datetime:
     """
     Parse date from feed entry with proper timezone handling.
     Returns datetime in local time for accurate display.
     """
-    now = datetime.now()
+    now = datetime.now(FEED_TZ).replace(tzinfo=None)
 
     try:
         # First try raw published string with timezone info
@@ -47,7 +58,7 @@ def parse_feed_date(entry) -> datetime:
                 # email.utils handles RFC 2822 dates with timezone
                 dt = parsedate_to_datetime(raw_pub)
                 # Convert to local timezone (Turkey UTC+3)
-                local_tz = timezone(timedelta(hours=3))
+                local_tz = FEED_TZ
                 dt_local = dt.astimezone(local_tz)
                 # Return as naive datetime for compatibility
                 result = dt_local.replace(tzinfo=None)
@@ -63,7 +74,7 @@ def parse_feed_date(entry) -> datetime:
         if published:
             # published_parsed is struct_time in UTC, convert to local (UTC+3)
             dt = datetime(*published[:6], tzinfo=UTC)
-            local_tz = timezone(timedelta(hours=3))
+            local_tz = FEED_TZ
             dt_local = dt.astimezone(local_tz)
             result = dt_local.replace(tzinfo=None)
             # Sanity check: date shouldn't be in the future
@@ -251,10 +262,12 @@ async def fetch_treeofalpha_news() -> List[NewsItem]:
         origin = entry.get("sourceName") or entry.get("source") or "Tree of Alpha"
         info = str(entry.get("info") or "")
 
-        published_at = datetime.now()
+        published_at = datetime.now(FEED_TZ).replace(tzinfo=None)
         timestamp_ms = entry.get("time")
         if isinstance(timestamp_ms, (int, float)) and timestamp_ms > 0:
-            published_at = datetime.fromtimestamp(timestamp_ms / 1000)
+            published_at = datetime.fromtimestamp(timestamp_ms / 1000, tz=FEED_TZ).replace(
+                tzinfo=None
+            )
 
         items.append(
             NewsItem(

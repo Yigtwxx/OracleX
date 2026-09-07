@@ -45,6 +45,18 @@ class TestCategoryForUrl:
         """
         assert category_for_url("https://en.wikipedia.org/w/api.php") == "macro"
 
+    def test_youtube_is_not_attributed_to_bist(self):
+        """
+        A category holds one counter for all its providers.
+
+        YouTube was mapped to `bist` as a canary for the Radar's commentator
+        step, but the live-stream probe hits the same host every three minutes
+        from an unrelated feature — so its successes reset the counters a TEFAS
+        or KAP outage had just raised, and the badge never reported one. See
+        `test_a_success_on_one_host_cannot_clear_another_hosts_outage`.
+        """
+        assert category_for_url("https://www.youtube.com/channel/UC123/live") is None
+
     def test_unmapped_hosts_are_not_attributed(self):
         assert category_for_url("https://example.invalid/feed") is None
         assert category_for_url("not a url") is None
@@ -205,3 +217,24 @@ class TestIsRateLimited:
         assert not is_rate_limited(_http_error(503))
         assert not is_rate_limited(httpx.ConnectTimeout("x"))
         assert not is_rate_limited(None)
+
+
+def test_a_success_on_one_host_cannot_clear_another_hosts_outage(registry):
+    """
+    The reason an unrelated host may not share a category.
+
+    `record` keeps one pair of counters per category, so anything mapped into
+    `bist` speaks for TEFAS and KAP as well as for itself. Three TEFAS failures
+    put the category in outage; a probe of a host in the same category, run by
+    a different feature on its own schedule, would wipe that out — which is
+    what `youtube.com` did every three minutes.
+    """
+    for _ in range(3):
+        registry.record("bist", ok=False, error=RuntimeError("TEFAS timeout"))
+
+    assert _row(registry.snapshot(), "bist")["state"] == "down"
+
+    # An unmapped host records nothing, so the outage survives.
+    registry.record(category_for_url("https://www.youtube.com/channel/UC123/live"), ok=True)
+
+    assert _row(registry.snapshot(), "bist")["state"] == "down"

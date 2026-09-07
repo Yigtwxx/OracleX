@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { FileText, PenLine, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { useCreateNote, useDeleteNote, useNotes } from '@/hooks/queries';
+import { useOptionalAuth } from '@/contexts/AuthContext';
 
 /**
  * The right-hand notes pane, header included.
@@ -10,12 +11,17 @@ import { useCreateNote, useDeleteNote, useNotes } from '@/hooks/queries';
  * The header's compose toggle drives the same `isCreatingNote` state as the
  * form, so the whole pane lives in one component rather than lifting that state
  * into the page shell.
+ *
+ * Notes belong to an account. The endpoints behind them require a verified
+ * caller, so a signed-out visitor is told that rather than shown a compose box
+ * whose Save would come back 401.
  */
 export default function NotesPanel() {
   const [noteTitle, setNoteTitle] = useState('');
   const [noteContent, setNoteContent] = useState('');
   const [isCreatingNote, setIsCreatingNote] = useState(false);
 
+  const { user } = useOptionalAuth();
   const { data: notes = [], isLoading: loadingNotes } = useNotes();
   const createNoteMutation = useCreateNote();
   const deleteNoteMutation = useDeleteNote();
@@ -47,6 +53,7 @@ export default function NotesPanel() {
           <h2 className="text-md font-semibold text-fg">My Notes</h2>
         </div>
         <button
+          hidden={!user}
           onClick={() => setIsCreatingNote(!isCreatingNote)}
           aria-label={isCreatingNote ? 'Cancel new note' : 'Create note'}
           className={`p-1.5 rounded-md border border-line text-fg-muted hover:text-fg hover:border-line-strong transition-transform ${isCreatingNote ? 'rotate-45' : ''}`}
@@ -89,7 +96,12 @@ export default function NotesPanel() {
           </div>
         )}
 
-        {loadingNotes ? (
+        {!user ? (
+          <div className="text-center py-10 border border-dashed border-line rounded-lg">
+            <FileText className="w-5 h-5 text-fg-subtle mx-auto mb-2" />
+            <p className="text-base text-fg-subtle">Sign in to keep notes.</p>
+          </div>
+        ) : loadingNotes ? (
           <div className="text-center py-10">
             <RefreshCw className="w-4 h-4 text-fg-subtle animate-spin mx-auto" />
           </div>
