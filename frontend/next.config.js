@@ -5,21 +5,21 @@ const nextConfig = {
   reactStrictMode: true,
   // Hide the dev-only overlay badges (the Next.js logo / static-route
   // indicator in the bottom-left corner). Dev-time only; no effect on prod.
-  devIndicators: {
-    appIsrStatus: false,
-    buildActivity: false,
-  },
+  // Next 15 replaced the two per-badge switches (`appIsrStatus`,
+  // `buildActivity`) with one: they are still read, but only to warn.
+  devIndicators: false,
   // Emit a self-contained server bundle so the Docker runtime stage ships
   // only the node_modules actually used instead of the full install.
   output: 'standalone',
-  experimental: {
-    // `output: 'standalone'` traces the imports a route reaches, and the OG
-    // card's fonts are read at runtime with `fs` — a path string webpack
-    // cannot follow. Without this the route builds fine and then throws
-    // ENOENT in the container, which is the worst place to find out.
-    outputFileTracingIncludes: {
-      '/opengraph-image': ['./assets/og/**'],
-    },
+  // `output: 'standalone'` traces the imports a route reaches, and the OG
+  // card's fonts are read at runtime with `fs` — a path string webpack cannot
+  // follow. Without this the route builds fine and then throws ENOENT in the
+  // container, which is the worst place to find out.
+  //
+  // Top-level since Next 15; under `experimental` it is now ignored silently,
+  // which would have put the ENOENT back without a warning.
+  outputFileTracingIncludes: {
+    '/opengraph-image': ['./assets/og/**'],
   },
   eslint: {
     // Linting is a dedicated CI step (`npm run lint`); don't fail production
