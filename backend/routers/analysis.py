@@ -1,14 +1,23 @@
 """
 Analysis & Notes Router
 Handles AI market reports and user notes.
+
+Reports are public — they are the same document for everyone. Notes are not:
+every endpoint under `/api/analysis/notes` requires a verified caller and acts
+only on that caller's rows. They used to be open, over a single shared file
+with no owner in it, so any visitor read and deleted every account's notes —
+the same failure `routers/watchlist.py` records, left behind when that one was
+fixed. See `services/notes_service.py`.
 """
 
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from dependencies.auth import AuthUser, get_optional_user
+from dependencies.auth import AuthUser, get_current_user, get_optional_user
+from services import notes_service
+from utils import log_warning
 
 router = APIRouter()
 
@@ -16,8 +25,10 @@ VALID_TIMEFRAMES = ("daily", "weekly", "monthly")
 
 
 class NoteRequest(BaseModel):
-    title: str
-    content: str
+    # Bounded at the edge as well as in the service: an unbounded body on an
+    # endpoint that writes a row is a way to fill the table from one request.
+    title: str = Field(min_length=1, max_length=notes_service.MAX_TITLE_LENGTH)
+    content: str = Field(default="", max_length=notes_service.MAX_CONTENT_LENGTH)
 
 
 def _validate_timeframe(timeframe: str) -> None:
@@ -121,33 +132,38 @@ async def cancel_analysis_job(job_id: str):
 
 
 @router.get("/api/analysis/notes")
-async def get_notes():
-    """Get all user notes."""
+async def get_notes(user: AuthUser = Depends(get_current_user)) -> List[dict]:
+    """The caller's notes, newest first."""
     try:
-        from services.analysis_service import get_user_notes
-
-        return get_user_notes()
+        return await notes_service.get_notes(user.id)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        log_warning(f"Notes read failed: {e}")
+        raise HTTPException(status_code=503, detail="Notes are unavailable right now")
 
 
 @router.post("/api/analysis/notes")
-async def create_note(request: NoteRequest):
-    """Create a new user note."""
+async def create_note(
+    request: NoteRequest, user: AuthUser = Depends(get_current_user)
+) -> List[dict]:
+    """Create a note owned by the caller and return their list."""
     try:
-        from services.analysis_service import add_user_note
-
-        return add_user_note(request.title, request.content)
+        return await notes_service.create_note(user.id, request.title, request.content)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        log_warning(f"Note create failed: {e}")
+        raise HTTPException(status_code=503, detail="The note could not be created")
 
 
 @router.delete("/api/analysis/notes/{note_id}")
-async def delete_note(note_id: str):
-    """Delete a user note."""
-    try:
-        from services.analysis_service import delete_user_note
+async def delete_note(note_id: str, user: AuthUser = Depends(get_current_user)) -> List[dict]:
+    """
+    Delete one of the caller's notes.
 
-        return delete_user_note(note_id)
+    The owner filter lives in the service and is the deletion's authorisation:
+    the backend holds the service-role key, so a delete without it would take
+    any note whose id was guessed.
+    """
+    try:
+        return await notes_service.delete_note(user.id, note_id)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        log_warning(f"Note delete failed: {e}")
+        raise HTTPException(status_code=503, detail="The note could not be deleted")
