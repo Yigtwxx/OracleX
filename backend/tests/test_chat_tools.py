@@ -350,3 +350,46 @@ async def test_a_raising_search_backend_degrades_to_a_gap(monkeypatch, tool_name
 
     assert result.block == ""
     assert result.detail
+
+
+# ── the macro block reads the board's own keys ───────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_macro_block_renders_the_boards_moves(monkeypatch):
+    """
+    The keys have to be `macro_board_service._row`'s.
+
+    This block used to read `change_percent` and `label`, neither of which that
+    row carries, so every line rendered as a bare ticker with `(n/a)` beside it
+    — while the regime line below it, which reads `change_24h`, described moves
+    the model could not see. Nothing raised; the context was simply empty.
+    """
+    board = {
+        "indices": [
+            {"symbol": "^GSPC", "name": "S&P 500", "price": 6481.5, "change_24h": 0.42},
+            {"symbol": "^VIX", "name": "VIX", "price": 15.1, "change_24h": None},
+        ],
+        "commodities": [
+            {"symbol": "GC=F", "name": "Gold", "price": 3550.0, "change_24h": -1.2},
+        ],
+        "ratios": [{"key": "gold_oil", "label": "Gold / Oil", "value": 55.1}],
+        "as_of": "2026-09-07T09:00:00+00:00",
+        "stale": False,
+    }
+
+    async def _board():
+        return board
+
+    monkeypatch.setattr("services.macro_board_service.fetch_macro_board", _board)
+    monkeypatch.setattr("services.macro_regime.build_regime", lambda _board: None)
+
+    result = await chat_tools._run_macro_board(_ctx())
+
+    assert result.ok
+    assert "- S&P 500: 6,481.50 (+0.42%)" in result.block
+    assert "- Gold: 3,550.00 (-1.20%)" in result.block
+    # A missing reading still says so rather than inventing one.
+    assert "- VIX: 15.10 (n/a)" in result.block
+    # "rates" is not a group the board builds; looping it produced nothing.
+    assert "Rates" not in result.block
