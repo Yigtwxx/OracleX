@@ -230,6 +230,7 @@ jobs:
       - name: Check title
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
           fail() { echo "::error::$1"; echo "  title: $PR_TITLE"; exit 1; }
 
@@ -242,8 +243,20 @@ jobs:
           printf '%s' "$PR_TITLE" | grep -qE "^($types)(\([a-z0-9._/-]+\))?!?: .+$" \
             || fail "Expected '<type>(<scope>): <description>' with type one of: $types"
 
-          [ "${#PR_TITLE}" -le 72 ] \
-            || fail "Subject is ${#PR_TITLE} characters; the limit is 72"
+          # Dependabot composes its own titles and cannot shorten them: the
+          # package name and both versions are the whole point of the subject,
+          # and "bump postcss-selector-parser from 6.1.2 to 6.1.4 in /frontend"
+          # is already 78 characters before anything is added. Holding a
+          # security update behind a rule the author cannot satisfy leaves two
+          # options, merging past a red gate or hand-editing every title, and
+          # both teach people that a red gate here is normal. The format rules
+          # still apply — the bot writes Conventional Commits already — so only
+          # the cap comes off.
+          if [ "$PR_AUTHOR" = "dependabot[bot]" ]; then
+            echo "Length not checked: $PR_AUTHOR does not choose its own subject"
+          elif [ "${#PR_TITLE}" -gt 72 ]; then
+            fail "Subject is ${#PR_TITLE} characters; the limit is 72"
+          fi
 
           description=${PR_TITLE#*: }
           printf '%s' "$description" | grep -qE '^[a-z0-9]' \
