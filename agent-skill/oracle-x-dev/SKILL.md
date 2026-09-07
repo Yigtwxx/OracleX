@@ -16,7 +16,7 @@ metadata:
 
 # Working in Oracle-X
 
-A FastAPI backend and a Next.js 14 frontend for a self-hosted financial
+A FastAPI backend and a Next.js 15 frontend for a self-hosted financial
 terminal. This skill is about extending it. For what the system *is* — why
 authorization lives in the application layer, why migrations are applied by
 hand — read the repository's `CLAUDE.md` first; it is short and this skill does

@@ -10,8 +10,8 @@
 
   <p align="center">
     <a href="#system-architecture"><img src="https://img.shields.io/badge/Architecture-Distributed-000000?style=flat-square&logo=cisco&logoColor=white" alt="Architecture" /></a>
-    <a href="#tech-stack"><img src="https://img.shields.io/badge/Stack-Next.js%2014%20%7C%20FastAPI-38B2AC?style=flat-square&logo=next.js&logoColor=white" alt="Stack" /></a>
-    <a href="#the-reasoning-layer"><img src="https://img.shields.io/badge/AI_Engine-14_providers%20%7C%20local_first-000000?style=flat-square&logo=ollama&logoColor=white" alt="AI Engine" /></a>
+    <a href="#tech-stack"><img src="https://img.shields.io/badge/Stack-Next.js%2015%20%7C%20FastAPI-38B2AC?style=flat-square&logo=next.js&logoColor=white" alt="Stack" /></a>
+    <a href="#the-reasoning-layer"><img src="https://img.shields.io/badge/AI_Engine-13_providers%20%7C%20local_first-000000?style=flat-square&logo=ollama&logoColor=white" alt="AI Engine" /></a>
     <a href="#core-capabilities"><img src="https://img.shields.io/badge/Memory-ChromaDB_RAG_v5-FF6F00?style=flat-square&logo=databricks&logoColor=white" alt="RAG" /></a>
     <br/>
     <a href="https://github.com/Yigtwxx/OracleX/releases/latest"><img src="https://img.shields.io/badge/Release-v1.5.0-brightgreen?style=flat-square" alt="Release" /></a>
@@ -514,6 +514,42 @@ statements is most of the number.
   nothing public names the individual securities behind "hisse senedi %58", so
   the board that shipped is crowding, futures quadrants, the 52-week range and
   sector heat, with the gap named rather than approximated.
+* **Bilanço restates a level, not a return.** Every line of a Turkish statement
+  is stated in the price level of its own quarter, so over the twelve quarters
+  the board draws, the nominal series is mostly a picture of inflation with a
+  company-shaped wobble on it — which is why `deflator.py` restates each quarter
+  into the newest one's lira *by default* rather than behind a switch, and serves
+  the nominal figures untouched beside it. That is a different operation from
+  `real_return.deflate`, which applies the Fisher relation to a return; using
+  either on the other's input produces a plausible number that is wrong. The
+  board also separates what a chart of accounts *can* carry from what a company
+  filled in, because a bank has no gross profit the way a factory does — "no such
+  line" and "reported nothing" are not the same blank panel.
+* **Halka Arz owns the return and not the date.** There is no queryable IPO
+  source at Borsa İstanbul: KAP's disclosure query API answers 404, its company
+  list carries no listing date, and the scanner backfills a trailing-year return
+  for all 626 names, so "listed within a year" cannot be inferred either.
+  `halkarz_client` therefore reads a community-maintained calendar with no
+  contract, parsed by label text rather than DOM position, every field capped and
+  every failure recorded per row in `unparsed` so parser rot is countable instead
+  of a board that quietly empties. The return the board leads with is computed
+  here from that offering price and our own scanner quote — the number a reader
+  acts on is ours even when the date beside it is not.
+* **Ortaklık is fetched once a day and pivoted on read.** A hundred İş Yatırım
+  company cards and ten KAP fund reports land in one stored payload; `get_board`,
+  `get_entity` and `get_asset_owners` are pivots over that file and nothing on a
+  request path fetches, which is what lets a company page carry an ownership
+  panel without İş Yatırım's latency becoming the page's. The payload is stored
+  per ticker rather than per entity — the upstream answers "who holds THYAO" —
+  so entities are matched against the registry's aliases on read and a corrected
+  alias takes effect on the next request instead of after the next nightly run.
+* **The Radar is a funnel, and zero is an answer.** The equity board's snapshot
+  columns gate the whole XU100 with no request at all; daily candles are fetched
+  only for the names that pass; statements come from a quarter-aware disk cache,
+  so after the first scan they cost nothing; and the model is asked to write for
+  the handful of finalists, never to score. A scan that finds no pullback inside
+  an uptrend says so and names the closest misses rather than lowering the bar
+  until something passes.
 * **Macro degrades to keyless.** With no configuration at all the realm reads
   the inflation rate, the policy rate and the exchange rate from the same scanner
   the equity board uses — enough for the figure that matters most, a one-year
@@ -669,7 +705,7 @@ upstream, and the API never renders.
 
 ```mermaid
 graph TD;
-    subgraph Client [Frontend - Next.js 14 App Router]
+    subgraph Client [Frontend - Next.js 15 App Router]
     Landing["(marketing) - tour, borsa, developers, FAQ"]
     Gate[BootGate + readiness poll] --> UI[React Interface - 2 realms]
     UI --> Alarms[Alarm engine - client-side, 15s tick]
@@ -764,7 +800,7 @@ backend/
 │   │                           # synthesis_degraded, origin + six category overlays
 │   └── news/ detection/ generic/
 ├── templates/email/            # Jinja alarm + verification mail (table layout, escaped)
-├── routers/                    # 25 modules — full paths inline, no prefixes
+├── routers/                    # 26 modules — full paths inline, no prefixes
 │   ├── news.py                 # /api/news, /api/analyze, /api/symbols, /api/technical
 │   ├── llm.py                  # /api/llm/status
 │   ├── system.py               # /api/system/readiness, /api/system/health
@@ -776,7 +812,7 @@ backend/
 │   ├── macro.py                # /api/macro/* (board, regime, pizza-index, neh-index,
 │   │                           # elections)
 │   ├── chains.py               # /api/chains/board, /api/chains/anomalies
-│   ├── bist.py                 # /api/bist/* — the whole Turkish realm, 22 routes
+│   ├── bist.py                 # /api/bist/* — the whole Turkish realm, 32 routes
 │   ├── polymarket.py           # /api/polymarket/* (board, map, market, analysis, origin)
 │   ├── alarms.py               # /api/alarms/email/* — the mail relay a browser cannot be
 │   ├── watchlist.py            # /api/home/watchlist CRUD
@@ -788,6 +824,7 @@ backend/
 │   ├── community.py            # /api/community/posts, comments, likes
 │   ├── social.py               # /api/social/* (sentiment, follows, public profiles)
 │   ├── ownership.py            # /api/ownership/* (institutional holdings, snapshots)
+│   ├── bist_ownership.py       # /api/bist/ownership/* plus the admin refresh route
 │   ├── live.py                 # /api/live/* (streams, events)
 │   ├── admin.py                # /api/admin/* (moderation, audit log)
 │   ├── exchanges.py            # /api/exchanges, /api/multi-exchange, /api/arbitrage
@@ -895,11 +932,11 @@ backend/
 │   ├── eval_planner.py         # tool-selection recall and precision
 │   └── eval_refusal.py         # how often the chat declines a question it could answer
 ├── scripts/verify_migrations.py     # are the migrations in the repo actually live?
-├── tests/                      # 124 pytest modules — run in CI
+├── tests/                      # 149 pytest modules — run in CI
 └── data/                       # local JSON state + ChromaDB stores (gitignored)
 ```
 
-### Frontend (Next.js 14 App Router)
+### Frontend (Next.js 15 App Router)
 
 ```text
 frontend/
@@ -927,13 +964,13 @@ frontend/
 │       ├── dashboard/          # news + charts + Oracle panel
 │       ├── analysis/           # AI timeframe reports and notes
 │       ├── chat/               # Oracle chat agent
-│       ├── heatmap/            # multi-metric heatmap
 │       ├── live/               # live streams and events
 │       ├── derivatives/        # open interest, liquidation book and on-chain venues
 │       ├── chains/             # eight-chain telemetry board
 │       ├── bist/               # the Turkish realm — its own tab set, read off the path
 │       │                       # hisseler/[ticker], isi-haritasi, fonlar/[kod],
-│       │                       # akilli-para, kap, viop, viop-haritasi, makro, admin
+│       │                       # akilli-para, kap, viop, viop-haritasi, makro,
+│       │                       # bilanco, halka-arz, ortaklik, radar, admin
 │       ├── macro/              # macro calendar, regime read, elections and dashboard
 │       ├── polymarket/         # prediction-market board, map and bet analysis
 │       ├── ownership/          # institutional holdings
@@ -1017,7 +1054,7 @@ frontend/
 ├── start.sh / start.bat        # launchers (venv, ports, both servers, RAG seed)
 ├── docker-compose.yml          # production-shaped stack
 ├── docker-compose.override.yml # dev overrides (bind mounts, --reload, next dev)
-├── supabase/migrations/        # 001_initial_schema → 014_chat_memory
+├── supabase/migrations/        # 001_initial_schema → 015_llm_settings_notes
 ├── .claude-plugin/             # Claude Code marketplace: three installable plugins
 ├── agent-skill/                # three AgentSkills for external coding agents
 │   ├── oracle-x-api/           # reading a running instance
@@ -1045,7 +1082,7 @@ frontend/
 
 ## Tech Stack
 
-### UI Layer (Next.js 14 App Router)
+### UI Layer (Next.js 15 App Router)
 
 * **Framework:** SWC-compiled builds; server components keep client bundles
   lean.
@@ -1097,10 +1134,11 @@ frontend/
 
 ### The Reasoning Layer
 
-* **14 providers, one interface.** `ollama`, `groq`, `gemini`, `openai`,
+* **13 providers, one interface.** `ollama`, `groq`, `gemini`, `openai`,
   `anthropic`, `openrouter`, `deepseek`, `together`, `mistral`, `xai`,
-  `cerebras`, `fireworks`, `perplexity` and `custom` (any self-hosted vLLM /
-  LM Studio / LiteLLM proxy). Adding one is a row in `presets.py`, not new code,
+  `cerebras`, `fireworks` and `perplexity`, beside a fourteenth `custom` row for
+  any self-hosted vLLM / LM Studio / LiteLLM proxy — which the collectors do not
+  count as a provider, so `repo-facts.ts` says thirteen. Adding one is a row in `presets.py`, not new code,
   as long as it speaks the OpenAI chat-completions format — which nearly all of
   them do. Two adapters cover the rest: Ollama's native API, and Anthropic's
   `/v1/messages` (its OpenAI shim is documented as beta and not intended for
@@ -1145,7 +1183,7 @@ Oracle-X runs locally on macOS, Windows or a Linux server.
 
 | Requirement | Minimum version | Notes |
 |-------------|-----------------|-------|
-| Node.js | v18.17.0 | Required for Next.js 14 (CI builds on v20) |
+| Node.js | v18.18.0 | Next.js 15 minimum; CI builds on v20 |
 | Python | v3.11 | Matches CI |
 | npm | Latest | Package management |
 | Git | Latest | For cloning the repository |
@@ -1355,6 +1393,10 @@ LLM_MAX_RETRIES=3
 LLM_RATE_LIMIT_MAX_WAIT=30         # 60 rides out a free-tier per-minute quota
 LLM_RATE_LIMIT_COOLDOWN=60
 LLM_DAILY_QUOTA_COOLDOWN=1800
+LLM_NUM_CTX=32768                  # what the server is asked for
+# The real ceiling: the prompt builder budgets against this, deliberately below
+# the point where a local server silently truncates. See services/prompt_budget.py.
+PROMPT_TOKEN_BUDGET=12000
 
 # Encrypts per-user API keys before they reach Supabase. Empty disables the
 # BYO-key feature entirely — a key is never stored in plaintext.
@@ -1471,9 +1513,17 @@ ALARM_EMAIL_HOURLY_LIMIT=30
 # to the first entry in CORS_ORIGINS.
 APP_PUBLIC_URL=
 
+# ── Admin ────────────────────────────────────────────────────────────────────
+# Comma-separated emails that get /admin, matched against the verified email on
+# the caller's JWT. Empty means nobody: adminship is never granted from the
+# database, on the reasoning that a request can write the database and cannot
+# write the environment.
+ADMIN_EMAILS=
+
 # ── Prediction markets ───────────────────────────────────────────────────────
 # No key: all three Polymarket hosts are public for reads. The URLs exist only
 # so a deployment behind a mirror can redirect them.
+POLYMARKET_ENABLED=true            # false hides the board and its routes
 POLYMARKET_GAMMA_URL=https://gamma-api.polymarket.com
 POLYMARKET_CLOB_URL=https://clob.polymarket.com
 POLYMARKET_DATA_URL=https://data-api.polymarket.com
@@ -1529,7 +1579,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3100
 ### Supabase schema
 
 Apply the migrations in `supabase/migrations/` in order, from
-`001_initial_schema.sql` through `014_chat_memory.sql`, via the Supabase SQL
+`001_initial_schema.sql` through `015_llm_settings_notes.sql`, via the Supabase SQL
 editor or CLI. Without them, auth-gated pages (chat history, community, profile,
 ownership, per-user AI settings) will render but fail to persist.
 
@@ -1825,13 +1875,13 @@ in five jobs:
 
 | Job | Steps |
 |-----|-------|
-| **Backend** (Python 3.11) | `ruff check .` → `python -m compileall` → `pytest` |
-| **Frontend** (Node 20) | `npm ci` → `npm run lint` → `npm run typecheck` → `npm test` → `npm run build` |
-| **Frontend browser tests** | `npx playwright install chromium` → `npm run build` → `npm run e2e` |
+| **Backend** (Python 3.11) | `ruff check .` → `ruff format --check .` → `python -m compileall` → `pytest` |
+| **Frontend** (Node 20) | `npm ci` → `npm run lint` → `npm run format:check` → `npm run typecheck` → `npm test` → `npm run build` |
+| **Frontend browser tests** | `npx playwright install --with-deps chromium` → `npm run build` → `npm run e2e` |
 | **Generated files** | `python scripts/build_agent_skill.py --check` → `python scripts/build_repo_facts.py --check` |
 | **MCP server** | `ruff check .` → `ruff format --check .` → `pytest` |
 
-The backend suite is **124 pytest modules, roughly 2,700 tests** covering the LLM
+The backend suite is **149 pytest modules, roughly 3,200 tests** covering the LLM
 chain and rate-limit behaviour, per-user settings and key encryption, auth
 enforcement, prompt rendering, RAG scoring and outcomes, symbol detection, news
 attribution, the analysis pipelines, chat intent/focus/memory/budget, the chain
@@ -1867,7 +1917,7 @@ saw the parametrised tables. They now come from the collectors: `pytest
 --collect-only` and `vitest list` for the suites, an AST walk for the MCP tools,
 the imported `CATEGORIES` and `PRESETS` for health and providers.
 
-The frontend suite is **50 vitest modules, roughly 920 tests**, concentrated on
+The frontend suite is **54 vitest modules, roughly 1,000 tests**, concentrated on
 the pure logic where a failure would be silent rather than loud — the scroll
 canvas stage schedule, the seeded candle series, the note anchors, the alarm
 predicates, the market-breadth derivations, the derivatives board's binning and

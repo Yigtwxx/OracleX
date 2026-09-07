@@ -133,7 +133,7 @@ export const FAQ_GROUPS: readonly FaqGroup[] = [
         id: 'which-exchanges',
         question: 'Which exchanges does it read?',
         answer: [
-          'Binance, OKX, Coinbase, Kraken, KuCoin, Bybit, Gate and Huobi for crypto, with the price route falling back across them rather than depending on any one. That fallback is not academic: the browser used to call Binance directly, which fails outright on networks where it is blocked.',
+          'Binance, OKX, Coinbase, Kraken, KuCoin, Bybit, Gate and HTX for crypto, with the price route falling back across them rather than depending on any one. That fallback is not academic: the browser used to call Binance directly, which fails outright on networks where it is blocked.',
         ],
       },
       {

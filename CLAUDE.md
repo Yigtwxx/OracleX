@@ -1,6 +1,6 @@
 # Oracle-X
 
-A self-hosted financial intelligence terminal: FastAPI backend, Next.js 14
+A self-hosted financial intelligence terminal: FastAPI backend, Next.js 15
 frontend, Supabase for identity and persistence, ChromaDB for the vector
 memory, and a provider-agnostic LLM layer that defaults to local Ollama.
 
@@ -14,11 +14,11 @@ what a function does, how a component renders — read from the source.
                                 # backend :8000, frontend :3100
 
 cd backend && source venv/bin/activate
-python -m pytest                # ~1900 tests, ~2min
+python -m pytest                # ~3200 tests, ~2min
 ruff check . && ruff format --check .
 
 cd frontend
-npm test                        # vitest, ~450 tests
+npm test                        # vitest, ~1000 tests
 npm run typecheck               # tsc --noEmit
 npm run lint && npm run build
 npm run e2e                     # playwright, ~15 tests; reuses a running :3100
@@ -56,6 +56,14 @@ upstream whose host maps to no category is invisible to the badge: add it to
 `CATEGORIES` and go through the shared helpers rather than calling httpx
 directly.
 
+The counters are per category, not per host, so a host that is only a canary for
+one feature must not join a category that speaks for several. `youtube.com ->
+bist` meant the live-stream probe's three-minute success reset the failure count
+a real TEFAS outage had just raised: the Fonlar tab could be blank while the
+badge read ok, and a YouTube consent wall reported six healthy BIST upstreams as
+down. Yahoo is deliberately absent from that list for the milder version of the
+same reason.
+
 **The LLM layer is a chain, not a client.** `services/llm/` resolves an ordered
 list of providers so one outage is not the terminal's outage. Never call a
 provider SDK directly from a service; go through `services/llm`. Prompts live
@@ -79,6 +87,15 @@ never be used to select or mutate rows. `get_current_user` is also the single
 choke point that refuses suspended accounts, which is why it cannot be
 bypassed "just this once" on a new route.
 
+This has been violated twice in the same shape — watchlists first, then notes —
+and both times the tell was the same: a user-scoped feature persisting to a
+shared `backend/data/*.json` file with no `user_id` in it, while the Supabase
+table it should have used had carried `user_id`, RLS policies and an index since
+migration 001 with nothing ever reading them. RLS cannot save such a route, and
+neither can the absence of a bug report; an endpoint with no owner filter simply
+serves every account's rows to whoever asks. Treat a JSON file under
+`backend/data/` holding per-user state as a finding, not a fixture.
+
 Admin status comes from the `ADMIN_EMAILS` environment variable rather than a
 database column, on the reasoning that a request can write the database and
 cannot write the environment.
@@ -93,7 +110,10 @@ looks like a schema problem, verify against the actual database —
 **The local model is the constraint, and it is not going to change.** The
 default provider chain runs free Ollama models. Quality improvements have to
 come from prompts, retrieval and structure, not from reaching for a bigger
-model.
+model. A signed-in reader's own BYO key goes at the head of the chain ahead of
+the server's, so a given turn may well run on a frontier model — but that is one
+account's configuration, not the baseline anything here may assume, and the
+background schedulers carry no `user_id` and are always local.
 
 **`backend/data/*.json` is mostly generated.** The registry and cache files are
 rewritten on every run and are gitignored; a handful of seed files next to them
@@ -179,6 +199,33 @@ Turkish string containing one — "Aracı Kurum" folds to "aracı kurum" and nev
 matches "araci kurum" — and nothing raises. `halkarz_client._ascii_fold` maps it
 explicitly; `services/bist/text.fold` alone is not enough when the comparison
 target is ASCII.
+
+**ccxt renames its exchange ids, and a stale one fails silently.**
+`coinbasepro`, `gateio` and `huobi` were all valid once and none of them exist
+in ccxt 4.5 — they are `coinbaseexchange`, `gate` and `htx`. `getattr(ccxt, id,
+None)` answers None for a stale id, `fetch_ticker` then returns None like any
+other missing quote, and the venue leaves the arbitrage board with no log line
+and no health record: three of the eight default exchanges had quietly stopped
+being priced, including the US venue whose premium is most of what a spread is.
+`_assert_known_exchanges()` runs at import in `services/ccxt_service.py` so the
+next rename is a startup failure instead. Keep `DEFAULT_EXCHANGES` and
+`EXCHANGE_INFO` in step — the second is what `/api/exchanges` advertises to the
+UI, and it kept listing all three after the tickers stopped arriving.
+
+**A fire-and-forget task needs a reference held.** `asyncio` keeps only a weak
+reference to a running task, so one nobody stores can be collected mid-await
+with nothing raised. `chat_service` holds a module-level set with an
+`add_done_callback` discard, and `services/bist/kap_service.py` holds its
+refresh handle for the same reason; a bare `asyncio.create_task(...)` whose
+result is dropped is the bug, not the idiom.
+
+**A naive timestamp is not UTC, and this codebase's naive frame is UTC+3.**
+`parse_feed_date` returns naive local time, so stamping its output with
+`tzinfo=UTC` pushed every headline three hours into the future and collapsed the
+last hours of the tape into "just now" for a reader west of UTC. `FEED_TZ` in
+`services/news_service.py` names the one frame the wire uses; anything building
+a stamp with `datetime.fromtimestamp()` is reading the *server's* zone instead
+and will sort against a different clock.
 
 **Symbols carry their venue.** Crypto is `BTCUSDT` or `BINANCE:ETHUSDT`,
 equities are the plain ticker. An unprefixed ticker forced down the crypto path
