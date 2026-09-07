@@ -31,6 +31,8 @@ import {
   unitFor,
 } from '@/lib/bist-financials';
 import { EMPTY, formatCompact, formatDateTime } from '@/lib/bist-format';
+import ProviderKeyNotice from '@/components/ui/ProviderKeyNotice';
+import { providerNotice } from '@/lib/provider-keys';
 
 const DEFAULT_TICKER = 'THYAO';
 
@@ -148,6 +150,10 @@ export default function BistFinancialsPage() {
         </div>
       ) : data ? (
         <>
+          <ProviderKeyNotice
+            notice={providerNotice('evds', data.deflation.reason === 'cpi_key_missing')}
+          />
+
           <FinancialsNote payload={data} note={note.data?.note} isLoading={note.isLoading} />
 
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">

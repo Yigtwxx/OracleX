@@ -22,7 +22,7 @@ from typing import Any
 
 import httpx
 
-from config import settings
+from services import provider_keys
 
 logger = logging.getLogger(__name__)
 
@@ -44,12 +44,12 @@ class SecUnavailable(Exception):
 
 def is_enabled() -> bool:
     """Whether a contact address has been declared. Nothing runs without one."""
-    return bool(settings.SEC_USER_AGENT.strip())
+    return bool(provider_keys.sec_user_agent())
 
 
 def _headers() -> dict[str, str]:
     return {
-        "User-Agent": settings.SEC_USER_AGENT.strip(),
+        "User-Agent": provider_keys.sec_user_agent(),
         "Accept-Encoding": "gzip, deflate",
     }
 

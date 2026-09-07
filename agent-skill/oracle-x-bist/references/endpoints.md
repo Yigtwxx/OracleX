@@ -21,7 +21,7 @@ Two things about this surface differ from the rest of the API and will produce w
 
 Symbols carry the venue: `BIST:THYAO`. A bare ticker never resolves to Borsa İstanbul unless the caller asks for it explicitly.
 
-### `GET /api/bist/overview`
+### `GET /api/bist/overview` · **auth optional**
 
 Get Overview
 
@@ -53,7 +53,7 @@ a broken panel.
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/stocks`
+### `GET /api/bist/stocks` · **auth optional**
 
 Get Stocks
 
@@ -81,7 +81,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/heatmap`
+### `GET /api/bist/heatmap` · **auth optional**
 
 Get Heatmap
 
@@ -103,7 +103,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/funds`
+### `GET /api/bist/funds` · **auth optional**
 
 Get Funds
 
@@ -138,7 +138,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/funds/{code}/holdings`
+### `GET /api/bist/funds/{code}/holdings` · **auth optional**
 
 Get Fund Holdings
 
@@ -160,7 +160,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/funds/compare`
+### `GET /api/bist/funds/compare` · **auth optional**
 
 Get Fund Comparison
 
@@ -200,7 +200,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/macro`
+### `GET /api/bist/macro` · **auth optional**
 
 Get Macro
 
@@ -234,7 +234,7 @@ that as an absent panel rather than as a quiet backdrop.
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/kap`
+### `GET /api/bist/kap` · **auth optional**
 
 Get Kap
 
@@ -271,7 +271,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/restrictions`
+### `GET /api/bist/restrictions` · **auth optional**
 
 Get Restrictions
 
@@ -286,7 +286,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/calendar`
+### `GET /api/bist/calendar` · **auth optional**
 
 Get Calendar
 
@@ -305,7 +305,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/financials/{ticker}`
+### `GET /api/bist/financials/{ticker}` · **auth optional**
 
 Get Financials
 
@@ -338,7 +338,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/ipos`
+### `GET /api/bist/ipos` · **auth optional**
 
 Get Ipos
 
@@ -373,7 +373,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/viop`
+### `GET /api/bist/viop` · **auth optional**
 
 Get Viop
 
@@ -404,7 +404,7 @@ an outage than a market.
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/viop-map/underlyings`
+### `GET /api/bist/viop-map/underlyings` · **auth optional**
 
 Get Viop Map Underlyings
 
@@ -417,7 +417,7 @@ list that silently goes stale. `default` is what the picker starts with.
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/viop-map/{ticker}`
+### `GET /api/bist/viop-map/{ticker}` · **auth optional**
 
 Get Viop Map
 
@@ -462,7 +462,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/positioning`
+### `GET /api/bist/positioning` · **auth optional**
 
 Get Positioning
 
@@ -562,7 +562,7 @@ says `insufficient_data` rather than describing an index nobody holds.
 
 Response shape is not declared on the route — inspect one call.
 
-### `POST /api/bist/radar/scan`
+### `POST /api/bist/radar/scan` · **auth optional**
 
 Start Radar Scan
 
@@ -577,7 +577,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/radar/jobs/{job_id}`
+### `GET /api/bist/radar/jobs/{job_id}` · **auth optional**
 
 Get Radar Job
 
@@ -588,7 +588,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `DELETE /api/bist/radar/jobs/{job_id}`
+### `DELETE /api/bist/radar/jobs/{job_id}` · **auth optional**
 
 Cancel Radar Scan
 
@@ -604,7 +604,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/bist/radar`
+### `GET /api/bist/radar` · **auth optional**
 
 Get Radar
 

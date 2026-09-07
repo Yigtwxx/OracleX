@@ -21,6 +21,8 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
+from dependencies.provider_keys import use_caller_provider_keys
+
 from dependencies.auth import AuthUser, get_optional_user
 
 from services import analysis_jobs
@@ -116,7 +118,15 @@ from services.bist.tefas_client import FUND_TYPES, FundRow
 from services.bist.radar import scan as radar_scan
 from services.bist.radar.profiles import PROFILES as RADAR_PROFILES
 
-router = APIRouter(prefix="/api/bist", tags=["bist"])
+# The caller's own EVDS key, when they stored one, for every route here: the
+# inflation series reaches most of this surface (real-return columns, the
+# Bilanço basis toggle, the Halka Arz frame) through call chains that never see
+# the request. See services/provider_keys.py.
+router = APIRouter(
+    prefix="/api/bist",
+    tags=["bist"],
+    dependencies=[Depends(use_caller_provider_keys)],
+)
 
 logger = logging.getLogger(__name__)
 

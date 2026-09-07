@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from dependencies.auth import AuthUser, get_current_user, require_admin
 from services import (
+    data_provider_settings_service,
     llm,
     llm_settings_service,
     profile_service,
@@ -491,3 +492,63 @@ async def test_llm_settings(data: LLMTestRequest, user: AuthUser = Depends(get_c
         }
 
     return {"ok": True, "provider": provider.name, "models": await provider.list_models()}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PER-USER DATA PROVIDER KEYS
+#
+# The optional market-data upstreams (TCMB EVDS, Coinalyze) rather than the LLM
+# providers. Same write-only discipline as the section above: a key is accepted
+# and encrypted, and no response ever carries it back — only the last-four hint.
+#
+# `GET` lists every provider in the registry, including the server-scoped ones a
+# reader cannot edit, because a reader looking at a degraded board deserves to
+# know which upstream is missing and who can fix it.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class DataProviderKeyUpdate(BaseModel):
+    """One provider's key. Blank is rejected — clearing one is a DELETE."""
+
+    provider: str
+    api_key: str
+
+
+@router.get("/api/profile/data-providers")
+async def get_data_providers(user: AuthUser = Depends(get_current_user)):
+    """The caller's data provider keys. Never includes a key, only its hint."""
+    return {
+        "providers": await data_provider_settings_service.get_settings(user.id),
+        "encryption_available": secret_box.is_configured(),
+    }
+
+
+@router.put("/api/profile/data-providers")
+async def update_data_provider_key(
+    data: DataProviderKeyUpdate, user: AuthUser = Depends(get_current_user)
+):
+    """Store one upstream's key for the caller."""
+    if not secret_box.is_configured():
+        raise _NOT_CONFIGURED
+
+    try:
+        providers = await data_provider_settings_service.save_key(
+            user.id, data.provider, data.api_key
+        )
+    except data_provider_settings_service.UnknownProvider as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    return {"providers": providers, "encryption_available": True}
+
+
+@router.delete("/api/profile/data-providers/{provider}")
+async def delete_data_provider_key(provider: str, user: AuthUser = Depends(get_current_user)):
+    """Remove one upstream's key; it falls back to the server's, if there is one."""
+    try:
+        providers = await data_provider_settings_service.delete_key(user.id, provider)
+    except data_provider_settings_service.UnknownProvider as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    return {"providers": providers, "encryption_available": secret_box.is_configured()}
