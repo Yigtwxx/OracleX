@@ -49,7 +49,7 @@ DATA_PROVIDERS: dict[str, DataProviderPreset] = {
             "nominal — the Bilanço real/nominal toggle, the Halka Arz frame and the "
             "real-return columns on Fonlar and Hisseler."
         ),
-        signup_url="https://evds2.tcmb.gov.tr/index.php?/evds/userGuideRest",
+        signup_url="https://evds3.tcmb.gov.tr/",
         placeholder="Paste your EVDS API key",
     ),
     "coinalyze": DataProviderPreset(
@@ -61,7 +61,7 @@ DATA_PROVIDERS: dict[str, DataProviderPreset] = {
             "key it is served from the exchanges' own statistics endpoints, which "
             "keep about thirty days."
         ),
-        signup_url="https://coinalyze.net/futures-data/api/",
+        signup_url="https://api.coinalyze.net/v1/doc/",
         placeholder="Paste your Coinalyze API key",
     ),
     # Read-only in the panel. EDGAR's fair-access policy wants a contact address
@@ -77,7 +77,7 @@ DATA_PROVIDERS: dict[str, DataProviderPreset] = {
             "Refreshes the Ownership board from 13F-HR and Form 4 filings. Without "
             "it the board still renders, from the last reading that was stored."
         ),
-        signup_url="https://www.sec.gov/os/webmaster-faq#developers",
+        signup_url="https://www.sec.gov/about/webmaster-frequently-asked-questions#developers",
         placeholder="Oracle-X you@example.com",
     ),
 }
