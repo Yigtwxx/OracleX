@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# Oracle-X frontend image (Next.js 14, App Router).
+# Oracle-X frontend image (Next.js 15, App Router).
 #
 # Build from the frontend directory:
 #   docker build -t oracle-x-frontend ./frontend
@@ -29,11 +29,16 @@ ARG NEXT_PUBLIC_API_URL=http://localhost:8000
 ARG NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws/prices
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+# app/layout.tsx builds `metadataBase` from this. Left unset it falls back to
+# http://localhost:3100, which is what every Open Graph and Twitter card in a
+# deployed image then points at.
+ARG NEXT_PUBLIC_SITE_URL
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL \
     NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
+    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
     NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build
