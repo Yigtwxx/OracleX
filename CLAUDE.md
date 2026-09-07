@@ -185,6 +185,27 @@ equities are the plain ticker. An unprefixed ticker forced down the crypto path
 once read AAPL off a tokenised-equity market; the resolution logic is deliberate
 and should not be "simplified".
 
+**`frontend/package.json` carries an `overrides` block, and an override wins
+silently.** It holds `postcss` and `sharp`, both because `next` is the thing
+asking for the vulnerable version: it pins `postcss` to exactly `8.4.31`, which
+put a second copy beside the one the rest of the tree used and carried four
+advisories by itself, and it declares `sharp` at `^0.34.3` while the libvips
+CVEs are first patched in `0.35.0`. npm does not warn when an override overrules
+a dependency, so a future upgrade that genuinely needs a different `postcss`
+will be overruled here without saying so — if a version in the lockfile makes no
+sense against the manifests, read this block before anything else.
+
+The `sharp` entry is safe for a reason specific to this app rather than a
+general one: nothing imports `next/image`. The image surfaces are plain `<img>`,
+which is what the standing `@next/next/no-img-element` warnings are, and
+`app/opengraph-image.tsx` renders through `next/og`, which uses Satori. No image
+reaches sharp at all. Adopting `next/image` means revisiting that override
+against whatever range the then-current `next` declares.
+
+Next itself is held at 15.5.21 on purpose. Dependabot proposes 16.x, which
+removes `next lint` and breaks the lint gate outright; 15.5.21 closes the same
+fourteen advisories and still accepts React 18.
+
 ## Style
 
 Python: type annotations on everything, `X | None` over `Optional[X]`,
