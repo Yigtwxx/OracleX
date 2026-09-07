@@ -7,13 +7,13 @@
   },
   "metadata": {
     "description": "Oracle-X, a self-hosted financial intelligence terminal, packaged for Claude Code: 36 MCP tools over a running instance and the AgentSkills that document it.",
-    "version": "1.4.0"
+    "version": "1.5.0"
   },
   "plugins": [
     {
       "name": "oracle-x",
       "description": "Read a running Oracle-X terminal from Claude Code — 36 MCP tools for crypto and US equity prices, technical levels, news analysis, macro regime, chain metrics, liquidations, funding, prediction markets and the vector memory, plus the skill that documents the HTTP API behind them. Six of the tools cover Borsa İstanbul, so this is also the plugin that gives oracle-x-bist its MCP surface. Needs an instance at ORACLE_X_URL.",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "author": {
         "name": "Yiğit ERDOĞAN",
         "url": "https://github.com/Yigtwxx"
@@ -33,6 +33,20 @@
         "./agent-skill/oracle-x-api"
       ],
       "commands": "./plugins/oracle-x/commands",
+      "hooks": {
+        "SessionStart": [
+          {
+            "matcher": "*",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "bash \"${CLAUDE_PLUGIN_ROOT}/plugins/oracle-x/hooks/instance-probe.sh\"",
+                "timeout": 5
+              }
+            ]
+          }
+        ]
+      },
       "mcpServers": {
         "oracle-x": {
           "command": "uvx",
@@ -47,7 +61,7 @@
     {
       "name": "oracle-x-bist",
       "description": "Borsa İstanbul for Claude Code — BIST equities, TEFAS funds, KAP disclosures, VİOP margins and positioning, and the Turkish macro series. Install oracle-x alongside it for the six BIST MCP tools. Half of it needs no instance at all: how a lira return becomes a real one, and why a VİOP margin-call price cannot be computed from anything public.",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "author": {
         "name": "Yiğit ERDOĞAN",
         "url": "https://github.com/Yigtwxx"
@@ -71,7 +85,7 @@
     {
       "name": "oracle-x-dev",
       "description": "Conventions for extending the Oracle-X codebase — one-service routers, the health registry, duck-typed chain adapters, prompts as files, and the four quality gates a change has to clear. Install only when working in that repository.",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "author": {
         "name": "Yiğit ERDOĞAN",
         "url": "https://github.com/Yigtwxx"
@@ -87,7 +101,33 @@
       "strict": false,
       "skills": [
         "./agent-skill/oracle-x-dev"
-      ]
+      ],
+      "hooks": {
+        "PreToolUse": [
+          {
+            "matcher": "Bash",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "bash \"${CLAUDE_PLUGIN_ROOT}/plugins/oracle-x-dev/hooks/guard-bash.sh\"",
+                "timeout": 10
+              }
+            ]
+          }
+        ],
+        "Stop": [
+          {
+            "matcher": "*",
+            "hooks": [
+              {
+                "type": "prompt",
+                "prompt": "You are checking whether an Oracle-X change is finished. Approve unless ALL of the following are true: (1) this session edited a file under backend/ or frontend/ that is not a test fixture or a markdown file; (2) the transcript shows none of the four quality gates were run afterwards -- ruff check/format from backend/, python -m pytest from backend/, npm run lint/typecheck/test/build from frontend/, or scripts/build_agent_skill.py --check and scripts/build_repo_facts.py --check from the repo root; (3) you have not already blocked once in this transcript for this reason, and the user has not said to skip the gates. When all three hold, block with a reason naming only the gates that the changed paths actually require -- a backend-only change does not need the frontend ones. In every other case, approve without comment. If the session was not working in the Oracle-X repository, approve.",
+                "timeout": 30
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }

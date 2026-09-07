@@ -234,10 +234,23 @@ conventions for agents working on the code.
 
 `.claude-plugin/marketplace.json` packages the same three skills plus the MCP
 server as Claude Code plugins. Its entries point at `agent-skill/` rather than
-copying it, so there is one copy of each skill. Three things about that format
+copying it, so there is one copy of each skill. Five things about that format
 bite silently and are recorded in `plugins/README.md`: component specs must
 live in exactly one place, `skills` paths resolve against the entry's `source`,
-and `mcpServers` is honoured inline but ignored as a path.
+`mcpServers` and `hooks` are honoured inline but ignored as paths, and `agents`
+is ignored entirely — only `<source>/agents/*.md` is discovered, which is why
+`agents/` sits at the repository root and all three plugins carry all three
+subagents rather than one each. `claude plugin validate` passes on every one of
+these; `claude plugin details <name>@oracle-x` and its `(0)` counts are the
+only real test.
+
+The hooks in those entries run shell scripts under `plugins/<name>/hooks/`.
+They exist to make the traps recorded below enforceable rather than merely
+written down, so a new trap discovered here is worth a line in `guard-bash.sh`
+as well as a paragraph in this file. Both scripts check where they are before
+they decide anything — the dev guard looks for
+`backend/services/health_registry.py`, because the plugin is installed globally
+and these rules are noise in any other repository.
 
 `mcp-server/` exposes the same instance as 36 MCP tools. It talks HTTP to a
 running backend and imports nothing from it, so it needs no backend changes —

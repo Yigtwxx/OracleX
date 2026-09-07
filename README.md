@@ -14,7 +14,7 @@
     <a href="#the-reasoning-layer"><img src="https://img.shields.io/badge/AI_Engine-14_providers%20%7C%20local_first-000000?style=flat-square&logo=ollama&logoColor=white" alt="AI Engine" /></a>
     <a href="#core-capabilities"><img src="https://img.shields.io/badge/Memory-ChromaDB_RAG_v5-FF6F00?style=flat-square&logo=databricks&logoColor=white" alt="RAG" /></a>
     <br/>
-    <a href="https://github.com/Yigtwxx/OracleX/releases/latest"><img src="https://img.shields.io/badge/Release-v1.4.0-brightgreen?style=flat-square" alt="Release" /></a>
+    <a href="https://github.com/Yigtwxx/OracleX/releases/latest"><img src="https://img.shields.io/badge/Release-v1.5.0-brightgreen?style=flat-square" alt="Release" /></a>
     <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey?style=flat-square" alt="Platform" />
     <a href="#quality-gates"><img src="https://img.shields.io/badge/CI-ruff%20%7C%20pytest%20%7C%20tsc%20%7C%20vitest-2088FF?style=flat-square&logo=githubactions&logoColor=white" alt="CI" /></a>
     <img src="https://img.shields.io/badge/Keys-encrypted_at_rest-success?style=flat-square" alt="Encrypted keys" />
@@ -1023,7 +1023,8 @@ frontend/
 │   ├── oracle-x-api/           # reading a running instance
 │   ├── oracle-x-dev/           # extending this codebase
 │   └── *.zip                   # generated, for direct download
-├── plugins/                    # slash commands for the Claude Code plugins
+├── agents/                     # three subagents; here because the loader looks nowhere else
+├── plugins/                    # slash commands and hook scripts for the plugins
 ├── mcp-server/                 # the same API as 36 MCP tools
 │   └── oracle_x_mcp/           # stdio server; talks HTTP to a live instance
 ├── scripts/
@@ -1735,8 +1736,8 @@ print(f"Analyst Rec: {data['recommendation']}")
 The skills and the MCP server also ship as three Claude Code plugins, declared
 in [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json). This is
 the shortest install: one command adds the marketplace, and each plugin brings
-its skill, its slash commands and — for `oracle-x` — the MCP server, with no
-virtualenv to create by hand.
+its skill, its slash commands, three subagents and — for `oracle-x` — the MCP
+server, with no virtualenv to create by hand.
 
 ```bash
 claude plugin marketplace add Yigtwxx/OracleX
@@ -1746,9 +1747,20 @@ claude plugin install oracle-x-dev@oracle-x     # working on this codebase
 ```
 
 The entries point at `agent-skill/` rather than copying it, so there is one
-copy of each skill in the repository. [`plugins/README.md`](plugins/README.md)
-holds the format's sharp edges — the ones that pass `claude plugin validate`
-and still refuse to load.
+copy of each skill in the repository.
+
+Two of the plugins also carry hooks. `oracle-x` probes `/api/system/health` at
+session start, so a stopped backend is a known fact rather than 36 tools
+failing one by one three turns later. `oracle-x-dev` turns four of this repo's
+documented traps into decisions a command has to get past — `git add -A` over
+the generated files under `backend/data/`, `ruff` run from the root where it
+misses `line-length = 100`, `pytest` outside `backend/`, and a production build
+while the dev server holds `frontend/.next/`. Both check they are in the right
+place first and are inert everywhere else.
+
+[`plugins/README.md`](plugins/README.md) holds the format's sharp edges — the
+ones that pass `claude plugin validate` and still refuse to load, including why
+the subagents live at the repository root rather than beside the commands.
 
 ### MCP server
 
@@ -2015,6 +2027,16 @@ Shipped in **v1.4.0**:
 - [x] **Six VİOP and BIST MCP tools** — the Turkish surface had a skill and no
       tools, which made the least-covered market the one a model would never
       consult unprompted.
+
+Shipped in **v1.5.0**:
+
+- [x] **Three subagents** — two analysts that keep twenty payloads out of the
+      conversation that dispatched them, and a reviewer for the conventions CI
+      cannot check.
+- [x] **Plugin hooks** — a session-start probe so a stopped backend is a known
+      fact rather than 36 tools failing one at a time, and a Bash guard that
+      turns four traps this repository could previously only describe into
+      decisions a command has to get past.
 
 Planned:
 
