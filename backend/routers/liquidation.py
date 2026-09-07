@@ -36,7 +36,13 @@ async def get_liquidation_history(symbol: str):
 
 @router.get("/api/liquidations/levels/{symbol}")
 async def get_liquidation_levels(
-    symbol: str, price_min: float, price_max: float, num_bins: int = 100
+    symbol: str,
+    price_min: float,
+    price_max: float,
+    # Bounded like every sibling route here. Unbounded, this allocated one dict
+    # per bin before reading anything, so a single GET with num_bins=2e8 was an
+    # OOM kill — and num_bins=0 divided the price range by zero for a 500.
+    num_bins: int = Query(100, ge=1, le=500),
 ):
     """
     Get observed liquidations grouped into price bins.
