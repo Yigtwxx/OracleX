@@ -417,6 +417,16 @@ _NOT_CONFIGURED = HTTPException(
     detail=("Per-user API keys are disabled: LLM_KEY_ENCRYPTION_SECRET is not set on the server."),
 )
 
+# What a reader with no row is told they have. Every field is a default rather
+# than a measurement, so each must match what saving would actually produce.
+#
+# `use_for_chat` is True for that reason and it is not cosmetic: migration 006
+# gives the column DEFAULT TRUE, but the form sends all four toggles back on
+# save, so a False here was written over that default on the very first save.
+# The result was the one flow this feature exists for failing silently — a new
+# reader pasted their key, saved, and every turn still ran on the server's
+# provider with nothing on the page saying why. The toggles are disabled until a
+# key exists, so they could not even turn it on in the same visit.
 _EMPTY_LLM_SETTINGS = {
     "provider": "",
     "model": "",
@@ -424,7 +434,7 @@ _EMPTY_LLM_SETTINGS = {
     "configured": False,
     "requires_key": True,
     "base_url": "",
-    "use_for_chat": False,
+    "use_for_chat": True,
     "use_for_news": False,
     "use_for_reports": False,
     "use_for_notes": False,

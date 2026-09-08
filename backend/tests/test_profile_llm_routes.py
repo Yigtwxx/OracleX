@@ -36,6 +36,32 @@ def test_get_returns_not_configured_when_unset(client, monkeypatch):
     assert response.json()["configured"] is False
 
 
+def test_unset_reader_is_told_chat_is_on(client, monkeypatch):
+    """
+    The zero state has to agree with migration 006's DEFAULT TRUE.
+
+    The form posts all four toggles back on save, so whatever this reports is
+    what the first save writes. Reporting False here stored False, and a reader
+    who had just pasted their key kept running on the server's provider with
+    nothing saying so — with the toggles disabled until a key exists, so they
+    could not turn it on in the same visit either.
+    """
+
+    async def none_settings(_user_id):
+        return None
+
+    monkeypatch.setattr(profile_router.llm_settings_service, "get_settings", none_settings)
+
+    body = client.get("/api/profile/llm", headers=AUTH).json()
+
+    assert body["use_for_chat"] is True
+    # The rest stay off: news, reports and notes each spend on a schedule or on
+    # somebody else's behalf, so opting in is the reader's call.
+    assert body["use_for_news"] is False
+    assert body["use_for_reports"] is False
+    assert body["use_for_notes"] is False
+
+
 def test_put_stores_and_returns_hint_only(client, monkeypatch):
     captured = {}
 

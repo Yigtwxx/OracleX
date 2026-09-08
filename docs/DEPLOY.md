@@ -108,6 +108,15 @@ supply their own key from **Profile → AI Provider**, which is then used for
 their own turns; the server chain here is what everyone else gets, and what the
 scheduled jobs always use.
 
+One thing to be ready to answer, because it is the first question a colleague
+asks: selecting Ollama in that form does *not* use the Ollama on their laptop
+by default. This server is what places the call, so it needs an address it can
+reach — a Cloudflare Tunnel, ngrok or Tailscale Funnel address pasted into the
+endpoint field. A private or loopback address is refused rather than attempted,
+since a server dialling an address a request named is how internal networks get
+read. Left blank, the field means "this server's own Ollama", which on a
+deployment is usually nothing at all.
+
 ### Per-reader API keys
 
 ```dotenv
@@ -162,7 +171,9 @@ attach an address to. Format: `AppName/1.0 (you@example.com)`.
 
 ---
 
-## 3. Database
+## 3. Supabase
+
+### Migrations
 
 Migrations in `supabase/migrations/` are **applied by hand**. A file in the repo
 is not evidence that it ran, and the failure mode is quiet: the app boots, the
@@ -177,6 +188,59 @@ docker compose run --rm backend python scripts/verify_migrations.py
 
 It exits non-zero if a table any migration declares is missing. Do this before
 the first real use, not after someone reports a bug.
+
+### Auth, which is configured in Supabase rather than here
+
+Three settings under **Authentication → URL Configuration**, and the default of
+each is wrong for a deployment. The app asks Supabase to send readers back to
+`window.location.origin`, so it is already correct about the domain — Supabase
+is what refuses it.
+
+| Setting | Value |
+|---|---|
+| Site URL | `https://your.domain` |
+| Redirect URLs | `https://your.domain/auth/callback` and `https://your.domain/auth/reset-password` |
+
+A link Supabase will not redirect to falls back to the Site URL, which ships as
+`http://localhost:3000`. The failure is entirely on the reader's side and looks
+like nothing at all from the server: they click a password-reset link and their
+browser goes looking for the app on their own laptop.
+
+Then check what the project already does, rather than assuming the defaults —
+this endpoint is public and needs only the anon key:
+
+```bash
+curl -s "$SUPABASE_URL/auth/v1/settings" -H "apikey: $SUPABASE_KEY" \
+  | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["mailer_autoconfirm"], d["disable_signup"])'
+```
+
+**`mailer_autoconfirm`** — whether a new account is usable immediately. A fresh
+Supabase project has this **off**, which means every sign-up waits on an email,
+and Supabase's built-in mailer sends a handful of messages an hour and is
+explicitly not for production: confirmations to a colleague's address quietly
+stop arriving. Either put real SMTP under **Authentication → Emails**, or turn
+confirmation off (**Authentication → Sign In / Providers → Email → Confirm
+email**; older projects call that page **Providers**) while you onboard a group
+of people you already know. Turning it off means an address is never proved,
+so it belongs with a closed sign-up list rather than beside an open one.
+
+**`disable_signup`** — whether anyone who can reach the page can create an
+account. There is no invite list and no approval step in this app, so while
+this is false the sign-up form is open to the whole internet. Leave it open
+until your colleagues have their accounts, then close it the same day —
+**Allow new users to sign up**, off, on that same page. New people after that
+are added from **Authentication → Users → Add user**. The `curl` above is what
+confirms it took; the dashboard's labels move between releases, the two fields
+it prints do not.
+
+Those two settings are the pair, not two independent switches: confirmation off
+plus sign-ups open means an unverified stranger with a password can read
+everything.
+
+Admin is separate from all of this and comes from `ADMIN_EMAILS`. A colleague
+who signs up gets a normal account: every board, their own keys, their own
+watchlists and notes, their own usage. What they do not get is the admin panel,
+the ownership refresh buttons, the SMTP form and the install-wide usage total.
 
 ---
 
@@ -251,8 +315,9 @@ the spend is: the news scan runs every two minutes.
   set, so the chain is still pointing at an Ollama that is not there.
   `GET /api/llm/status` says which providers were skipped and why.
 - **A reader's saved key not being used** — check the toggles under
-  Profile → AI Provider. A key applies only to the features they enabled it for;
-  scheduled jobs always use the server chain, by design, because they carry no
-  reader.
+  Profile → AI Provider. Saving a key turns it on for chat; news, reports and
+  notes are opt-in, because each of those spends on a schedule or on somebody
+  else's behalf. Scheduled jobs always use the server chain, by design, because
+  they carry no reader.
 - **Certificate issuance failing** is DNS nine times out of ten. `dig +short
   your.domain` from the server, and confirm port 80 is reachable from outside.
