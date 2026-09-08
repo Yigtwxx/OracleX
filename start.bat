@@ -45,6 +45,17 @@ if not defined PY_CMD (
 for /f "delims=" %%v in ('!PY_CMD! --version 2^>^&1') do set "PY_VER=%%v"
 echo       [OK] !PY_VER! detected
 
+REM  3.11 is the floor rather than a preference: the backend annotates with
+REM  `X | None` and CI runs 3.11. An older interpreter - and the one the
+REM  Microsoft Store offers is often older - fails at import with a syntax
+REM  error that reads like a corrupt source file instead of a wrong Python.
+!PY_CMD! -c "import sys; sys.exit(0 if sys.version_info[:2] >= (3, 11) else 1)" >nul 2>&1
+if errorlevel 1 (
+    echo       [X] Python 3.11 or newer is required^^!
+    echo           Install it from https://www.python.org/downloads/
+    goto :fail
+)
+
 REM ---------------------------------------------------------------------------
 REM  ENVIRONMENT FILES
 REM ---------------------------------------------------------------------------
@@ -79,25 +90,45 @@ echo.
 
 REM  Windows uses its own venv dir so it never collides with a macOS/Linux
 REM  "backend\venv" created by start.sh in the same checkout.
-if not exist "backend\venv-win\Scripts\activate.bat" (
-    echo       [~] Creating Python virtual environment - first run takes a while...
-    !PY_CMD! -m venv "backend\venv-win"
-    if errorlevel 1 (
-        echo       [X] Failed to create the virtual environment.
-        goto :fail
-    )
+
+REM  Existence is not readiness. The first install pulls torch through
+REM  sentence-transformers, which is a multi-gigabyte download that people
+REM  interrupt - and a half-installed venv still activates, so the old check
+REM  reported "cached" and then uvicorn died on an import in a window that
+REM  scrolled past. Probe the imports instead.
+set "VENV_READY="
+if exist "backend\venv-win\Scripts\activate.bat" (
     call "backend\venv-win\Scripts\activate.bat"
-    echo       [~] Installing Python packages...
+    REM  find_spec rather than a real import: importing chromadb costs seconds
+    REM  of model-registry work on a cold filesystem, and this runs every time.
+    python -c "import importlib.util as u, sys; sys.exit(0 if all(u.find_spec(m) for m in ('fastapi','uvicorn','chromadb')) else 1)" >nul 2>&1 && set "VENV_READY=1"
+)
+
+if defined VENV_READY (
+    echo       [OK] Python environment cached
+) else (
+    if not exist "backend\venv-win\Scripts\activate.bat" (
+        echo       [~] Creating Python virtual environment...
+        !PY_CMD! -m venv "backend\venv-win"
+        if errorlevel 1 (
+            echo       [X] Failed to create the virtual environment.
+            goto :fail
+        )
+        call "backend\venv-win\Scripts\activate.bat"
+    )
+    echo       [~] Installing Python packages - budget a few GB and ten
+    echo           minutes on the first run. Progress is left visible on
+    echo           purpose: quiet output here looks like a hang.
     python -m pip install --upgrade pip -q
-    pip install -r "backend\requirements.txt" -q
+    pip install -r "backend\requirements.txt"
     if errorlevel 1 (
         echo       [X] pip install failed - see the output above.
+        echo           On Windows this is usually chromadb's hnswlib with no
+        echo           matching wheel: install "Microsoft C++ Build Tools", or
+        echo           use Python 3.11/3.12, which have prebuilt wheels.
         goto :fail
     )
     echo       [OK] Python environment ready
-) else (
-    call "backend\venv-win\Scripts\activate.bat"
-    echo       [OK] Python environment cached
 )
 
 if not exist "frontend\node_modules" (
@@ -143,22 +174,41 @@ REM ---------------------------------------------------------------------------
 echo.
 echo     [ RAG 2.0 INITIALIZATION ]
 echo.
-echo       [~] Waiting for the API to come up...
-timeout /t 10 /nobreak >nul
-
 where curl >nul 2>&1
 if errorlevel 1 (
     echo       [!] curl not found - seed manually once the API is up:
     echo           curl -X POST http://localhost:8000/api/rag/initialize
-) else (
-    curl -s -X POST http://localhost:8000/api/rag/initialize >nul 2>&1
-    if errorlevel 1 (
-        echo       [!] RAG seed did not respond - the backend may still be booting.
-        echo           Retry with: curl -X POST http://localhost:8000/api/rag/initialize
-    ) else (
-        echo       [OK] RAG 2.0 index seeded
+    goto :seeded
+)
+
+REM  Poll rather than sleep ten seconds. A cold start loads Chroma and can
+REM  take longer than that, and a backend that died on a missing
+REM  SUPABASE_SERVICE_ROLE_KEY never takes any time at all - both were
+REM  reported the same way by a fixed wait followed by one attempt.
+echo       [~] Waiting for the API to come up...
+set "API_UP="
+for /l %%i in (1,1,30) do (
+    if not defined API_UP (
+        curl -s -o nul http://localhost:8000/api/system/health && set "API_UP=1"
+        if not defined API_UP timeout /t 2 /nobreak >nul
     )
 )
+
+if not defined API_UP (
+    echo       [!] The API did not answer within a minute. Read the backend
+    echo           window - it will say why, and it usually says a missing key.
+    goto :seeded
+)
+
+curl -s -X POST http://localhost:8000/api/rag/initialize >nul 2>&1
+if errorlevel 1 (
+    echo       [!] RAG seed did not respond.
+    echo           Retry with: curl -X POST http://localhost:8000/api/rag/initialize
+) else (
+    echo       [OK] RAG 2.0 index seeded
+)
+
+:seeded
 
 REM ---------------------------------------------------------------------------
 REM  READY
@@ -188,7 +238,9 @@ REM ---------------------------------------------------------------------------
 :free_port
 set "PORT=%~1"
 set "FOUND="
-for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":%PORT%" ^| findstr "LISTENING"') do (
+REM  The trailing space matters: ":3100" is a substring of ":31000", so the
+REM  unanchored match could kill an unrelated listener on a five-digit port.
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr /C:":%PORT% " ^| findstr "LISTENING"') do (
     if not "%%p"=="0" (
         taskkill /F /PID %%p >nul 2>&1
         set "FOUND=1"
