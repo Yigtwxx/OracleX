@@ -2,11 +2,12 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
-import { Bot, Database, Lock, UserCircle } from 'lucide-react';
+import { Activity, Bot, Database, Lock, UserCircle } from 'lucide-react';
 
 import AuthCard from '@/components/auth/AuthCard';
 import AIProviderSettings from '@/components/profile/AIProviderSettings';
 import DataProviderSettings from '@/components/profile/DataProviderSettings';
+import UsageCard from '@/components/profile/UsageCard';
 import SocialLinksCard from '@/components/profile/SocialLinksCard';
 import DangerZone from '@/components/profile/DangerZone';
 import EmailVerificationBanner from '@/components/profile/EmailVerificationBanner';
@@ -19,13 +20,14 @@ import SecurityCard from '@/components/profile/SecurityCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 
-type TabKey = 'account' | 'security' | 'ai' | 'data';
+type TabKey = 'account' | 'security' | 'ai' | 'data' | 'usage';
 
 const TABS: { key: TabKey; label: string; icon: typeof UserCircle }[] = [
   { key: 'account', label: 'Account', icon: UserCircle },
   { key: 'security', label: 'Security', icon: Lock },
   { key: 'ai', label: 'AI Provider', icon: Bot },
   { key: 'data', label: 'Data Providers', icon: Database },
+  { key: 'usage', label: 'Usage', icon: Activity },
 ];
 
 /**
@@ -126,6 +128,8 @@ export default function ProfilePage() {
         {tab === 'ai' && <AIProviderSettings />}
 
         {tab === 'data' && <DataProviderSettings />}
+
+        {tab === 'usage' && <UsageCard />}
       </div>
     </div>
   );

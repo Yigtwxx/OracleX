@@ -2061,9 +2061,23 @@ export async function sendChatMessage(request: {
   });
 }
 
-/** Whether the chat backend has a reachable LLM provider. Public endpoint. */
-export async function fetchChatStatus(): Promise<{ available: boolean }> {
-  return apiFetch<{ available: boolean }>('/api/chat/status', { anonymous: true });
+/**
+ * Whether chat has a reachable LLM provider — the caller's own key included.
+ *
+ * Sent WITH credentials, deliberately. As an anonymous call it reported on the
+ * server chain alone, and the composer is disabled on `available: false`, so a
+ * reader who had saved a working personal key could not type on an install
+ * whose server has no LLM key. The endpoint still answers signed out; it just
+ * cannot see a personal provider it was never told about.
+ */
+export async function fetchChatStatus(): Promise<{
+  available: boolean;
+  provider?: string | null;
+  model?: string | null;
+  using_own_key?: boolean;
+  message?: string;
+}> {
+  return apiFetch('/api/chat/status');
 }
 
 /**
@@ -2515,6 +2529,54 @@ export async function deleteDataProviderKey(provider: string): Promise<DataProvi
   return apiFetch<DataProviderSettings>(`/api/profile/data-providers/${provider}`, {
     method: 'DELETE',
   });
+}
+
+// ── AI usage ─────────────────────────────────────────────────────────────────
+// Read-only. Rows are written by the server as it makes the calls; there is no
+// client write path, because one would let a client forge its own usage.
+
+export interface UsageTotals {
+  requests: number;
+  failed: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  /** Calls whose provider reported no token counts, so the totals undercount. */
+  requests_without_token_data: number;
+}
+
+export interface UsageCall {
+  created_at: string;
+  feature: string;
+  provider: string;
+  model: string;
+  key_owner: 'user' | 'server';
+  total_tokens: number | null;
+  duration_ms: number | null;
+  ok: boolean;
+}
+
+export interface AiUsage {
+  window: string;
+  /** False when the table could not be read — totals are zeroes, not truth. */
+  available: boolean;
+  totals: UsageTotals;
+  by_feature: Record<string, UsageTotals>;
+  by_provider: Record<string, UsageTotals>;
+  /** 'user' = paid for by a key the reader supplied; 'server' = by this install. */
+  by_key_owner: Record<string, UsageTotals>;
+  recent: UsageCall[];
+}
+
+export type UsageWindow = 'today' | '7d' | '30d' | 'all';
+
+export async function getAiUsage(window: UsageWindow = '30d'): Promise<AiUsage> {
+  return apiFetch<AiUsage>(`/api/profile/usage?window=${window}`);
+}
+
+/** Install-wide, background jobs included. Admins only. */
+export async function getInstallAiUsage(window: UsageWindow = '30d'): Promise<AiUsage> {
+  return apiFetch<AiUsage>(`/api/profile/usage/install?window=${window}`);
 }
 
 // ==========================================

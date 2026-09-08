@@ -19,7 +19,13 @@ from dependencies.auth import AuthUser, get_current_user, get_optional_user
 from services import notes_service
 from utils import log_warning
 
-router = APIRouter()
+from dependencies.usage import track_ai_usage
+
+# Attributes every model call made while serving these routes to the caller.
+# Without it `client.generate` records them all as background work, because the
+# reader's identity is resolved by the caller and gone by the time a response
+# arrives. See dependencies/usage.py.
+router = APIRouter(dependencies=[Depends(track_ai_usage)])
 
 VALID_TIMEFRAMES = ("daily", "weekly", "monthly")
 

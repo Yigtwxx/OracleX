@@ -31,7 +31,13 @@ from services.polymarket.service import UpstreamUnavailable, get_board, get_mark
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+from dependencies.usage import track_ai_usage
+
+# Attributes every model call made while serving these routes to the caller.
+# Without it `client.generate` records them all as background work, because the
+# reader's identity is resolved by the caller and gone by the time a response
+# arrives. See dependencies/usage.py.
+router = APIRouter(dependencies=[Depends(track_ai_usage)])
 
 # Slugs arrive from the client and are pasted into an outbound query string.
 # `url_guard` cannot help: the host is one of ours, so nothing it checks is in

@@ -32,6 +32,7 @@ from services.llm.base import (
 from services.llm.presets import PRESETS, accepts_base_url, preset_names
 from services.llm.providers import ADAPTERS
 from services.health_registry import health
+from services.llm import usage
 
 logger = logging.getLogger(__name__)
 
@@ -325,6 +326,13 @@ async def generate(
             )
 
     for index, provider in enumerate(ready):
+        # Whose credential this attempt draws on. Only here is it knowable: the
+        # adapters see a key, not whose it is, and the caller resolved the
+        # reader long before the response arrives. It matters because a reader
+        # running on their own key costs the operator nothing, so totals that
+        # mix the two answer neither question.
+        owner_token = usage.bind_key_owner("user" if provider is prefer else "server")
+        started = time.monotonic()
         try:
             async for attempt in AsyncRetrying(
                 stop=stop_after_attempt(max(1, settings.LLM_MAX_RETRIES)),
@@ -351,14 +359,49 @@ async def generate(
                 logger.info("LLM served by fallback provider '%s'", provider.name)
             return answer
 
-        except LLMRequestError:
-            # Malformed request: every provider would reject it. Surface it.
-            raise
+        except LLMRequestError as e:
+            # A malformed request is our bug and every provider would reject it,
+            # so surfacing it beats trying five more. That holds for the server
+            # chain, which we configured — it does not hold for index 0 when it
+            # is the caller's own provider. There, a 400 is the ordinary answer
+            # to a model id they typed wrong, or to an OpenAI-compatible proxy
+            # that rejects `json_mode`, `stop` or `top_p`. Raising past the loop
+            # meant one typo in a profile turned every AI surface into an error
+            # for that reader, with the server chain never asked.
+            if not (prefer is not None and provider is prefer):
+                raise
+            last_error = e
+            usage.record(
+                provider=provider.name,
+                model=provider.model,
+                duration_ms=int((time.monotonic() - started) * 1000),
+                ok=False,
+            )
+            logger.warning(
+                "Caller's own provider '%s' rejected the request (%s); falling back to the "
+                "server chain.",
+                provider.name,
+                e,
+            )
+            _note_failure(provider, index, e)
         except LLMError as e:
             last_error = e
+            # A provider that failed still spent time, and on some failures it
+            # spent tokens too. Recording the attempt is what makes a chain that
+            # is quietly falling back visible in the usage view.
+            usage.record(
+                provider=provider.name,
+                model=provider.model,
+                duration_ms=int((time.monotonic() - started) * 1000),
+                ok=False,
+            )
             if isinstance(e, LLMRateLimitError):
                 _start_cooldown(provider, e)
             _note_failure(provider, index, e)
+        finally:
+            # Must not leak into the next provider in the chain, or into whatever
+            # this worker task serves next.
+            usage.reset_key_owner(owner_token)
 
     logger.error("All %d LLM provider(s) failed. Last error: %s", len(ready), last_error)
     return None

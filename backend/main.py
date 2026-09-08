@@ -401,6 +401,18 @@ async def lifespan(app: FastAPI):
     except Exception:
         logger.debug("Price streaming service was not running at shutdown.")
 
+    # Write whatever AI usage the scheduler had not flushed yet. Without this a
+    # restart silently loses up to a minute of it, and a dev loop with --reload
+    # loses it on every save — which reads as the feature not recording at all.
+    try:
+        from services.llm import usage
+
+        written = await usage.flush()
+        if written:
+            logger.info("Flushed %d AI usage rows at shutdown", written)
+    except Exception as e:
+        logger.debug("Could not flush AI usage at shutdown: %s", e)
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # APP FACTORY

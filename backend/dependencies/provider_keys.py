@@ -7,7 +7,8 @@ returns None without a token, and this yields before touching the database.
 """
 
 import logging
-from typing import AsyncIterator, Optional
+import time
+from typing import AsyncIterator, Dict, Optional, Tuple
 
 from fastapi import Depends
 
@@ -15,6 +16,39 @@ from dependencies.auth import AuthUser, get_optional_user
 from services import data_provider_settings_service, provider_keys
 
 logger = logging.getLogger(__name__)
+
+# A signed-in reader loading a BIST board fires many requests through this
+# dependency, and each one was a synchronous Supabase round trip plus a Fernet
+# decrypt per provider — on the event loop, because supabase-py is blocking.
+# These keys change when someone edits a form, not between two requests of the
+# same page load, so a short memory is the right shape.
+#
+# Deliberately short: a reader who removes a key expects the boards to stop
+# using it promptly, and thirty seconds is well inside "promptly" while still
+# collapsing a page load into one lookup.
+_CACHE_TTL_SECONDS = 30.0
+_cache: Dict[str, Tuple[float, Dict[str, str]]] = {}
+
+
+def invalidate(user_id: str) -> None:
+    """Forget a reader's cached keys. Called when they save or delete one."""
+    _cache.pop(user_id, None)
+
+
+def clear() -> None:
+    """Forget every reader's cached keys. For tests, so their order cannot matter."""
+    _cache.clear()
+
+
+async def _keys_for(user_id: str) -> Dict[str, str]:
+    cached = _cache.get(user_id)
+    now = time.monotonic()
+    if cached is not None and now - cached[0] < _CACHE_TTL_SECONDS:
+        return cached[1]
+
+    keys = await data_provider_settings_service.get_keys(user_id)
+    _cache[user_id] = (now, keys)
+    return keys
 
 
 async def use_caller_provider_keys(
@@ -33,7 +67,7 @@ async def use_caller_provider_keys(
 
     tokens = []
     try:
-        keys = await data_provider_settings_service.get_keys(user.id)
+        keys = await _keys_for(user.id)
     except Exception as e:  # noqa: BLE001
         # A settings lookup must never take down a market-data route; the
         # server's own key is a working answer.

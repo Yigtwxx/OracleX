@@ -88,7 +88,17 @@ async def get_open_interest(symbol: str, interval: str = "1d", limit: int = 400)
     if interval not in INTERVALS:
         interval = VENUE_FALLBACK_INTERVAL
 
-    cache_key = f"oi:{base}:{interval}:{limit}"
+    # Keyed on whether a Coinalyze key is in play, because the payload is not the
+    # same shape of answer without one: years of daily history versus the
+    # venues' trailing thirty days. A single key served the wrong one in both
+    # directions — a reader who had just supplied a key got the shallow board
+    # another request had cached, which is precisely what the key buys.
+    #
+    # Only the presence is in the key, never the key itself: the content depends
+    # on *whether* one was used, not on whose, and a credential has no business
+    # in a cache key that gets logged.
+    depth = "deep" if coinalyze.has_key() else "shallow"
+    cache_key = f"oi:{base}:{interval}:{limit}:{depth}"
     cached = _cache.get(cache_key)
     if cached is not None:
         return cached

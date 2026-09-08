@@ -64,6 +64,39 @@ def start_scheduler():
             except Exception as e:
                 log_error(f"RAG auto-index error: {e}")
 
+        # Write buffered AI usage. Every minute rather than per call: a model
+        # call is already slow and a database round-trip on top of each one
+        # would be paid on the hot path of every reply, for a number nobody
+        # reads in real time. The buffer is bounded, so a database outage costs
+        # the oldest rows instead of the process.
+        async def ai_usage_flush_job():
+            try:
+                from services.llm import usage
+
+                written = await usage.flush()
+                if written:
+                    logger.debug("Wrote %d AI usage rows", written)
+            except Exception as e:
+                log_error(f"AI usage flush error: {e}")
+
+        scheduler.add_job(
+            ai_usage_flush_job,
+            trigger=IntervalTrigger(minutes=1),
+            id="ai_usage_flush_job",
+            name="Flush AI Usage",
+            replace_existing=True,
+            # APScheduler's default grace is one second, and a minute-interval
+            # job on a loop busy with startup warm-ups misses that easily — the
+            # first run was skipped outright with "missed by 0:00:04" and the
+            # buffer simply grew. Nothing here is time-critical: a late flush
+            # writes the same rows.
+            misfire_grace_time=300,
+            # If several runs were missed, one write covers them — the buffer is
+            # drained whole, so repeating the job would find it empty anyway.
+            coalesce=True,
+            max_instances=1,
+        )
+
         scheduler.add_job(
             rag_auto_index_job,
             trigger=IntervalTrigger(minutes=settings.RAG_INDEX_INTERVAL_MINUTES),

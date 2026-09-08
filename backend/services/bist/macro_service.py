@@ -234,9 +234,14 @@ async def fetch_cpi_series(years: int = 6) -> list[dict]:
     window can be deflated at all; see `deflator_for_window`.
 
     The key is the caller's own when they stored one, the server's otherwise;
-    `provider_keys` explains why the resolution is implicit. The cache below is
-    deliberately not keyed on it: a CPI series is public reference data, so the
-    first reader with a key fills it for everyone.
+    `provider_keys` explains why the resolution is implicit.
+
+    The cache is not keyed on the key, and does not need to be: a request with
+    no key returns above without ever reading or writing it, so an empty result
+    can never be cached and never displaces a real series. The consequence,
+    which is not obvious, is that a reader who supplies a key fills the cache
+    only for readers who also have one — the series is shared, the entitlement
+    to fetch it is not.
     """
     api_key = provider_keys.evds_key()
     if not api_key:
