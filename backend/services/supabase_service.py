@@ -4,12 +4,66 @@ Provides centralized Supabase client and helper functions.
 """
 
 import logging
-from typing import Optional, Dict, List
+from typing import Callable, Optional, Dict, List, TypeVar
+
+from httpcore import RemoteProtocolError
 
 from config import settings
 from services.health_registry import health
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
+
+# httpcore's two wordings for "the server closed before answering this request".
+# HTTP/2 (http2.py) says the first, HTTP/1.1 (http11.py) the second.
+_DISCONNECT_MARKERS = ("server disconnected",)
+
+
+def _is_dropped_connection(exc: BaseException) -> bool:
+    """
+    Whether `exc` means the connection died before the server answered.
+
+    Both the type and the message are required. supabase-py surfaces plenty of
+    real errors — a constraint violation, a bad filter — and retrying one of
+    those is how a single click becomes two rows; matching on the message alone
+    would do exactly that to any library that happens to mention a disconnect.
+    """
+    return isinstance(exc, RemoteProtocolError) and any(
+        marker in str(exc).lower() for marker in _DISCONNECT_MARKERS
+    )
+
+
+def run_with_reconnect(operation: Callable[[], T]) -> T:
+    """
+    Run a blocking Supabase call, retrying once if the connection was dropped.
+
+    supabase-py holds one httpx client for the whole process and httpx speaks
+    HTTP/2 to Supabase, so every query this process makes is multiplexed over a
+    single TCP connection. When the edge closes it — an idle timeout, a GOAWAY,
+    a deploy on their side — httpcore raises for every stream on that
+    connection at once, which is why this was first seen as two unrelated
+    services failing in the same second and a signed-in reader getting a 503 on
+    a profile that was fine.
+
+    One retry is enough and two would be wrong: the pool discards the dead
+    connection when it errors, so the second attempt dials a fresh one, and if
+    that also fails the database is genuinely unreachable and the caller needs
+    to hear so rather than wait through a spin.
+
+    Retrying is safe here because the server closed the stream without
+    answering it, so the request was not processed. A caller that must be
+    at-most-once even against that reading should call the client directly.
+    """
+    try:
+        return operation()
+    except Exception as exc:
+        if not _is_dropped_connection(exc):
+            raise
+        logger.warning("Supabase connection was dropped; retrying once: %s", exc)
+
+    return operation()
+
 
 # Lazy-loaded client
 _supabase_client = None
