@@ -192,3 +192,83 @@ async def test_first_save_of_a_keyless_provider_is_allowed(db):
 async def test_requires_key_is_reported_for_keyed_providers(db):
     await svc.save_settings("u1", provider="mistral", api_key="ms_secret_abcd")
     assert (await svc.get_settings("u1"))["requires_key"] is True
+
+
+# ── Per-user endpoint (migration 017) ────────────────────────────────────────
+# Ollama runs on the reader's machine, so a stored provider is only usable if
+# the row can also carry where to reach it.
+
+
+@pytest.fixture
+def public_dns(monkeypatch):
+    """
+    Resolve any host to a public address.
+
+    These tests are about what the row stores, not about name resolution — that
+    is covered in test_llm_base_url.py — and reaching for real DNS here would
+    make them fail on an offline machine for a reason unrelated to the subject.
+    """
+    import ipaddress
+
+    from services.llm import base_url as rules
+
+    monkeypatch.setattr(
+        rules, "_resolved_addresses", lambda host: [ipaddress.ip_address("93.184.216.34")]
+    )
+
+
+@pytest.mark.asyncio
+async def test_base_url_is_stored_and_returned(db, public_dns):
+    settings = await svc.save_settings(
+        "u1", provider="ollama", model="qwen3", base_url="https://tunnel.example.com"
+    )
+    assert settings["base_url"] == "https://tunnel.example.com"
+    assert (await svc.get_credentials("u1")) is None  # keyless: no credential row to hand out
+
+
+@pytest.mark.asyncio
+async def test_base_url_reaches_the_resolver(db, public_dns):
+    await svc.save_settings(
+        "u1", provider="custom", model="m", api_key="k", base_url="https://vllm.example.com/v1"
+    )
+    credentials = await svc.get_credentials("u1")
+    assert credentials["base_url"] == "https://vllm.example.com/v1"
+
+
+@pytest.mark.asyncio
+async def test_omitting_base_url_keeps_the_stored_one(db, public_dns):
+    """Same rule as the key, so a toggle change does not wipe the endpoint."""
+    await svc.save_settings("u1", provider="ollama", base_url="https://tunnel.example.com")
+    settings = await svc.save_settings("u1", provider="ollama", use_for_news=True)
+    assert settings["base_url"] == "https://tunnel.example.com"
+
+
+@pytest.mark.asyncio
+async def test_an_empty_base_url_clears_it(db, public_dns):
+    await svc.save_settings("u1", provider="ollama", base_url="https://tunnel.example.com")
+    settings = await svc.save_settings("u1", provider="ollama", base_url="")
+    assert settings["base_url"] == ""
+
+
+@pytest.mark.asyncio
+async def test_a_cloud_provider_rejects_an_endpoint(db, public_dns):
+    with pytest.raises(svc.UnknownProvider):
+        await svc.save_settings(
+            "u1", provider="openai", api_key="k", base_url="https://elsewhere.example.com"
+        )
+
+
+@pytest.mark.asyncio
+async def test_moving_to_a_cloud_provider_clears_a_stale_endpoint(db, public_dns):
+    """Otherwise it comes back the next time they return to Ollama."""
+    await svc.save_settings("u1", provider="ollama", base_url="https://tunnel.example.com")
+    settings = await svc.save_settings("u1", provider="openai", api_key="k")
+    assert settings["base_url"] == ""
+
+
+@pytest.mark.asyncio
+async def test_an_unreachable_endpoint_is_refused(db):
+    from services.llm.base_url import InvalidBaseURL
+
+    with pytest.raises(InvalidBaseURL):
+        await svc.save_settings("u1", provider="ollama", base_url="http://localhost:11434")

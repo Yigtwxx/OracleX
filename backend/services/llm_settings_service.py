@@ -12,7 +12,13 @@ from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
 
 from services import secret_box
-from services.llm.presets import PRESETS, preset_names
+from services.llm import base_url as base_url_rules
+from services.llm.presets import (
+    PRESETS,
+    accepts_base_url,
+    preset_names,
+    self_hosted_provider_names,
+)
 from services.supabase_service import get_supabase
 
 logger = logging.getLogger(__name__)
@@ -48,6 +54,9 @@ def _public_view(row: Dict[str, Any]) -> Dict[str, Any]:
         "key_hint": row.get("key_hint", ""),
         "configured": bool(row.get("encrypted_key")),
         "requires_key": _requires_key(row.get("provider", "")),
+        # Not a credential: an endpoint the reader named, which the form has to
+        # show back or they cannot tell what the server will call.
+        "base_url": row.get("base_url", "") or "",
         "use_for_chat": bool(row.get("use_for_chat", False)),
         "use_for_news": bool(row.get("use_for_news", False)),
         "use_for_reports": bool(row.get("use_for_reports", False)),
@@ -96,6 +105,7 @@ async def get_credentials(user_id: str) -> Optional[Dict[str, Any]]:
         "provider": row.get("provider", ""),
         "model": row.get("model", ""),
         "api_key": api_key,
+        "base_url": row.get("base_url", "") or "",
         "use_for_chat": bool(row.get("use_for_chat", False)),
         "use_for_news": bool(row.get("use_for_news", False)),
         "use_for_reports": bool(row.get("use_for_reports", False)),
@@ -109,6 +119,7 @@ async def save_settings(
     provider: str,
     model: str = "",
     api_key: Optional[str] = None,
+    base_url: Optional[str] = None,
     use_for_chat: Optional[bool] = None,
     use_for_news: Optional[bool] = None,
     use_for_reports: Optional[bool] = None,
@@ -120,6 +131,11 @@ async def save_settings(
     Omitting `api_key` keeps the stored one, so toggles can be changed without
     re-typing the key. Changing provider requires a key in the same call: the
     stored key belongs to the previous provider and could not work.
+
+    `base_url` follows the same omit-keeps-it rule. It is only meaningful for
+    the self-hosted presets, and is cleared when the reader moves to a provider
+    that has a fixed endpoint — a stale tunnel address left on the row would
+    otherwise come back the next time they returned to Ollama.
     """
     provider = provider.strip().lower()
     if provider not in PRESETS:
@@ -139,12 +155,25 @@ async def save_settings(
     if requires_key and not api_key and (existing is None or provider_changed):
         raise KeyRequired("An API key is required for this provider.")
 
+    # Raises InvalidBaseURL, which the router maps to 400 alongside the others.
+    resolved_base_url = base_url_rules.validate(base_url) if base_url is not None else None
+    if resolved_base_url and not accepts_base_url(provider):
+        raise UnknownProvider(
+            f"'{provider}' has a fixed endpoint. A custom URL is only accepted for: "
+            f"{', '.join(self_hosted_provider_names())}."
+        )
+
     values: Dict[str, Any] = {
         "user_id": user_id,
         "provider": provider,
         "model": model.strip(),
         "updated_at": datetime.now().isoformat(),
     }
+
+    if resolved_base_url is not None:
+        values["base_url"] = resolved_base_url
+    if not accepts_base_url(provider):
+        values["base_url"] = ""
 
     if api_key:
         values["encrypted_key"] = secret_box.encrypt(api_key)

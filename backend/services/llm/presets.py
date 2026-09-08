@@ -84,6 +84,25 @@ def preset_names() -> list[str]:
     return sorted(PRESETS)
 
 
+# Providers whose endpoint a reader may name. Deliberately not every provider:
+# a cloud preset's base_url is fixed, and letting a request redirect one would
+# mean the server posting a reader's own API key to a host they chose — a
+# credential-exfiltration and SSRF surface bought for no benefit, since nobody
+# needs OpenAI to live somewhere else. These two exist precisely to point at a
+# machine that is not this one.
+SELF_HOSTED_PROVIDERS: tuple[str, ...] = ("ollama", "custom")
+
+
+def self_hosted_provider_names() -> list[str]:
+    """Providers that accept a per-reader base URL."""
+    return list(SELF_HOSTED_PROVIDERS)
+
+
+def accepts_base_url(name: str) -> bool:
+    """Whether `name` may be pointed at a reader-supplied endpoint."""
+    return name.strip().lower() in SELF_HOSTED_PROVIDERS
+
+
 def keyless_provider_names() -> list[str]:
     """
     Providers that authenticate with nothing — the local ones.

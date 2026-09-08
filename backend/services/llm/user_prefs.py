@@ -52,4 +52,5 @@ async def provider_for(user_id: Optional[str], feature: str) -> Optional[LLMProv
         credentials.get("provider", ""),
         credentials.get("model", ""),
         credentials.get("api_key", ""),
+        credentials.get("base_url", ""),
     )

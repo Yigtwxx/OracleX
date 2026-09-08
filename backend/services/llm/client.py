@@ -29,7 +29,7 @@ from services.llm.base import (
     LLMTransientError,
     LLMUnavailableError,
 )
-from services.llm.presets import PRESETS, preset_names
+from services.llm.presets import PRESETS, accepts_base_url, preset_names
 from services.llm.providers import ADAPTERS
 from services.health_registry import health
 
@@ -51,12 +51,21 @@ def _parse_spec(spec: str) -> tuple[str, str]:
     return name.strip().lower(), model.strip()
 
 
-def build_provider(name: str, model: str = "", api_key: str = "") -> Optional[LLMProvider]:
+def build_provider(
+    name: str, model: str = "", api_key: str = "", base_url: str = ""
+) -> Optional[LLMProvider]:
     """
     Construct a provider from explicit values.
 
     Used for per-user keys and for validating a key before it is stored, where
     the values come from the request rather than from settings.
+
+    `base_url` is honoured only for the self-hosted presets. Ollama runs on the
+    reader's machine rather than the server's, so without this a reader who
+    selected it pointed the server at its own localhost; see
+    services/llm/base_url.py for why a reader's value is checked and the
+    operator's is not. It is ignored for a cloud preset on purpose — that would
+    redirect their key to a host named in a request.
     """
     name = name.strip().lower()
     preset = PRESETS.get(name)
@@ -69,13 +78,19 @@ def build_provider(name: str, model: str = "", api_key: str = "") -> Optional[LL
         logger.error("Provider '%s' has no default model — a model must be given.", name)
         return None
 
+    caller_base_url = base_url.strip() if accepts_base_url(name) else ""
+
     base_url = preset.base_url
     if name == "ollama":
-        base_url = settings.OLLAMA_BASE_URL
+        base_url = caller_base_url or settings.OLLAMA_BASE_URL
     elif not base_url:
-        base_url = settings.LLM_BASE_URL
+        base_url = caller_base_url or settings.LLM_BASE_URL
         if not base_url:
-            logger.error("Provider '%s' needs LLM_BASE_URL to be set.", name)
+            logger.error(
+                "Provider '%s' needs an endpoint — LLM_BASE_URL, or one saved on the "
+                "caller's profile.",
+                name,
+            )
             return None
 
     return ADAPTERS[preset.adapter](

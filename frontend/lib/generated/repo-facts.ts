@@ -270,8 +270,8 @@ export const TESTS = {
   suites: [
     {
       name: 'backend',
-      tests: 3298,
-      files: 155,
+      tests: 3340,
+      files: 156,
     },
     {
       name: 'mcp-server',
@@ -284,5 +284,5 @@ export const TESTS = {
       files: 55,
     },
   ],
-  total: 4363,
+  total: 4405,
 } as const;
