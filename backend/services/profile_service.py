@@ -6,7 +6,7 @@ from datetime import datetime, date
 from typing import Dict, Optional, Any
 
 from services import storage
-from services.supabase_service import get_supabase
+from services.supabase_service import get_supabase, run_with_reconnect
 
 
 logger = logging.getLogger(__name__)
@@ -51,8 +51,12 @@ async def get_user_profile(user_id: str, email: Optional[str] = None) -> Optiona
     try:
         supabase = get_supabase()
 
-        # First try to get existing profile
-        response = supabase.table("profiles").select("*").eq("id", user_id).execute()
+        # First try to get existing profile. Wrapped because a dropped HTTP/2
+        # connection to Supabase used to surface here as a 503 on a profile that
+        # was perfectly fine; see run_with_reconnect.
+        response = run_with_reconnect(
+            lambda: supabase.table("profiles").select("*").eq("id", user_id).execute()
+        )
     except Exception as e:
         logger.error(f"Error getting profile: {e}")
         raise ProfileError(str(e)) from e
@@ -356,8 +360,14 @@ async def get_user_settings(user_id: str) -> Dict[str, Any]:
     try:
         supabase = get_supabase()
 
-        response = (
-            supabase.table("user_settings").select("*").eq("user_id", user_id).limit(1).execute()
+        response = run_with_reconnect(
+            lambda: (
+                supabase.table("user_settings")
+                .select("*")
+                .eq("user_id", user_id)
+                .limit(1)
+                .execute()
+            )
         )
 
         if response.data:
