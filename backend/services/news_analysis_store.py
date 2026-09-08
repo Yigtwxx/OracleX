@@ -143,6 +143,19 @@ def record_outcome(news_id: str, outcome: Dict[str, Any]) -> bool:
         return True
 
 
+def all_entries() -> List[Dict[str, Any]]:
+    """
+    Every stored analysis, across all pipeline versions.
+
+    `pending_outcomes` answers a narrower question — "nothing measured yet" —
+    which stops being true for a verdict the moment its first horizon lands. The
+    track record needs to keep seeing a verdict after that, because its later
+    horizons are measured months apart, so it reads through here instead.
+    """
+    with _lock:
+        return [dict(entry) for entry in _all().values()]
+
+
 def pending_outcomes() -> List[Dict[str, Any]]:
     """
     Stored analyses that have no measured outcome yet.

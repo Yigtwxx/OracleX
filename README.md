@@ -2126,6 +2126,32 @@ Shipped in **v1.6.0**:
       there to sit in front of. With [`docs/DEPLOY.md`](docs/DEPLOY.md) for the
       settings whose defaults are wrong on a server and right on a laptop.
 
+Shipped, unreleased:
+
+- [x] **Track record** — `/track-record`, public and unauthenticated, scoring
+      every directional call the news pipeline has made against what the price
+      actually did. The premise of the earlier plan was wrong: nothing was being
+      recorded. `record_outcome()` and `pending_outcomes()` had no callers and
+      every stored verdict carried a null outcome, so the loop had to be built
+      before it could be served. Two append-only tables, because a verdict's
+      one-day horizon is measurable tomorrow and its one-year horizon is not —
+      held in a single row that would mean rewriting the record five times as
+      the horizons arrive. An earlier plan committed these to a Sepolia
+      contract, which was dropped: a testnet proves nothing about
+      tamper-resistance, and a real chain would mean paying for every write.
+
+      The horizons are measured from the verdict rather than the headline, so a
+      move that happened while the analysis was still running cannot be credited
+      to the call. Neutral verdicts are counted apart from directional ones,
+      every rate is printed beside what the best fixed answer scored on the same
+      calls, and a bucket below the sample floor shows its count and no rate.
+      Building it surfaced a second bug: `okx_market` strips its venue prefix
+      before calling OKX and the Yahoo path does not, so `NASDAQ:NWS` was a 404
+      returned as "no history" — indistinguishable from an asset the venues
+      genuinely do not carry. The curated event catalogue escaped it by writing
+      plain tickers; the news pipeline does not, and this was the first caller
+      to hand it those symbols.
+
 Planned:
 
 - [ ] **Hardening:** contract tests over the endpoint matrix, broader component
@@ -2133,11 +2159,6 @@ Planned:
 - [ ] **Personalization:** portfolio allocation views, saved dashboard layouts,
       and alarms that survive a change of browser. Watchlists and notes are on
       Supabase as of v1.5.x, each scoped to its owner.
-- [ ] **Track record:** the multi-horizon outcomes the scorer already records,
-      served as a public accuracy page. An earlier plan committed these to a
-      Sepolia contract, which was dropped: a testnet proves nothing about
-      tamper-resistance, and a real chain would mean paying for every write.
-      The record stays in Postgres, append-only and exportable.
 
 ---
 

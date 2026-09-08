@@ -54,6 +54,7 @@ from routers import (
     ownership,
     polymarket,
     system,
+    track_record,
 )
 
 logger = logging.getLogger("oracle_x")
@@ -505,6 +506,7 @@ def create_app() -> FastAPI:
     # is behind a router-level require_admin.
     app.include_router(admin.session_router)  # /api/admin/me
     app.include_router(admin.router)  # /api/admin/*
+    app.include_router(track_record.router)  # /api/track-record/* — public accuracy record
     app.include_router(system.router)  # /api/system/readiness, /api/system/health
 
     return app

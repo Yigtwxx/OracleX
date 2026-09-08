@@ -232,6 +232,46 @@ equities are the plain ticker. An unprefixed ticker forced down the crypto path
 once read AAPL off a tokenised-equity market; the resolution logic is deliberate
 and should not be "simplified".
 
+The corollary bites in the other direction and is easy to miss, because only one
+half of the pair defends itself: `okx_market` strips the prefix before calling
+OKX, and the Yahoo path does not. `fetch_stock_candles` and
+`fetch_stock_candles_between` put what they are given straight into the URL, so
+`NASDAQ:NWS` is a 404 — and a 404 there is returned as "no history", which is
+the same answer a genuinely unlistable asset gets. Nothing raises, nothing logs
+a malformed request, and a whole asset class quietly stops being measured. The
+technical path normalises at its caller; anything reaching Yahoo from elsewhere
+must go through `rag_outcomes.yahoo_symbol`, which also knows that Borsa
+İstanbul needs `.IS` appended rather than a prefix removed. This surfaced when
+the track record became the first caller to hand the news pipeline's own symbols
+to that seam, and lost every equity call it made.
+
+**The track record is append-only, and three of its rules exist to stop the
+number flattering itself.** `services/track_record.py` scores the news
+pipeline's directional verdicts against what the price did, on two tables rather
+than one — a verdict's one-day horizon is measurable tomorrow and its one-year
+horizon is not, so a single row would be rewritten five times as the horizons
+arrive, and a record you rewrite is not evidence. Nothing in the application
+issues UPDATE or DELETE against either table.
+
+The three rules, each of which reads as an over-complication until you remove
+it. Horizons run from `predicted_at`, not from the article's `published_at`:
+measuring from publication credits the model with whatever moved while the
+analysis was still running, which no reader could have traded. Neutral verdicts
+are counted apart from directional ones, because staying inside the flat band is
+the easiest of the three claims and the one the model reaches for most often —
+pooling them lifts the headline with the verdict that risks least. And every
+rate is served beside what the best *fixed* answer scored on exactly the same
+calls, computed on the same denominator; a hit rate without that benchmark is
+unreadable, and a benchmark drawn from a wider sample invents an edge that was
+never measured. Below `TRACK_RECORD_MIN_SAMPLES` a bucket reports its count and
+no rate at all, which is `polymarket/sufficiency`'s reasoning turned on our own
+numbers.
+
+Ingest is pulled from `news_analysis_store` by the scheduled job rather than
+pushed from `_persist`. That keeps a database round-trip off the analysis hot
+path, and it is why verdicts already on disk are picked up on the first run
+instead of the record starting empty.
+
 **`frontend/package.json` carries an `overrides` block, and an override wins
 silently.** It holds `postcss` and `sharp`, both because `next` is the thing
 asking for the vulnerable version: it pins `postcss` to exactly `8.4.31`, which

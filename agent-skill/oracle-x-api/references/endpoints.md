@@ -423,6 +423,31 @@ Get RAG 2.0 statistics.
 
 Response shape is not declared on the route — inspect one call.
 
+## Track record
+
+How the terminal's own directional calls have scored against what the price did.
+
+### `GET /api/track-record/summary`
+
+Get Summary
+
+Hit rate per horizon, the base rate beside it, and what was excluded.
+
+
+Returns `object`.
+
+### `GET /api/track-record/predictions`
+
+Get Predictions
+
+The individual calls, newest first, resolved or not.
+
+Parameters:
+- `limit` (query, integer, optional, default `50`)
+- `offset` (query, integer, optional, default `0`)
+
+Returns `PredictionsResponse`: `items`, `total`, `limit`, `offset`
+
 ## Macro
 
 Cross-asset state: indices, metals, the regime label and its evidence.

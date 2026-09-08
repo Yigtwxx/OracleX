@@ -287,6 +287,42 @@ def start_scheduler():
                 coalesce=True,
             )
 
+        # Close the horizons that have come due, and pick up any verdict made
+        # since the last pass. Deliberately not tied to the analysis itself: a
+        # database round-trip inside the reply would be paid on every analysis
+        # for a figure nobody reads in real time, and pulling from the store
+        # means the analyses already on disk are scored on the first run.
+        async def track_record_score_job():
+            try:
+                from services import track_record
+
+                report = await track_record.score_pending()
+                if report["ingested"] or report["written"]:
+                    log_step(
+                        "\U0001f4d0",
+                        f"Track record: {report['ingested']} verdicts in, "
+                        f"{report['written']} horizons closed",
+                    )
+            except Exception as e:
+                log_error(f"Track record scoring error: {e}")
+
+        scheduler.add_job(
+            track_record_score_job,
+            trigger=IntervalTrigger(minutes=settings.TRACK_RECORD_SCORE_INTERVAL_MINUTES),
+            id="track_record_score_job",
+            name="Score Track Record",
+            replace_existing=True,
+            # A pass can outlast its own interval when the batch is full and the
+            # venues are slow. Stacking them would measure the same verdicts
+            # twice and race on the unique constraint that prevents it.
+            max_instances=1,
+            coalesce=True,
+            # Nothing here is time-critical — a horizon that comes due at noon
+            # reads the same at four — so a missed run is worth catching rather
+            # than skipping.
+            misfire_grace_time=3600,
+        )
+
         scheduler.start()
         log_header("SCHEDULER STARTED")
         log_success(

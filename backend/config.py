@@ -565,6 +565,23 @@ class Settings(BaseSettings):
     # pulled than are kept and the surplus is discarded after scoring.
     RAG_CANDIDATE_MULTIPLIER: int = 4
 
+    # ── Track record ────────────────────────────────────────────────────────
+    # How often the scorer closes the horizons that have come due. Hourly rather
+    # than per-minute because nothing here is time-critical: the shortest
+    # horizon is a day old before it can be read at all.
+    TRACK_RECORD_SCORE_INTERVAL_MINUTES: int = 60
+    # Below this many scored calls a bucket reports its count and no rate. A
+    # five-sample bucket moves twenty points per call, and rendering that as a
+    # percentage invites a reader to treat noise as a measurement.
+    TRACK_RECORD_MIN_SAMPLES: int = 10
+    # Verdicts measured per pass. Each costs one call at OKX or Yahoo, and an
+    # unbounded pass over a year of history would arrive as a burst.
+    TRACK_RECORD_SCORE_BATCH: int = 25
+    # How long past a horizon's target a missing measurement is still worth
+    # retrying. After this the horizon is closed as unmeasurable, which is what
+    # stops a symbol the venues do not carry from being re-fetched forever.
+    TRACK_RECORD_GIVE_UP_DAYS: int = 30
+
     # ── News symbol attribution ─────────────────────────────────────────────
     # Concurrent LLM calls allowed while working out which asset each headline
     # is about. Every source is fetched at once and a refresh carries ~150

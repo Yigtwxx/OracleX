@@ -110,6 +110,14 @@ ENDPOINT_GROUPS: list[tuple[str, str, list[tuple[str, str]]]] = [
         ],
     ),
     (
+        "Track record",
+        "How the terminal's own directional calls have scored against what the price did.",
+        [
+            ("GET", "/api/track-record/summary"),
+            ("GET", "/api/track-record/predictions"),
+        ],
+    ),
+    (
         "Macro",
         "Cross-asset state: indices, metals, the regime label and its evidence.",
         [
