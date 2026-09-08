@@ -22,6 +22,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from dependencies.provider_keys import use_caller_provider_keys
+from dependencies.rate_limit import RateLimit
 
 from dependencies.auth import AuthUser, get_optional_user
 
@@ -122,6 +123,11 @@ from services.bist.radar.profiles import PROFILES as RADAR_PROFILES
 # inflation series reaches most of this surface (real-return columns, the
 # Bilanço basis toggle, the Halka Arz frame) through call chains that never see
 # the request. See services/provider_keys.py.
+# Per address, because this route has no account behind it. Three scans a
+# minute is far above what a reader clicking "scan" can produce and far below
+# what a loop would.
+_radar_scan_limit = RateLimit(name="bist-radar-scan", limit=3, window_seconds=60)
+
 router = APIRouter(
     prefix="/api/bist",
     tags=["bist"],
@@ -1682,7 +1688,11 @@ def _radar_horizon(horizon: str) -> str:
     return horizon
 
 
-@router.post("/radar/scan", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/radar/scan",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(_radar_scan_limit)],
+)
 async def start_radar_scan(response: Response, horizon: str = Query("swing")):
     """
     Scan the XU100 for pullbacks inside uptrends, in the background.
@@ -1690,6 +1700,13 @@ async def start_radar_scan(response: Response, horizon: str = Query("swing")):
     Returns the job to poll. A scan already running for this horizon is joined
     rather than duplicated; a scan that just finished is returned with a 200 so
     the client can read its result straight away.
+
+    Deliberately readable without an account, like every other board here — but
+    it is the one route on this router that *starts* model work, and on a
+    public deployment an unauthenticated endpoint that spends tokens is an
+    invitation. The window is wide enough that no honest reader will meet it and
+    narrow enough that nobody can idle a bill up with a loop; the single-flight
+    join above means repeat callers mostly get an existing job anyway.
     """
     job = await radar_scan.start_scan(_radar_horizon(horizon))
     if not job.is_active:

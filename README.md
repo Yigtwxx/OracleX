@@ -1054,7 +1054,10 @@ frontend/
 ├── start.sh / start.bat        # launchers (venv, ports, both servers, RAG seed)
 ├── docker-compose.yml          # production-shaped stack
 ├── docker-compose.override.yml # dev overrides (bind mounts, --reload, next dev)
-├── supabase/migrations/        # 001_initial_schema → 015_llm_settings_notes
+├── docker-compose.tls.yml      # server overlay: Caddy, and no published app ports
+├── Caddyfile                   # TLS, one origin, backend under /api and /ws
+├── docs/DEPLOY.md              # putting it on a server, start to finish
+├── supabase/migrations/        # 001_initial_schema → 018_ai_usage
 ├── .claude-plugin/             # Claude Code marketplace: three installable plugins
 ├── agent-skill/                # three AgentSkills for external coding agents
 │   ├── oracle-x-api/           # reading a running instance
@@ -1339,6 +1342,12 @@ warning — AI features fall through the chain or switch off. With a cloud
 provider configured, none of this applies.
 
 ### Deploying to a server
+
+**[`docs/DEPLOY.md`](docs/DEPLOY.md) is the full guide** — DNS, TLS through
+Caddy, the four settings that are wrong by default on a server, applying the
+migrations, and what to check afterwards. The rest of this section is the short
+version.
+
 
 Three values change together, since the browser (not the container) resolves
 them:

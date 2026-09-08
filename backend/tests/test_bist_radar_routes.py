@@ -22,9 +22,15 @@ from services.bist.radar import scan as radar_scan
 def _clean_jobs():
     analysis_jobs._jobs.clear()
     analysis_jobs._lock = None
+    # The scan route is rate limited per address because it has no account
+    # behind it and it starts model work. Every test here arrives as the same
+    # "testclient" address, so without this the third one in the file is
+    # throttled rather than exercised.
+    bist_router._radar_scan_limit.reset()
     yield
     analysis_jobs._jobs.clear()
     analysis_jobs._lock = None
+    bist_router._radar_scan_limit.reset()
 
 
 @pytest.fixture

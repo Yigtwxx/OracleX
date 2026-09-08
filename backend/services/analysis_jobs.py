@@ -236,6 +236,9 @@ async def start(
     A chat turn never does. Two identical questions are two questions, and
     merging them would silently drop a message — so chat passes a key that
     cannot collide and the loop below is a no-op for it.
+
+    `key` is expected to already carry whatever distinguishes one caller's run
+    from another's; see `scoped_key`.
     """
     async with _get_lock():
         _prune()
@@ -251,13 +254,47 @@ async def start(
         return job
 
 
+async def scoped_key(base: str, user_id: Optional[str], feature: str) -> str:
+    """
+    The single-flight key for `base`, split per reader only when it must be.
+
+    Dedup on the artifact alone was wrong once bring-your-own-key existed:
+    whoever clicked first decided whose credential paid. A reader who had
+    configured a key and enabled it for this feature could click the same button
+    five seconds later, re-attach to a run already going on the server's
+    provider, and never learn their key had not been used — or, inverted, have
+    their key silently billed for somebody else's report.
+
+    Splitting on `user_id` unconditionally would fix that and throw away the
+    thing single-flight is for: on an install where nobody has a personal key —
+    the common case — every reader wants the same artifact and one run should
+    serve them all. So the key is only widened for the readers it is actually
+    ambiguous for, which is those bringing their own provider.
+    """
+    if not user_id:
+        return base
+
+    from services import llm
+
+    provider = await llm.provider_for(user_id, feature)
+    if provider is None:
+        # Runs on the server chain like everyone else's, so it may be shared.
+        return base
+
+    # Keyed on the quota bucket rather than the user: two readers who supplied
+    # the *same* credential draw on one quota and may share a run, which is both
+    # cheaper and what either of them would have got alone.
+    return f"{base}:{provider.quota_key}"
+
+
 async def start_job(timeframe: str, user_id: Optional[str] = None) -> Job:
     """Start (or re-attach to) the market report job for this horizon."""
 
     async def runner(controls: JobControls) -> Dict[str, Any]:
         return await generate_market_report(timeframe, user_id=user_id, on_stage=controls.on_stage)
 
-    return await start(timeframe, KIND_REPORT, STAGES, runner)
+    key = await scoped_key(timeframe, user_id, "reports")
+    return await start(key, KIND_REPORT, STAGES, runner, owner_id=user_id)
 
 
 async def get_job(job_id: str) -> Optional[Job]:

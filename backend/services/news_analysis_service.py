@@ -442,4 +442,5 @@ async def start_analysis_job(
         )
         return analysis.model_dump(mode="json")
 
-    return await analysis_jobs.start(news_item.id, analysis_jobs.KIND_NEWS, STAGES, runner)
+    key = await analysis_jobs.scoped_key(news_item.id, user_id, "news")
+    return await analysis_jobs.start(key, analysis_jobs.KIND_NEWS, STAGES, runner, owner_id=user_id)

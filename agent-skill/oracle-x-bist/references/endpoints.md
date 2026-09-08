@@ -572,6 +572,13 @@ Returns the job to poll. A scan already running for this horizon is joined
 rather than duplicated; a scan that just finished is returned with a 200 so
 the client can read its result straight away.
 
+Deliberately readable without an account, like every other board here — but
+it is the one route on this router that *starts* model work, and on a
+public deployment an unauthenticated endpoint that spends tokens is an
+invitation. The window is wide enough that no honest reader will meet it and
+narrow enough that nobody can idle a bill up with a loop; the single-flight
+join above means repeat callers mostly get an existing job anyway.
+
 Parameters:
 - `horizon` (query, string, optional, default `'swing'`)
 
