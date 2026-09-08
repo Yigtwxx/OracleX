@@ -41,13 +41,15 @@ export default defineConfig({
         // `unit` needs none of this, which is why the plugin sits on the one
         // project rather than at the root.
         //
-        // `jsdom` is held at 26 for a reason that will not show up on a
-        // developer's machine: 27 onwards pulls in undici, which requires Node
-        // 22.19, and CI runs Node 20. The failure is not a failing assertion
-        // but every worker in this project refusing to start with
-        // "webidl.util.markAsUncloneable is not a function", which reads as a
-        // broken harness rather than as a runtime floor. Raise it when the
-        // workflow's node-version does.
+        // This project is the one thing in the repository with a real Node
+        // floor: `jsdom` pulls in undici, which wants 22.19 or newer, and the
+        // failure mode is not a failing assertion but every worker here
+        // refusing to start with "webidl.util.markAsUncloneable is not a
+        // function" — which reads as a broken harness rather than as a version
+        // problem, and shows up only in CI because a developer's Node is
+        // usually newer. `.github/workflows/ci.yml` and `frontend/Dockerfile`
+        // are on 22 for this among other reasons; check a jsdom upgrade's
+        // engines against them rather than against `node -v`.
         plugins: [react()],
         resolve: { alias },
         test: {

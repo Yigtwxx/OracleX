@@ -1890,7 +1890,7 @@ in five jobs:
 | Job | Steps |
 |-----|-------|
 | **Backend** (Python 3.11) | `ruff check .` → `ruff format --check .` → `python -m compileall` → `pytest` |
-| **Frontend** (Node 20) | `npm ci` → `npm run lint` → `npm run format:check` → `npm run typecheck` → `npm test` → `npm run build` |
+| **Frontend** (Node 22) | `npm ci` → `npm run lint` → `npm run format:check` → `npm run typecheck` → `npm test` → `npm run build` |
 | **Frontend browser tests** | `npx playwright install --with-deps chromium` → `npm run build` → `npm run e2e` |
 | **Generated files** | `python scripts/build_agent_skill.py --check` → `python scripts/build_repo_facts.py --check` |
 | **MCP server** | `ruff check .` → `ruff format --check .` → `pytest` |
