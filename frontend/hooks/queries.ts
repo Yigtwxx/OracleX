@@ -52,7 +52,6 @@ import {
   fetchAnalysisJob,
   fetchActiveAnalysisJobs,
   cancelAnalysisJob,
-  fetchChatJob,
   startNewsAnalysisJob,
   fetchNewsAnalysisJob,
   fetchCachedNewsAnalysis,
@@ -116,7 +115,6 @@ export const queryKeys = {
   reportSummaries: ['reportSummaries'] as const,
   analysisJob: (jobId: string) => ['analysisJob', jobId] as const,
   activeAnalysisJobs: ['activeAnalysisJobs'] as const,
-  chatJob: (jobId: string) => ['chatJob', jobId] as const,
   // Keyed by news id, which is what makes the panel race-proof: a late response
   // for item A is physically unable to render under item B.
   newsAnalysis: (newsId: string) => ['newsAnalysis', newsId] as const,
@@ -852,36 +850,6 @@ export function useActiveAnalysisJobs() {
     refetchInterval: ACTIVE_JOBS_POLL_INTERVAL_MS,
     // A failed poll must not strand a spinner on a run that already ended.
     retry: false,
-  });
-}
-
-// ==========================================
-// CHAT JOB HOOKS
-// ==========================================
-
-/**
- * Faster than the report poll, on purpose.
- *
- * A report's stages change every minute or so and the payload carries the whole
- * report. A chat turn's steps are the product — the user is watching them — and
- * the payload is a few hundred bytes until the answer lands.
- */
-const CHAT_JOB_POLL_INTERVAL_MS = 900;
-
-/** Poll a running chat turn for its steps and, finally, its answer. */
-export function useChatJob(jobId: string | undefined) {
-  return useQuery({
-    queryKey: queryKeys.chatJob(jobId ?? ''),
-    queryFn: () => fetchChatJob(jobId!),
-    enabled: !!jobId,
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return status === 'queued' || status === 'running' ? CHAT_JOB_POLL_INTERVAL_MS : false;
-    },
-    // A job that expired server-side is gone for good, and a chat job is
-    // retained for five minutes — retrying just delays the error.
-    retry: false,
-    gcTime: 0,
   });
 }
 

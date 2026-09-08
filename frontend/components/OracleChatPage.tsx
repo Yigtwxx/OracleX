@@ -29,49 +29,31 @@ import {
   fetchSessionMessages,
   saveChatMessage as saveChatMessageApi,
   startChatJob,
-  cancelChatJob,
   fetchChatStatus,
   type ChatSession,
 } from '@/lib/api';
-import { useChatJob } from '@/hooks/queries';
+import { useChatTurn } from '@/hooks/useChatTurn';
 import StepTimeline from './chat/StepTimeline';
 import Markdown from './ui/Markdown';
-import { toStepRow, toStoredSteps, type ChatStep, type Citation } from '@/lib/chat-job';
-
-type ResponseStyle = 'concise' | 'detailed';
+import { toStoredSteps, type ChatStep } from '@/lib/chat-job';
+import {
+  attach as attachTurn,
+  cancel as cancelActiveTurn,
+  consume as consumeTurn,
+  hydrate as hydrateTurn,
+  recallTranscript,
+  rememberTranscript,
+  SETTLED_MAX_AGE_MS,
+  whenPersisted,
+  type ChatMessage,
+  type ResponseStyle,
+} from '@/lib/chat-turn-store';
 
 // How much of the transcript travels with a turn. See the comment where it is
 // used — the lower bound is set by `chat_focus.FOCUS_LOOKBACK_TURNS` on the
 // server, which is 4 user messages.
 const HISTORY_WINDOW = 12;
 const HISTORY_MESSAGE_CHARS = 2000;
-
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  thinkingTime?: number;
-  timestamp: Date;
-  /**
-   * The mode this message was exchanged under, frozen at creation so the
-   * entrance animation cannot be replayed by later mode switches. Undefined for
-   * messages restored from history: the backend does not persist the mode, and
-   * animating a bubble that has been on screen since page load would be a lie.
-   */
-  mode?: ResponseStyle;
-  /**
-   * What the turn actually did to produce this answer. Undefined for restored
-   * messages for the same reason `mode` is — the steps are not persisted yet.
-   */
-  steps?: ChatStep[];
-  /**
-   * The pages behind the answer. Not persisted either, so a restored message
-   * shows the links the model chose to inline and nothing more.
-   */
-  citations?: Citation[];
-  /** The asset this turn resolved to, and whether it was carried over. */
-  focusSymbol?: string;
-  focusInherited?: boolean;
-}
 
 // The style picker used to be two words that swapped a grey background, so the
 // only way to know which Oracle you were talking to was to remember. It is a
@@ -168,44 +150,67 @@ function StepSummary({ steps }: { steps: ChatStep[] }) {
 
 export default function OracleChatPage() {
   const { user } = useOptionalAuth();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+  // What was on screen the last time this page was mounted. The turn in flight
+  // outlives the route now, so the conversation around it has to as well — a
+  // signed-out reader has no history to reload it from, and a signed-in one
+  // would otherwise watch the transcript blink back in a round trip later.
+  const restored = useRef(recallTranscript()).current;
+
+  const [messages, setMessages] = useState<ChatMessage[]>(restored?.messages ?? []);
   const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  // True only between pressing send and the job existing. Once it does, the
+  // store is the single account of whether a turn is running.
+  const [isStarting, setIsStarting] = useState(false);
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [responseStyle, setResponseStyle] = useState<ResponseStyle>('detailed');
+  const [responseStyle, setResponseStyle] = useState<ResponseStyle>(restored?.style ?? 'detailed');
+
+  // The turn in flight, read from a store that outlives this component. The
+  // poller cannot live here: leaving /chat used to unmount it, and the answer
+  // the server went on to produce was collected by nobody.
+  const turn = useChatTurn();
+  const [followups, setFollowups] = useState<string[]>(restored?.followups ?? []);
+
+  const isLoading = isStarting || turn.pending !== null;
   // The style the in-flight request was sent with. Switching modes while Oracle
   // is answering must not recolour the pending bubble to describe a request that
   // was never made.
-  const [pendingStyle, setPendingStyle] = useState<ResponseStyle>('detailed');
-
-  // The turn in flight. The answer no longer comes back from the call that
-  // started it: the backend runs the turn as a job so its steps can be reported
-  // while they happen, and this id is what the poller follows.
-  const [activeJobId, setActiveJobId] = useState<string | undefined>(undefined);
-  const [followups, setFollowups] = useState<string[]>([]);
-  const chatJob = useChatJob(activeJobId);
+  const pendingStyle = turn.pending?.style ?? responseStyle;
 
   // Session State
   const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(
+    restored?.sessionId ?? null
+  );
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  // Which job the answer has already been collected for, and which session the
-  // in-flight turn belongs to — the user can switch sessions while waiting.
+  // Which job's answer this mount has already rendered. Per mount on purpose:
+  // a turn that settled while the reader was on another page has been rendered
+  // by nobody, and coming back has to collect it.
   const handledJobRef = useRef<string | undefined>(undefined);
-  const jobSessionRef = useRef<string | null>(null);
+  // The conversation on screen, readable from a callback that resolves later.
+  const currentSessionRef = useRef<string | null>(restored?.sessionId ?? null);
   // A session this component just created for the turn it is sending. Its
   // messages are already on screen, and the row that persists them is still in
   // flight, so loading its history would replace the optimistic bubble with an
   // empty list — the first message of a new chat would vanish.
   const freshSessionRef = useRef<string | null>(null);
+  // The session the transcript on screen belongs to. Seeded from the restored
+  // one so the effect below does nothing on the way in: with no session there
+  // is nothing to load, and the branch that empties the board for a *new* chat
+  // cannot otherwise tell that apart from a mount that already has one. A flag
+  // cleared after the first run is not enough — StrictMode runs it twice.
+  const loadedSessionRef = useRef<string | null>(restored?.sessionId ?? null);
 
   // Check chat availability on mount
   useEffect(() => {
     checkAvailability();
+    // Pick up a turn that was still running when the tab was reloaded. Cheap
+    // and idempotent — it does nothing once a turn is already being followed.
+    hydrateTurn();
   }, []);
 
   // Load chat sessions when user is available
@@ -217,6 +222,9 @@ export default function OracleChatPage() {
 
   // Load messages when session changes
   useEffect(() => {
+    if (loadedSessionRef.current === currentSessionId) return;
+    loadedSessionRef.current = currentSessionId;
+
     if (currentSessionId && freshSessionRef.current === currentSessionId) {
       freshSessionRef.current = null;
       return;
@@ -227,6 +235,10 @@ export default function OracleChatPage() {
       setMessages([]);
     }
   }, [currentSessionId, user?.id]);
+
+  useEffect(() => {
+    currentSessionRef.current = currentSessionId;
+  }, [currentSessionId]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -292,103 +304,128 @@ export default function OracleChatPage() {
     }
   };
 
-  const saveChatMessage = async (
-    role: 'user' | 'assistant',
-    content: string,
-    sessionId?: string,
-    thinkingTime?: number,
-    steps?: ChatStep[]
-  ) => {
+  /**
+   * Write the reader's own message down.
+   *
+   * Only theirs: the answer is persisted by `chat-turn-store` when the turn
+   * settles, because by then this page may not be mounted to do it.
+   */
+  const saveUserMessage = async (content: string, sessionId?: string) => {
     if (!user?.id) return;
 
     try {
-      await saveChatMessageApi({
-        role,
-        content,
-        session_id: sessionId,
-        thinking_time: thinkingTime,
-        steps: steps?.map(toStepRow),
-      });
+      await saveChatMessageApi({ role: 'user', content, session_id: sessionId });
     } catch (error) {
       console.error('Failed to save chat message:', error);
     }
   };
 
   /**
-   * Collect a finished turn.
+   * Put a finished turn on screen.
    *
-   * Guarded by a ref rather than by the effect's dependency list: React may run
-   * an effect more than once for the same state, and without the guard a
+   * The store is what settles the turn and, for a signed-in reader, what writes
+   * the answer to history — this only renders it. Guarded by a ref because React
+   * may run an effect more than once for the same state, and without the guard a
    * re-render would append the same answer twice.
    */
   useEffect(() => {
-    const job = chatJob.data;
-    if (!job || !activeJobId) return;
-    if (job.status !== 'done' && job.status !== 'error') return;
-    if (handledJobRef.current === activeJobId) return;
-    handledJobRef.current = activeJobId;
+    const settled = turn.settled;
+    if (!settled) return;
+    if (handledJobRef.current === settled.jobId) return;
+    handledJobRef.current = settled.jobId;
+    consumeTurn(settled.jobId);
 
-    const sessionId = jobSessionRef.current;
-    const result = job.result;
+    const job = settled.job;
+    const result = job.status === 'done' ? job.result : undefined;
 
-    if (job.status === 'error' || !result) {
+    // The backend auto-titles a session on its first turn and returns the title
+    // it persisted, so the sidebar can drop the raw message slice it was created
+    // with without refetching the session list. Applied before the guards below
+    // because the sidebar is on screen whichever conversation is.
+    const newTitle = result?.sessionTitle;
+    const titledSession = settled.sessionId;
+    if (newTitle && titledSession) {
+      setSessions((prev) =>
+        prev.map((session) =>
+          session.id === titledSession ? { ...session, title: newTitle } : session
+        )
+      );
+    }
+
+    if (settled.observed) inputRef.current?.focus();
+
+    // Older than any conversation it could still belong to. Only a signed-out
+    // turn can get this far — a persisted one is skipped just below — and an
+    // hour-old reply dropped into a conversation that has moved on is worse
+    // than no reply at all.
+    if (Date.now() - settled.settledAt > SETTLED_MAX_AGE_MS) return;
+
+    // An answer that landed while the reader was elsewhere is already in the
+    // database, and appending it here as well would show it twice. Reload the
+    // conversation instead — after the write, not after the mount, because the
+    // load this page runs on the way in can easily beat it and leave the reply
+    // showing nowhere at all.
+    if (!settled.observed && settled.persisted) {
+      const sessionId = settled.sessionId;
+      if (sessionId && sessionId === currentSessionId) {
+        void whenPersisted(settled.jobId).then(() => {
+          // The reader can move on during the write. Reloading then would
+          // replace the conversation they are reading with another one.
+          if (currentSessionRef.current === sessionId) void loadSessionMessages(sessionId);
+        });
+      }
+      return;
+    }
+
+    // The reader is free to switch conversations while waiting. The answer
+    // belongs to the one it was asked in, not to whatever is open now.
+    if (settled.sessionId !== currentSessionId) return;
+
+    if (!result) {
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
           content: `**Something went wrong**\n\n${job.error ?? 'The turn did not finish.'}`,
           timestamp: new Date(),
-          mode: pendingStyle,
+          mode: settled.style,
           steps: job.steps,
         },
       ]);
-    } else {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: result.response,
-          thinkingTime: result.thinkingTime,
-          timestamp: new Date(),
-          mode: pendingStyle,
-          steps: job.steps,
-          citations: result.citations,
-          focusSymbol: result.detectedSymbol,
-          focusInherited: result.focusInherited,
-        },
-      ]);
-
-      // Suggestions are per-turn, not per-message: they belong to the answer on
-      // screen, and keeping them on an older bubble would offer the user
-      // follow-ups to a conversation that has already moved on.
-      setFollowups(result.followups ?? []);
-
-      // The backend auto-titles a session on its first turn and returns the
-      // title it persisted, so the sidebar can drop the raw message slice it
-      // was created with without refetching the session list.
-      const newTitle = result.sessionTitle;
-      if (newTitle && sessionId) {
-        setSessions((prev) =>
-          prev.map((s) => (s.id === sessionId ? { ...s, title: newTitle } : s))
-        );
-      }
-
-      void saveChatMessage(
-        'assistant',
-        result.response,
-        sessionId || undefined,
-        result.thinkingTime,
-        job.steps
-      );
+      return;
     }
 
-    setActiveJobId(undefined);
-    setIsLoading(false);
-    inputRef.current?.focus();
-    // `pendingStyle` is frozen for the duration of the turn and must not
-    // re-trigger collection if the user flips the mode while waiting.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatJob.data, activeJobId]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'assistant',
+        content: result.response,
+        thinkingTime: result.thinkingTime,
+        timestamp: new Date(),
+        mode: settled.style,
+        steps: job.steps,
+        citations: result.citations,
+        focusSymbol: result.detectedSymbol,
+        focusInherited: result.focusInherited,
+      },
+    ]);
+
+    // Suggestions are per-turn, not per-message: they belong to the answer on
+    // screen, and keeping them on an older bubble would offer the user
+    // follow-ups to a conversation that has already moved on.
+    setFollowups(result.followups ?? []);
+  }, [turn.settled, currentSessionId]);
+
+  /**
+   * Keep the conversation where the turn can find it.
+   *
+   * Written on every change rather than on unmount: a route change is not the
+   * only way this component goes away, and a cache that is one render behind
+   * would restore a transcript missing its last message.
+   */
+  useEffect(() => {
+    rememberTranscript({ sessionId: currentSessionId, messages, followups, style: responseStyle });
+  }, [currentSessionId, messages, followups, responseStyle]);
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -403,8 +440,7 @@ export default function OracleChatPage() {
     setMessages((prev) => [...prev, userMessage]);
     setInputValue('');
     setFollowups([]);
-    setPendingStyle(responseStyle);
-    setIsLoading(true);
+    setIsStarting(true);
 
     // Initialize session if needed
     let activeSessionId = currentSessionId;
@@ -425,7 +461,7 @@ export default function OracleChatPage() {
     }
 
     // Save user message to DB
-    await saveChatMessage('user', text.trim(), activeSessionId || undefined);
+    await saveUserMessage(text.trim(), activeSessionId || undefined);
 
     // OPTIMISTIC UPDATE: Move current session to top
     if (activeSessionId) {
@@ -460,17 +496,27 @@ export default function OracleChatPage() {
         content: m.content.slice(0, HISTORY_MESSAGE_CHARS),
       }));
 
-      // Start the turn as a job and hand it to the poller. The answer arrives
-      // in the effect below, so this function's work ends here — `isLoading`
-      // stays true until the job settles.
+      // Start the turn as a job and hand it to the store. The answer arrives
+      // through the effect above, so this function's work ends here — the
+      // composer stays disabled until the store reports the turn settled.
       const job = await startChatJob({
         message: text.trim(),
         history: history.length > 0 ? history : undefined,
         session_id: activeSessionId ?? undefined,
         style: responseStyle,
       });
-      jobSessionRef.current = activeSessionId ?? null;
-      setActiveJobId(job.jobId);
+      // Handed over the moment the id exists, and deliberately not held in this
+      // component's state: the reader may already have navigated away during
+      // the await, and the store is what keeps polling either way.
+      attachTurn({
+        jobId: job.jobId,
+        sessionId: activeSessionId ?? null,
+        style: responseStyle,
+        // A signed-out reader has no history to write into; their answer lives
+        // in the store until this page renders it.
+        persist: !!user?.id,
+      });
+      setIsStarting(false);
     } catch (error) {
       const errorMessage: ChatMessage = {
         role: 'assistant',
@@ -479,7 +525,7 @@ export default function OracleChatPage() {
         mode: responseStyle,
       };
       setMessages((prev) => [...prev, errorMessage]);
-      setIsLoading(false);
+      setIsStarting(false);
       inputRef.current?.focus();
     }
   };
@@ -492,30 +538,15 @@ export default function OracleChatPage() {
   /**
    * Stop the turn that is running.
    *
-   * Clearing `activeJobId` is what actually stops this client: it disables the
-   * poll and takes the collection effect below out of play, so the answer this
-   * turn was about to produce is never appended. That is also why there is no
-   * "cancelled" branch down there — with no active job id, the effect returns
-   * before it can render anything.
-   *
-   * The local state goes first and the request after, because the point of
-   * pressing stop is that the composer comes back immediately. The server call
-   * still matters: it frees the LLM and the upstream feeds rather than leaving
-   * them working on an answer nobody will read.
+   * The store clears the pending turn and fires the cancel, which frees the LLM
+   * and the upstream feeds rather than leaving them working on an answer nobody
+   * will read. Nothing is appended afterwards: with no pending turn there is no
+   * settled one either, so the effect above never sees it.
    */
   const cancelTurn = () => {
-    const jobId = activeJobId;
-    if (!jobId) return;
-
-    setActiveJobId(undefined);
-    setIsLoading(false);
+    if (!turn.pending) return;
+    cancelActiveTurn();
     inputRef.current?.focus();
-
-    void cancelChatJob(jobId).catch(() => {
-      // The turn is already gone from this client's point of view. A failed
-      // cancel means the server keeps working for a few more seconds and then
-      // throws the answer away — worth nothing to report.
-    });
   };
 
   const handleSuggestionClick = (text: string) => {
@@ -749,9 +780,9 @@ export default function OracleChatPage() {
                         so while the job spins up, which is why the candles and
                         the copy above stay — with no steps yet this bubble looks
                         exactly as it always did. */}
-                    {(chatJob.data?.steps?.length ?? 0) > 0 && (
+                    {(turn.job?.steps?.length ?? 0) > 0 && (
                       <div className="relative z-10 mt-2.5 pl-1">
-                        <StepTimeline steps={chatJob.data!.steps} dense />
+                        <StepTimeline steps={turn.job!.steps} dense />
                       </div>
                     )}
                   </div>

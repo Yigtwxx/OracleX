@@ -75,6 +75,23 @@ the market surface, plus a hook per domain (`useProfile`, `useSocial`,
 is where the vitest suite is concentrated because that is where a failure would
 be silent rather than loud. Components stay presentational.
 
+**The chat turn is the one thing React Query does not own.** A turn runs as a
+backend job precisely so the answer outlives the connection that asked for it,
+and holding the job id in `OracleChatPage`'s state threw that away: leaving
+`/chat` unmounted the poller, so the server finished a turn nobody collected and
+nobody wrote to history — the reader came back to a conversation missing a
+reply. `refetchInterval` had the same hole facing the other way, being suspended
+while the document is hidden, which froze a turn on a backgrounded Chrome tab.
+`lib/chat-turn-store.ts` is therefore a plain singleton with its own timer,
+bound to the page only through `useSyncExternalStore`; it persists the finished
+answer itself rather than leaving that to whatever is mounted. Two consequences
+worth knowing before touching it: an answer written while the reader was away
+must not also be appended on the way back — `observed`/`persisted` and
+`whenPersisted()` are what keep one turn from showing twice — and the transcript
+cache it hands the next mount is why the effect that empties the board for a new
+chat compares against `loadedSessionRef` rather than a first-run flag, since
+StrictMode runs that effect twice and a flag is already spent by the second.
+
 ## Authorization is in the application layer
 
 The backend talks to Supabase with the **service role key**, which bypasses Row
