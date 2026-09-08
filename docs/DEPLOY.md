@@ -220,16 +220,18 @@ and Supabase's built-in mailer sends a handful of messages an hour and is
 explicitly not for production: confirmations to a colleague's address quietly
 stop arriving. Either put real SMTP under **Authentication → Emails**, or turn
 confirmation off (**Authentication → Sign In / Providers → Email → Confirm
-email**) while you onboard a group of people you already know. Turning it off
-means an address is never proved, so it belongs with a closed sign-up list
-rather than beside an open one.
+email**; older projects call that page **Providers**) while you onboard a group
+of people you already know. Turning it off means an address is never proved,
+so it belongs with a closed sign-up list rather than beside an open one.
 
 **`disable_signup`** — whether anyone who can reach the page can create an
 account. There is no invite list and no approval step in this app, so while
 this is false the sign-up form is open to the whole internet. Leave it open
-until your colleagues have their accounts, then close it the same day:
-**Authentication → Sign In / Providers → Allow new users to sign up**, off. New
-people after that are added from **Authentication → Users → Add user**.
+until your colleagues have their accounts, then close it the same day —
+**Allow new users to sign up**, off, on that same page. New people after that
+are added from **Authentication → Users → Add user**. The `curl` above is what
+confirms it took; the dashboard's labels move between releases, the two fields
+it prints do not.
 
 Those two settings are the pair, not two independent switches: confirmation off
 plus sign-ups open means an unverified stranger with a password can read
