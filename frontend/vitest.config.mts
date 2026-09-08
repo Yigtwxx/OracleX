@@ -40,6 +40,14 @@ export default defineConfig({
         // `.tsx` file with no JSX loader attached and fails on the first tag —
         // `unit` needs none of this, which is why the plugin sits on the one
         // project rather than at the root.
+        //
+        // `jsdom` is held at 26 for a reason that will not show up on a
+        // developer's machine: 27 onwards pulls in undici, which requires Node
+        // 22.19, and CI runs Node 20. The failure is not a failing assertion
+        // but every worker in this project refusing to start with
+        // "webidl.util.markAsUncloneable is not a function", which reads as a
+        // broken harness rather than as a runtime floor. Raise it when the
+        // workflow's node-version does.
         plugins: [react()],
         resolve: { alias },
         test: {
