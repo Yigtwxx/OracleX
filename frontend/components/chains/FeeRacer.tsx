@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { ChainRow } from '@/lib/api';
+import { AlertCircle } from 'lucide-react';
 import Panel from '@/components/ui/Panel';
 import { CHAIN_TINT, NO_READING, formatUsd } from '@/lib/chain-format';
 
@@ -77,59 +78,71 @@ export default function FeeRacer({ chains }: FeeRacerProps) {
       }
       footnote="One simple value transfer, priced at each chain's live rate. Rollup rows include the L1 data fee."
     >
-      <div className="divide-y divide-line">
-        {rows.map(({ chain, usd, isFree }) => {
-          const tint = CHAIN_TINT[chain.key] ?? 'var(--accent)';
-          // Relative to the cheapest priced chain, on a log scale — the spread
-          // runs five orders of magnitude, and a linear bar would render seven
-          // of the eight rows as an invisible sliver next to Bitcoin.
-          const ratio = usd !== null && usd > 0 && cheapest ? Math.log10(usd / cheapest) / 5 : null;
-          const share = usd !== null && amount > 0 ? (usd / amount) * 100 : null;
+      {/* Every chain either failed or reported without a fee. Said here rather
+          than left as an empty body, because this panel derives its rows from
+          the cards above and would otherwise look like a rendering fault when
+          the fault is upstream — which those cards already name per chain. */}
+      {rows.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-40 text-fg-subtle gap-2">
+          <AlertCircle className="w-5 h-5" />
+          <span className="text-base">No chain reported a fee</span>
+        </div>
+      ) : (
+        <div className="divide-y divide-line">
+          {rows.map(({ chain, usd, isFree }) => {
+            const tint = CHAIN_TINT[chain.key] ?? 'var(--accent)';
+            // Relative to the cheapest priced chain, on a log scale — the spread
+            // runs five orders of magnitude, and a linear bar would render seven
+            // of the eight rows as an invisible sliver next to Bitcoin.
+            const ratio =
+              usd !== null && usd > 0 && cheapest ? Math.log10(usd / cheapest) / 5 : null;
+            const share = usd !== null && amount > 0 ? (usd / amount) * 100 : null;
 
-          return (
-            <div key={chain.key} className="px-4 py-2 flex items-center gap-3">
-              <span
-                className="w-1.5 h-1.5 rounded-full shrink-0"
-                style={{ background: tint }}
-                aria-hidden
-              />
-              <span className="text-sm text-fg w-28 shrink-0 truncate">{chain.name}</span>
+            return (
+              <div key={chain.key} className="px-4 py-2 flex items-center gap-3">
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ background: tint }}
+                  aria-hidden
+                />
+                <span className="text-sm text-fg w-28 shrink-0 truncate">{chain.name}</span>
 
-              <div className="flex-1 min-w-0 h-1 rounded-full bg-surface-2 overflow-hidden">
-                {ratio !== null && (
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${Math.max(3, Math.min(ratio * 100, 100))}%`,
-                      background: tint,
-                    }}
-                  />
-                )}
+                <div className="flex-1 min-w-0 h-1 rounded-full bg-surface-2 overflow-hidden">
+                  {ratio !== null && (
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.max(3, Math.min(ratio * 100, 100))}%`,
+                        background: tint,
+                      }}
+                    />
+                  )}
+                </div>
+
+                <span className="text-sm font-mono tabnum text-fg w-20 text-right shrink-0">
+                  {isFree ? 'free' : formatUsd(usd)}
+                </span>
+                <span
+                  className="text-2xs font-mono tabnum text-fg-subtle w-16 text-right shrink-0"
+                  title={
+                    isFree
+                      ? (chain.fee?.free_reason ?? undefined)
+                      : `Share of a $${amount.toLocaleString('en-US')} transfer`
+                  }
+                >
+                  {isFree
+                    ? '0%'
+                    : share === null
+                      ? NO_READING
+                      : share < 0.001
+                        ? '<0.001%'
+                        : `${share.toFixed(3)}%`}
+                </span>
               </div>
-
-              <span className="text-sm font-mono tabnum text-fg w-20 text-right shrink-0">
-                {isFree ? 'free' : formatUsd(usd)}
-              </span>
-              <span
-                className="text-2xs font-mono tabnum text-fg-subtle w-16 text-right shrink-0"
-                title={
-                  isFree
-                    ? (chain.fee?.free_reason ?? undefined)
-                    : `Share of a $${amount.toLocaleString('en-US')} transfer`
-                }
-              >
-                {isFree
-                  ? '0%'
-                  : share === null
-                    ? NO_READING
-                    : share < 0.001
-                      ? '<0.001%'
-                      : `${share.toFixed(3)}%`}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </Panel>
   );
 }

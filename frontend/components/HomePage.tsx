@@ -80,10 +80,18 @@ export default function HomePage() {
         {/* Middle Row: 3-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:h-[480px]">
           {/* Col 1: Funding Rates */}
-          <FundingRates data={funding.data ?? []} isLoading={funding.isLoading} />
+          <FundingRates
+            data={funding.data ?? []}
+            isLoading={funding.isLoading}
+            isError={funding.isError}
+          />
 
           {/* Col 2: Liquidations */}
-          <LiquidationFeed data={liquidations.data ?? []} isLoading={liquidations.isLoading} />
+          <LiquidationFeed
+            data={liquidations.data ?? []}
+            isLoading={liquidations.isLoading}
+            isError={liquidations.isError}
+          />
 
           {/* Col 3: Macro Calendar */}
           <MacroCalendar
