@@ -202,20 +202,38 @@ is what refuses it.
 | Redirect URLs | `https://your.domain/auth/callback` and `https://your.domain/auth/reset-password` |
 
 A link Supabase will not redirect to falls back to the Site URL, which ships as
-`http://localhost:3000`. The failure is entirely on the new reader's side and
-looks like nothing at all from the server: they sign up, the mail arrives, they
-click it, and their browser tries to reach their own laptop.
+`http://localhost:3000`. The failure is entirely on the reader's side and looks
+like nothing at all from the server: they click a password-reset link and their
+browser goes looking for the app on their own laptop.
 
-Two more things about the first sign-ups:
+Then check what the project already does, rather than assuming the defaults —
+this endpoint is public and needs only the anon key:
 
-- **Supabase's built-in mailer sends a handful of messages an hour** and is
-  explicitly not for production. Confirmations to a colleague's address will
-  quietly stop arriving. Put real SMTP under **Authentication → Emails**, or
-  turn off "Confirm email" while you are onboarding a known group of people.
-- **Anyone who can reach the page can sign up.** There is no invite list and no
-  approval step. If the domain is public and the readers are not, close signups
-  in Supabase after the accounts exist, or keep the site behind whatever your
-  workplace already uses.
+```bash
+curl -s "$SUPABASE_URL/auth/v1/settings" -H "apikey: $SUPABASE_KEY" \
+  | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["mailer_autoconfirm"], d["disable_signup"])'
+```
+
+**`mailer_autoconfirm`** — whether a new account is usable immediately. A fresh
+Supabase project has this **off**, which means every sign-up waits on an email,
+and Supabase's built-in mailer sends a handful of messages an hour and is
+explicitly not for production: confirmations to a colleague's address quietly
+stop arriving. Either put real SMTP under **Authentication → Emails**, or turn
+confirmation off (**Authentication → Sign In / Providers → Email → Confirm
+email**) while you onboard a group of people you already know. Turning it off
+means an address is never proved, so it belongs with a closed sign-up list
+rather than beside an open one.
+
+**`disable_signup`** — whether anyone who can reach the page can create an
+account. There is no invite list and no approval step in this app, so while
+this is false the sign-up form is open to the whole internet. Leave it open
+until your colleagues have their accounts, then close it the same day:
+**Authentication → Sign In / Providers → Allow new users to sign up**, off. New
+people after that are added from **Authentication → Users → Add user**.
+
+Those two settings are the pair, not two independent switches: confirmation off
+plus sign-ups open means an unverified stranger with a password can read
+everything.
 
 Admin is separate from all of this and comes from `ADMIN_EMAILS`. A colleague
 who signs up gets a normal account: every board, their own keys, their own
