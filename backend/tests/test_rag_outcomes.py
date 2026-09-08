@@ -322,3 +322,32 @@ class TestScoringReadsTheMetadata:
         scored = rag_scoring.score_item(item, query_symbol="XRP", now=datetime(2026, 7, 24))
         assert scored.surprise == settings.RAG_SURPRISE_BOOST
         assert scored.surprised is True
+
+
+# ── Symbols reaching Yahoo ───────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "stored,expected",
+    [
+        ("NASDAQ:NWS", "NWS"),
+        ("NYSE:GS", "GS"),
+        ("AAPL", "AAPL"),
+        # Index tickers carry a caret and no venue, and must survive untouched.
+        ("^IXIC", "^IXIC"),
+        # Yahoo carries Borsa Istanbul under a suffix, not a prefix.
+        ("BIST:THYAO", "THYAO.IS"),
+        ("BIST:THYAO.IS", "THYAO.IS"),
+    ],
+)
+def test_an_equity_symbol_reaches_yahoo_in_the_form_it_answers_to(stored, expected):
+    """
+    `okx_market` strips its own venue prefix and the Yahoo path did not.
+
+    Yahoo answers 404 to `NASDAQ:NWS`, which `measure_event_outcome` reports as
+    an unmeasurable event — indistinguishable from an asset the venues genuinely
+    do not carry, which is why the malformed request went unnoticed. The curated
+    catalogue above escaped it by writing plain tickers; a caller passing the
+    news pipeline's symbols does not.
+    """
+    assert rag_outcomes.yahoo_symbol(stored) == expected

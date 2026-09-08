@@ -239,6 +239,37 @@ def summarize_outcome(
     )
 
 
+def yahoo_symbol(symbol: str) -> str:
+    """
+    An equity symbol in the form Yahoo answers to.
+
+    Two rules, and skipping either produces a 404 that reads as "no history"
+    rather than as a malformed request.
+
+    The venue prefix has to go. `okx_market` strips its own before calling OKX,
+    so crypto worked through this seam and equities did not:
+    `fetch_stock_candles_between` passes what it is given straight into the URL.
+    Yahoo answers 404 to `NASDAQ:NWS`, and `measure_event_outcome` reports that
+    as an unmeasurable event — the same answer it gives for a genuinely
+    unlistable asset, so the malformed request never looked like one.
+
+    The curated catalogue in `rag_v2_service` was unaffected only by luck: its
+    equity entries are written as plain tickers. The news pipeline stores
+    `NASDAQ:NWS` and `NYSE:GS`, so the first caller to measure a news verdict
+    was the first to hit this, and it lost every equity call it made. Normalising
+    here rather than at that caller is what stops the next one repeating it.
+
+    Borsa İstanbul then needs a suffix rather than a prefix: Yahoo carries BIST
+    under `.IS`, as `bist/equity_service` already knows. Without it `BIST:THYAO`
+    becomes `THYAO`, which is not a listing anywhere and 404s the same way.
+    """
+    clean = symbol.split(":")[-1].strip().upper()
+    exchange = symbol.split(":")[0].strip().upper() if ":" in symbol else ""
+    if exchange == "BIST" and not clean.endswith(".IS"):
+        return f"{clean}.IS"
+    return clean
+
+
 async def fetch_outcome_candles(
     symbol: str, event_date: datetime, asset_type: str, horizons: Sequence[int]
 ) -> List[Dict[str, Any]]:
@@ -251,7 +282,7 @@ async def fetch_outcome_candles(
         if asset_type == "stock":
             from services.stock_market_service import fetch_stock_candles_between
 
-            return await fetch_stock_candles_between(symbol, start_ms, end_ms)
+            return await fetch_stock_candles_between(yahoo_symbol(symbol), start_ms, end_ms)
 
         from services.okx_market import fetch_candles_between
 
