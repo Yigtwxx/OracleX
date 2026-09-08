@@ -1236,6 +1236,11 @@ start.bat
 > Windows builds its own virtualenv at `backend\venv-win\` so it never collides
 > with the POSIX `backend/venv/` that `start.sh` creates. Backend and frontend
 > each open in their own console window; close them to stop the services.
+>
+> The first run downloads a few gigabytes — `sentence-transformers` pulls torch
+> — so give it ten minutes before deciding it has hung. Stay on Python 3.11 or
+> 3.12: newer versions have no prebuilt `hnswlib` wheel for ChromaDB and the
+> install then wants Microsoft C++ Build Tools to compile it.
 
 ### Manual setup
 
