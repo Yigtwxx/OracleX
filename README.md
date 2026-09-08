@@ -14,7 +14,7 @@
     <a href="#the-reasoning-layer"><img src="https://img.shields.io/badge/AI_Engine-13_providers%20%7C%20local_first-000000?style=flat-square&logo=ollama&logoColor=white" alt="AI Engine" /></a>
     <a href="#core-capabilities"><img src="https://img.shields.io/badge/Memory-ChromaDB_RAG_v5-FF6F00?style=flat-square&logo=databricks&logoColor=white" alt="RAG" /></a>
     <br/>
-    <a href="https://github.com/Yigtwxx/OracleX/releases/latest"><img src="https://img.shields.io/badge/Release-v1.5.0-brightgreen?style=flat-square" alt="Release" /></a>
+    <a href="https://github.com/Yigtwxx/OracleX/releases/latest"><img src="https://img.shields.io/badge/Release-v1.6.0-brightgreen?style=flat-square" alt="Release" /></a>
     <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey?style=flat-square" alt="Platform" />
     <a href="#quality-gates"><img src="https://img.shields.io/badge/CI-ruff%20%7C%20pytest%20%7C%20tsc%20%7C%20vitest-2088FF?style=flat-square&logo=githubactions&logoColor=white" alt="CI" /></a>
     <img src="https://img.shields.io/badge/Keys-encrypted_at_rest-success?style=flat-square" alt="Encrypted keys" />
@@ -2097,13 +2097,37 @@ Shipped in **v1.5.0**:
       turns four traps this repository could previously only describe into
       decisions a command has to get past.
 
+Shipped in **v1.6.0**:
+
+- [x] **Bring your own keys, all the way through** — a reader's own LLM key
+      already went at the head of the chain, but the status route reported on
+      the server's chain alone, so on an install with no server key the one
+      person who could have chatted was the one the feature exists for. Data
+      provider keys (EVDS, Coinalyze) now work the same way, per reader and
+      per request, and a board without one renders with a notice rather than
+      an empty panel.
+- [x] **A reader's own Ollama** — the endpoint is theirs to name, because the
+      free local model runs on their machine and not on the server. Only the
+      self-hosted presets accept one, and only an address the public internet
+      can reach: every resolved address is checked, so a hostname pointing at
+      `10.x` is refused rather than dialled.
+- [x] **Usage that is measured rather than asserted** — one row per model call,
+      with the feature, the provider, the tokens each provider already returned
+      and thrown away, and who paid. Scheduled work is recorded with no user,
+      which is what makes "what does this box spend" answerable at all: on a
+      self-hosted install the two-minute news scan is most of it.
+- [x] **A front door** — Caddy, automatic certificates, one origin for the app
+      and the API, and a Compose overlay that removes the published ports it is
+      there to sit in front of. With [`docs/DEPLOY.md`](docs/DEPLOY.md) for the
+      settings whose defaults are wrong on a server and right on a laptop.
+
 Planned:
 
 - [ ] **Hardening:** contract tests over the endpoint matrix, broader component
       coverage.
-- [ ] **Personalization:** migration of watchlists and notes off JSON onto
-      Supabase, portfolio allocation views, saved dashboard layouts, and alarms
-      that survive a change of browser.
+- [ ] **Personalization:** portfolio allocation views, saved dashboard layouts,
+      and alarms that survive a change of browser. Watchlists and notes are on
+      Supabase as of v1.5.x, each scoped to its owner.
 - [ ] **Track record:** the multi-horizon outcomes the scorer already records,
       served as a public accuracy page. An earlier plan committed these to a
       Sepolia contract, which was dropped: a testnet proves nothing about
