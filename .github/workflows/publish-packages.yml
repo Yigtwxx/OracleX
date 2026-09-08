@@ -16,9 +16,24 @@ name: Publish packages
 # as the release was created, throwing away work to arrive at the same digest.
 # Publishing a release now rebuilds nothing, and a tag pushed without a release
 # still gets its image.
+#
+# `main` publishes through `workflow_run` rather than on the push itself.
+# Actions has no cross-workflow `needs:`, so the two used to start together on
+# the same event and race: a run whose tests were still failing had already
+# moved `:latest`, and the only signal that the image was bad arrived minutes
+# later on a different check. Waiting for CI to *conclude* and reading its
+# verdict is the only way one workflow can gate on another.
+#
+# Tags stay on the plain push trigger because CI does not run on them at all
+# (see `ci.yml`'s `on:`), so there would be no run to wait for. That is the
+# arrangement the CI concurrency comment already assumes: a tag publishes a
+# commit that went green on main first.
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
     branches: [main]
+    types: [completed]
+  push:
     tags: ["v*"]
   workflow_dispatch:
 
@@ -33,6 +48,12 @@ jobs:
   build:
     name: ${{ matrix.name }} image
     runs-on: ubuntu-latest
+    # A concluded CI run is not a passing one — `workflow_run` fires on failure
+    # and cancellation just the same, so the conclusion has to be read. The
+    # other two triggers have no run to read and are unaffected.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
     permissions:
       contents: read
       packages: write
@@ -51,7 +72,21 @@ jobs:
             context: ./frontend
             dockerfile: ./frontend/Dockerfile
     steps:
+      # `workflow_run` reports the default branch in `github.ref` and `github.sha`
+      # rather than the commit whose run just passed, so both the checkout and
+      # the sha tag have to be told which commit CI actually validated.
+      # Defaulting to `github.sha` would publish whatever main happens to be if
+      # another push landed while this one was queued — the same image under a
+      # digest nothing tested.
+      - name: Resolve the commit CI passed on
+        id: target
+        run: echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.target.outputs.sha }}
 
       - uses: docker/setup-buildx-action@v3
 
@@ -77,7 +112,7 @@ jobs:
           images: ${{ steps.image.outputs.name }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,format=long
+            type=raw,value=sha-${{ steps.target.outputs.sha }}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
           labels: |
