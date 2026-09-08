@@ -27,9 +27,9 @@ later is a matter of one more `_history` call.
 import logging
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple
 
-from config import settings
 from services import http_client
 from services.cache import ServiceCache
+from services import provider_keys
 
 logger = logging.getLogger(__name__)
 
@@ -83,8 +83,8 @@ INTERVALS: Dict[str, str] = {
 
 
 def has_key() -> bool:
-    """Whether a key is configured; false means callers must use their fallback."""
-    return bool(settings.COINALYZE_API_KEY)
+    """Whether a key is available; false means callers must use their fallback."""
+    return bool(provider_keys.coinalyze_key())
 
 
 def _key_headers() -> Dict[str, str]:
@@ -94,7 +94,7 @@ def _key_headers() -> Dict[str, str]:
     Coinalyze accepts the key as a query parameter too. It goes in the header
     here so it never reaches a log line, an exception message or a cache key.
     """
-    key = settings.COINALYZE_API_KEY
+    key = provider_keys.coinalyze_key()
     return {"api_key": key} if key else {}
 
 

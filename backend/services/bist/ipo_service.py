@@ -37,6 +37,7 @@ from services.asset_registry import DATA_DIR
 from services.bist import halkarz_client as hz
 from services.bist.real_return import deflate
 from services.cache import bist_cache
+from services import provider_keys
 
 logger = logging.getLogger(__name__)
 
@@ -512,8 +513,6 @@ async def build_ipos(
 
     stamps = [row["updated_at"] for row in windowed if row["updated_at"]]
 
-    from config import settings
-
     return {
         "upcoming": upcoming,
         "past": past,
@@ -533,7 +532,7 @@ async def build_ipos(
             "undated": sum(1 for row in windowed if row["state"] == STATE_UNDATED),
         },
         "inflation": _inflation_state(
-            cpi_index, measured, key_configured=bool(settings.TCMB_EVDS_API_KEY)
+            cpi_index, measured, key_configured=bool(provider_keys.evds_key())
         ),
         "delay_minutes": 15,
         "stale": False,

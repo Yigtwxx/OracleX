@@ -16,6 +16,8 @@ import BistChart from './BistChart';
 import BistMacroNote from './BistMacroNote';
 import BistPageShell from './BistPageShell';
 import MetricTile from './MetricTile';
+import ProviderKeyNotice from '@/components/ui/ProviderKeyNotice';
+import { providerNotice } from '@/lib/provider-keys';
 
 /**
  * The macro backdrop, and the measuring stick every return on this realm is
@@ -110,6 +112,8 @@ export default function BistMacroPage() {
         <div className="surface shimmer h-40" />
       ) : data ? (
         <>
+          <ProviderKeyNotice notice={providerNotice('evds', !data.cpi_source)} />
+
           <BistMacroNote data={note.data} isLoading={note.isLoading} />
 
           <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">

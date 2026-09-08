@@ -1,10 +1,12 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
-import { Bot, Lock, UserCircle } from 'lucide-react';
+import { Bot, Database, Lock, UserCircle } from 'lucide-react';
 
 import AuthCard from '@/components/auth/AuthCard';
 import AIProviderSettings from '@/components/profile/AIProviderSettings';
+import DataProviderSettings from '@/components/profile/DataProviderSettings';
 import SocialLinksCard from '@/components/profile/SocialLinksCard';
 import DangerZone from '@/components/profile/DangerZone';
 import EmailVerificationBanner from '@/components/profile/EmailVerificationBanner';
@@ -17,12 +19,13 @@ import SecurityCard from '@/components/profile/SecurityCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 
-type TabKey = 'account' | 'security' | 'ai';
+type TabKey = 'account' | 'security' | 'ai' | 'data';
 
 const TABS: { key: TabKey; label: string; icon: typeof UserCircle }[] = [
   { key: 'account', label: 'Account', icon: UserCircle },
   { key: 'security', label: 'Security', icon: Lock },
   { key: 'ai', label: 'AI Provider', icon: Bot },
+  { key: 'data', label: 'Data Providers', icon: Database },
 ];
 
 /**
@@ -37,7 +40,15 @@ const TABS: { key: TabKey; label: string; icon: typeof UserCircle }[] = [
 export default function ProfilePage() {
   const { user, loading: authLoading } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
-  const [tab, setTab] = useState<TabKey>('account');
+  // `?tab=` so the "a key would show you more here" strips on the BIST and
+  // derivatives boards can land the reader on the right panel instead of the
+  // account form. Read once as the initial value rather than kept in sync: the
+  // tab bar is the source of truth after first paint, and mirroring both ways
+  // would fight the user's clicks.
+  const initialTab = useSearchParams().get('tab');
+  const [tab, setTab] = useState<TabKey>(
+    TABS.some(({ key }) => key === initialTab) ? (initialTab as TabKey) : 'account'
+  );
 
   if (authLoading) {
     return (
@@ -113,6 +124,8 @@ export default function ProfilePage() {
         )}
 
         {tab === 'ai' && <AIProviderSettings />}
+
+        {tab === 'data' && <DataProviderSettings />}
       </div>
     </div>
   );

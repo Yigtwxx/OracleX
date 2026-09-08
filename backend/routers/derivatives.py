@@ -7,11 +7,15 @@ liquidation map models from, finally visible on its own.
 
 from typing import Literal
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
+
+from dependencies.provider_keys import use_caller_provider_keys
 from services.dex_perps_service import get_dex_perps
 from services.open_interest_service import get_open_interest
 
-router = APIRouter()
+# Binds the caller's Coinalyze key, which decides whether the open-interest
+# board reads years of history or the venues' trailing thirty days.
+router = APIRouter(dependencies=[Depends(use_caller_provider_keys)])
 
 
 @router.get("/api/derivatives/open-interest/{symbol}")
