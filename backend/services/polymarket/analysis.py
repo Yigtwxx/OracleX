@@ -306,8 +306,9 @@ async def start_analysis_job(raw: dict[str, Any], *, user_id: str | None = None)
         result = await analyse_market(raw, user_id=user_id, on_stage=controls.on_stage)
         return result.model_dump(mode="json")
 
+    key = await analysis_jobs.scoped_key(slug, user_id, "reports")
     return await analysis_jobs.start(
-        slug,
+        key,
         analysis_jobs.KIND_POLYMARKET,
         STAGES,
         runner,

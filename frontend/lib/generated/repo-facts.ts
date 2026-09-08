@@ -169,7 +169,7 @@ export const SKILLS = [
     examples: 0,
     generated: {
       file: 'references/endpoints.md',
-      lines: 619,
+      lines: 626,
       endpoints: 36,
       groups: 1,
     },
@@ -270,8 +270,8 @@ export const TESTS = {
   suites: [
     {
       name: 'backend',
-      tests: 3376,
-      files: 158,
+      tests: 3384,
+      files: 159,
     },
     {
       name: 'mcp-server',
@@ -284,5 +284,5 @@ export const TESTS = {
       files: 56,
     },
   ],
-  total: 4458,
+  total: 4466,
 } as const;
