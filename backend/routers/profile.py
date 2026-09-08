@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFil
 from pydantic import BaseModel
 
 from dependencies.auth import AuthUser, get_current_user, require_admin
+from dependencies import provider_keys as caller_provider_keys
 from services.llm.base_url import InvalidBaseURL
 from services.llm.base_url import validate as validate_base_url
 from services import (
@@ -24,6 +25,7 @@ from services import (
     secret_box,
     social_links_service,
     storage,
+    usage_service,
 )
 from services.admin import users as admin_users
 from services.admin.audit import AuditActor
@@ -562,6 +564,9 @@ async def update_data_provider_key(
         providers = await data_provider_settings_service.save_key(
             user.id, data.provider, data.api_key
         )
+        # Otherwise the boards keep using the old key for up to the cache TTL,
+        # which reads as the save not having worked.
+        caller_provider_keys.invalidate(user.id)
     except data_provider_settings_service.UnknownProvider as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except ValueError as e:
@@ -575,7 +580,44 @@ async def delete_data_provider_key(provider: str, user: AuthUser = Depends(get_c
     """Remove one upstream's key; it falls back to the server's, if there is one."""
     try:
         providers = await data_provider_settings_service.delete_key(user.id, provider)
+        caller_provider_keys.invalidate(user.id)
     except data_provider_settings_service.UnknownProvider as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     return {"providers": providers, "encryption_available": secret_box.is_configured()}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AI USAGE
+#
+# Read-only. Rows are written by the server as it makes the calls — there is
+# deliberately no way for a client to add one, because a client that could would
+# be able to forge its own usage.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.get("/api/profile/usage")
+async def get_usage(window: str = "30d", user: AuthUser = Depends(get_current_user)):
+    """
+    What the caller's AI activity has cost.
+
+    `scope=install` is available to admins only: it includes the schedulers,
+    which carry no reader and on a self-hosted box are most of the spend.
+    """
+    if window not in usage_service.WINDOWS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown window. Use one of: {', '.join(usage_service.WINDOWS)}",
+        )
+    return await usage_service.get_usage(user.id, window)
+
+
+@router.get("/api/profile/usage/install")
+async def get_install_usage(window: str = "30d", _admin: AuthUser = Depends(require_admin)):
+    """Install-wide AI usage, background jobs included. Admins only."""
+    if window not in usage_service.WINDOWS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown window. Use one of: {', '.join(usage_service.WINDOWS)}",
+        )
+    return await usage_service.get_usage(None, window)

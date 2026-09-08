@@ -1,6 +1,13 @@
 'use client';
 
-import { AlertTriangle, CheckCircle2, Database, ExternalLink, XCircle } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Database,
+  ExternalLink,
+  KeyRound,
+  XCircle,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import {
@@ -103,6 +110,14 @@ export default function DataProviderSettings() {
   const editable = settings.providers.filter((p) => p.editable);
   const encryptionMissing = !settings.encryption_available && editable.length > 0;
 
+  // What a reader most wants to know here is not "what are these" but "which of
+  // them do I still have to do something about". Counting the ones nothing is
+  // carrying answers that in one line, before they read three descriptions to
+  // work it out themselves.
+  const missing = settings.providers.filter((p) => !p.configured);
+  const missingEditable = missing.filter((p) => p.editable);
+  const missingServer = missing.filter((p) => !p.editable);
+
   return (
     <ProfileCard title="Data Providers" icon={Database}>
       <div className="space-y-5">
@@ -111,6 +126,48 @@ export default function DataProviderSettings() {
           returns instead of nominal, years of open interest instead of thirty days. A key you save
           here is used for your own requests and is stored encrypted.
         </p>
+
+        <div
+          className={`flex items-start gap-2 rounded-md border px-3 py-2.5 text-base ${
+            missing.length === 0
+              ? 'border-up/40 bg-up-bg text-up'
+              : 'border-line bg-surface-2 text-fg'
+          }`}
+        >
+          {missing.length === 0 ? (
+            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          ) : (
+            <KeyRound className="mt-0.5 h-3.5 w-3.5 shrink-0 text-fg-muted" />
+          )}
+          <span>
+            {missing.length === 0 ? (
+              <>All {settings.providers.length} upstreams are configured — nothing to do here.</>
+            ) : (
+              <>
+                <span className="font-semibold">
+                  {settings.providers.length - missing.length} of {settings.providers.length}{' '}
+                  configured.
+                </span>{' '}
+                {missingEditable.length > 0 && (
+                  <>
+                    You can add{' '}
+                    <span className="text-fg">
+                      {missingEditable.map((p) => p.label).join(', ')}
+                    </span>{' '}
+                    below.{' '}
+                  </>
+                )}
+                {missingServer.length > 0 && (
+                  <span className="text-fg-muted">
+                    {missingServer.map((p) => p.env_var).join(', ')}{' '}
+                    {missingServer.length === 1 ? 'is' : 'are'} set by whoever runs this install,
+                    not here.
+                  </span>
+                )}
+              </>
+            )}
+          </span>
+        </div>
 
         {encryptionMissing && (
           <div className="flex items-start gap-2 rounded-md border border-warn bg-warn-bg p-3 text-base text-warn">

@@ -31,9 +31,9 @@ export interface TestSuite {
 export const VERSION = '1.5.0';
 
 export const API = {
-  paths: 180,
-  operations: 206,
-  authRequired: 124,
+  paths: 182,
+  operations: 208,
+  authRequired: 143,
   routers: 26,
   websockets: [
     '/ws/prices',
@@ -41,7 +41,7 @@ export const API = {
   methods: [
     {
       method: 'GET',
-      count: 141,
+      count: 143,
     },
     {
       method: 'POST',
@@ -157,7 +157,7 @@ export const SKILLS = [
     examples: 4,
     generated: {
       file: 'references/endpoints.md',
-      lines: 999,
+      lines: 1005,
       endpoints: 65,
       groups: 13,
     },
@@ -270,8 +270,8 @@ export const TESTS = {
   suites: [
     {
       name: 'backend',
-      tests: 3340,
-      files: 156,
+      tests: 3376,
+      files: 158,
     },
     {
       name: 'mcp-server',
@@ -280,9 +280,9 @@ export const TESTS = {
     },
     {
       name: 'frontend',
-      tests: 1037,
-      files: 55,
+      tests: 1054,
+      files: 56,
     },
   ],
-  total: 4405,
+  total: 4458,
 } as const;

@@ -8,11 +8,13 @@ OpenAI chat-completions format, Anthropic has its own, and Ollama has its own.
 import json
 import logging
 import re
+import time
 from typing import Any, Optional
 
 import httpx
 
 from config import settings
+from services.llm import usage as llm_usage
 from services.llm.base import (
     GenerationRequest,
     LLMProvider,
@@ -145,6 +147,45 @@ async def _post(provider: str, url: str, *, json: dict, headers: dict, timeout: 
 # ═══════════════════════════════════════════════════════════════════════════
 
 
+def _elapsed_ms(started: float) -> int:
+    return int((time.monotonic() - started) * 1000)
+
+
+def _record_usage(
+    provider: str, model: str, usage: object, duration_ms: Optional[int] = None
+) -> None:
+    """
+    Note what one call cost, from whichever shape the provider reports it in.
+
+    Three vocabularies for the same two numbers:
+      OpenAI-compatible  prompt_tokens / completion_tokens / total_tokens
+      Anthropic          input_tokens / output_tokens
+      Ollama             prompt_eval_count / eval_count
+
+    A provider that reports nothing records None rather than zero — "did not
+    say" and "used none" are different facts, and averaging zeros would hide
+    the first behind the second.
+    """
+    if not isinstance(usage, dict):
+        usage = {}
+
+    def first(*keys: str) -> Optional[int]:
+        for key in keys:
+            value = usage.get(key)
+            if isinstance(value, int):
+                return value
+        return None
+
+    llm_usage.record(
+        provider=provider,
+        model=model,
+        prompt_tokens=first("prompt_tokens", "input_tokens", "prompt_eval_count"),
+        completion_tokens=first("completion_tokens", "output_tokens", "eval_count"),
+        total_tokens=first("total_tokens"),
+        duration_ms=duration_ms,
+    )
+
+
 class OpenAICompatProvider(LLMProvider):
     """
     Any backend exposing POST /chat/completions in OpenAI's format.
@@ -155,6 +196,7 @@ class OpenAICompatProvider(LLMProvider):
     """
 
     async def generate(self, req: GenerationRequest) -> str:
+        started = time.monotonic()
         messages: list[dict[str, str]] = []
         if req.system:
             messages.append({"role": "system", "content": req.system})
@@ -194,6 +236,10 @@ class OpenAICompatProvider(LLMProvider):
             data = await _post(
                 self.name, url, json=payload, headers=self._headers(), timeout=req.timeout
             )
+
+        # The provider has been telling us what the call cost all along; this
+        # response object carries `usage` and it used to go out of scope here.
+        _record_usage(self.name, self.model, data.get("usage"), _elapsed_ms(started))
 
         choices = data.get("choices") or []
         if not choices:
@@ -241,6 +287,7 @@ class AnthropicProvider(LLMProvider):
     JSON_TOOL_NAME = "emit_json"
 
     async def generate(self, req: GenerationRequest) -> str:
+        started = time.monotonic()
         payload: dict[str, Any] = {
             "model": self.model,
             "max_tokens": req.max_tokens,
@@ -273,6 +320,8 @@ class AnthropicProvider(LLMProvider):
             headers=self._headers(),
             timeout=req.timeout,
         )
+
+        _record_usage(self.name, self.model, data.get("usage"), _elapsed_ms(started))
 
         blocks = [b for b in data.get("content", []) if isinstance(b, dict)]
 
@@ -324,6 +373,7 @@ class OllamaProvider(LLMProvider):
     ai_service, since that is by far the most common local failure."""
 
     async def generate(self, req: GenerationRequest) -> str:
+        started = time.monotonic()
         options: dict[str, Any] = {
             "temperature": req.temperature,
             "num_predict": req.max_tokens,
@@ -384,6 +434,7 @@ class OllamaProvider(LLMProvider):
 
         body = response.json()
         self._log_token_usage(req, body)
+        _record_usage(self.name, self.model, body, _elapsed_ms(started))
 
         answer = (body.get("response") or "").strip()
         if answer:

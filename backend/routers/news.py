@@ -32,7 +32,13 @@ from utils import (
     get_news_cache,
 )
 
-router = APIRouter()
+from dependencies.usage import track_ai_usage
+
+# Attributes every model call made while serving these routes to the caller.
+# Without it `client.generate` records them all as background work, because the
+# reader's identity is resolved by the caller and gone by the time a response
+# arrives. See dependencies/usage.py.
+router = APIRouter(dependencies=[Depends(track_ai_usage)])
 
 
 @router.get("/api/news", response_model=NewsResponse)

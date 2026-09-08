@@ -17,12 +17,14 @@ Two properties make the implicit form safe here:
     the fire-and-forget refreshes — none of which carry a user — read the
     default and fall through to `.env`, which is exactly right for them.
 
-  * The values fetched are public reference data (a CPI series, an open-interest
-    history), so a response fetched with one reader's key is cached and served
-    to everyone. That is a feature: one reader with an EVDS key un-blanks the
-    real-return columns for the whole install. It also means there is no
-    per-user cache to partition, which is the usual reason this pattern goes
-    wrong.
+  * The values fetched are public reference data — a CPI series, an
+    open-interest history — so a response one reader's key paid for may be
+    served to another without leaking anything. What that does *not* license is
+    a single cache entry per question: where the answer's shape depends on
+    whether a key was used at all, the entry has to say which it is, or a reader
+    who just supplied a key is served the thin version someone else's keyless
+    request cached. `open_interest_service` keys on that; `macro_service` does
+    not need to, because its keyless path returns before the cache.
 
 Nothing here ever logs a key.
 """

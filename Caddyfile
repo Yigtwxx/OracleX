@@ -1,0 +1,57 @@
+# Oracle-X — TLS and routing for a server deployment.
+#
+# Caddy owns 80 and 443, obtains a certificate from Let's Encrypt on first
+# request and renews it on its own. Nothing else in the stack publishes a port
+# once this is in play, which is the point: the app containers stop being
+# reachable from outside except through here.
+#
+# Set DOMAIN and ACME_EMAIL in .env, point the domain's A record at the server,
+# then:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.tls.yml up --build -d
+#
+# One host, two upstreams. The frontend is the site; the backend is mounted
+# under /api and /ws rather than on a second domain, because every NEXT_PUBLIC_*
+# value is baked into the client bundle at build time — a single origin means
+# one address to get right instead of three, and it removes the CORS surface
+# entirely since the browser never crosses an origin.
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# The WebSocket price feed. Listed before the /api matcher only for
+	# readability — Caddy routes by specificity, not by order.
+	handle /ws/* {
+		reverse_proxy backend:8000
+	}
+
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	# Everything else is the Next.js server, which serves its own static assets
+	# out of the standalone bundle.
+	handle {
+		reverse_proxy frontend:3100
+	}
+
+	header {
+		# HSTS is deliberately modest and without preload: a year-long pin
+		# submitted to the browser preload list cannot be undone quickly, and
+		# this is a self-hosted install that may move.
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# The terminal renders no third-party frames and should not be framed.
+		X-Frame-Options "SAMEORIGIN"
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

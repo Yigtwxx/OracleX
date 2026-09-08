@@ -25,7 +25,13 @@ from services.supabase_service import (
 )
 from utils import Colors, log_header, log_step, log_success, log_info, log_warning
 
-router = APIRouter()
+from dependencies.usage import track_ai_usage
+
+# Attributes every model call made while serving these routes to the caller.
+# Without it `client.generate` records them all as background work, because the
+# reader's identity is resolved by the caller and gone by the time a response
+# arrives. See dependencies/usage.py.
+router = APIRouter(dependencies=[Depends(track_ai_usage)])
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -304,13 +310,33 @@ async def cancel_chat_job(job_id: str, user: Optional[AuthUser] = Depends(get_op
 
 
 @router.get("/api/chat/status")
-async def chat_status():
-    """Check if Oracle chat is available, and which provider is serving it."""
+async def chat_status(user: Optional[AuthUser] = Depends(get_optional_user)):
+    """
+    Check if Oracle chat is available, and which provider is serving it.
+
+    The caller's own provider counts. This used to report on the server chain
+    alone, and the frontend disables the composer on `available: false` — so on
+    an install with no server LLM key, a reader who had saved a working personal
+    key and enabled it for chat could not type. The single scenario the
+    bring-your-own-key feature exists for was the one it blocked.
+    """
     from services import llm
+
+    if user is not None:
+        caller_provider = await llm.provider_for(user.id, "chat")
+        if caller_provider is not None:
+            return {
+                "available": True,
+                "provider": caller_provider.name,
+                "model": caller_provider.model,
+                "using_own_key": True,
+                "message": f"Oracle is ready on your own provider ({caller_provider.name})",
+            }
 
     info = await llm.active_provider_info()
     active = info.get("active")
     return {
+        "using_own_key": False,
         "available": active is not None,
         "provider": active["provider"] if active else None,
         "model": active["model"] if active else None,

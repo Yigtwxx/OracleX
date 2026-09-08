@@ -1,0 +1,53 @@
+# Oracle-X — TLS front door.
+#
+# Overlay, not a replacement. Compose merges files left to right, so this is
+# applied on top of the production stack:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.tls.yml up --build -d
+#
+# It is a separate file rather than a service in docker-compose.yml because a
+# local `docker compose up` has no domain and no way to answer an ACME
+# challenge; adding Caddy there would make the default command fail on a laptop.
+#
+# Two things happen here. Caddy is added, and the app containers stop publishing
+# ports — with a reverse proxy in front, a published 8000 is a way around it,
+# and on a cloud host with a permissive firewall that is a public backend with
+# no TLS. They stay reachable to Caddy over the compose network.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      # QUIC. Harmless if the host firewall drops it; browsers fall back to TCP.
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env — Caddy needs it to request a certificate}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env — Let's Encrypt requires a contact address}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates and the ACME account key. Losing this volume means
+      # re-issuing on next start, which Let's Encrypt rate-limits — five
+      # duplicate certificates a week — so it is a named volume rather than
+      # something that disappears with the container.
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    restart: unless-stopped
+
+  backend:
+    # Reachable only through Caddy now. `!reset` clears the list inherited from
+    # docker-compose.yml; a bare empty list would be merged, not replaced.
+    ports: !reset []
+
+  frontend:
+    ports: !reset []
+
+volumes:
+  caddy-data:
+  caddy-config:

@@ -81,7 +81,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/technical/{symbol}`
+### `GET /api/technical/{symbol}` · **auth optional**
 
 Get Technical Levels
 
@@ -118,7 +118,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/symbols`
+### `GET /api/symbols` · **auth optional**
 
 Get Tracked Symbols
 
@@ -164,7 +164,7 @@ Returns `FearGreedData`: `value`, `classification`, `timestamp`, `history`
 
 The feed, one article, and the LLM read of an article.
 
-### `GET /api/news`
+### `GET /api/news` · **auth optional**
 
 Get News
 
@@ -179,7 +179,7 @@ Parameters:
 
 Returns `NewsResponse`: `items`, `total`
 
-### `GET /api/news/{news_id}`
+### `GET /api/news/{news_id}` · **auth optional**
 
 Get News Item
 
@@ -190,7 +190,7 @@ Parameters:
 
 Returns `NewsItem`: `id`, `title`, `summary`, `source`, `published_at`, `symbol`, `asset_type`, `url`
 
-### `GET /api/news/{news_id}/analysis`
+### `GET /api/news/{news_id}/analysis` · **auth optional**
 
 Get Cached News Analysis
 
@@ -222,7 +222,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/news/analysis/jobs/{job_id}`
+### `GET /api/news/analysis/jobs/{job_id}` · **auth optional**
 
 Get News Analysis Job
 
@@ -255,7 +255,7 @@ Returns `SentimentAnalysis`: `sentiment`, `confidence`, `reasoning`, `historical
 
 The long-form daily/weekly reports the terminal generates on a timer.
 
-### `GET /api/analysis/reports`
+### `GET /api/analysis/reports` · **auth optional**
 
 Get Report Summaries
 
@@ -267,7 +267,7 @@ must never trigger generation.
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/analysis/report/{timeframe}`
+### `GET /api/analysis/report/{timeframe}` · **auth optional**
 
 Get Analysis Report
 
@@ -294,7 +294,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/analysis/jobs/{job_id}`
+### `GET /api/analysis/jobs/{job_id}` · **auth optional**
 
 Get Analysis Job
 
@@ -769,11 +769,17 @@ Response shape is not declared on the route — inspect one call.
 
 The Oracle itself — the terminal's own reasoning layer over all of the above.
 
-### `GET /api/chat/status`
+### `GET /api/chat/status` · **auth optional**
 
 Chat Status
 
 Check if Oracle chat is available, and which provider is serving it.
+
+The caller's own provider counts. This used to report on the server chain
+alone, and the frontend disables the composer on `available: false` — so on
+an install with no server LLM key, a reader who had saved a working personal
+key and enabled it for chat could not type. The single scenario the
+bring-your-own-key feature exists for was the one it blocked.
 
 
 Response shape is not declared on the route — inspect one call.
@@ -840,7 +846,7 @@ The analysis endpoint may answer with a refusal instead of a verdict. That is a 
 
 Why a market was opened is a separate job with its own endpoints. It is the one surface here allowed to answer without a source: when no dated reporting explains an opening, it returns `status: conjectured` and a `conjecture` naming the kind of event that usually opens a market like this one. Treat that field as a hypothesis, never as a finding — it carries no source id and is never used to write a verdict.
 
-### `GET /api/polymarket/board`
+### `GET /api/polymarket/board` · **auth optional**
 
 Get Polymarket Board
 
@@ -852,7 +858,7 @@ instead of implying they are live.
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/polymarket/markets/{slug}`
+### `GET /api/polymarket/markets/{slug}` · **auth optional**
 
 Get Polymarket Market
 
@@ -865,7 +871,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/polymarket/map`
+### `GET /api/polymarket/map` · **auth optional**
 
 Get Polymarket Map
 
@@ -896,7 +902,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/polymarket/analysis/jobs/{job_id}`
+### `GET /api/polymarket/analysis/jobs/{job_id}` · **auth optional**
 
 Get Polymarket Analysis Job
 
@@ -928,7 +934,7 @@ Parameters:
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/polymarket/origin/jobs/{job_id}`
+### `GET /api/polymarket/origin/jobs/{job_id}` · **auth optional**
 
 Get Polymarket Origin Job
 
