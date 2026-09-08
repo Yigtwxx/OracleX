@@ -17,6 +17,8 @@ import FundAllocationBar from './FundAllocationBar';
 import BistFundsRibbon from './BistFundsRibbon';
 import BistPageShell from './BistPageShell';
 import ReturnCell from './ReturnCell';
+import ProviderKeyNotice from '@/components/ui/ProviderKeyNotice';
+import { providerNotice } from '@/lib/provider-keys';
 
 const FUND_TYPES = [
   { value: 'YAT', label: 'Yatırım' },
@@ -176,6 +178,10 @@ export default function BistFundsPage() {
       }
     >
       <StaleStrip stale={data?.stale} refreshFailed={isError && !!data} onRetry={() => refetch()} />
+
+      <ProviderKeyNotice
+        notice={providerNotice('evds', Boolean(data) && deflatable.length === 0)}
+      />
 
       <BistFundsMarketNote data={marketNote.data} isLoading={marketNote.isLoading} />
 

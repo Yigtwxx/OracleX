@@ -45,6 +45,7 @@ from services.bist.fundamentals import (
     fetch_fundamentals,
 )
 from services.bist.radar import scoring
+from services import provider_keys
 
 logger = logging.getLogger(__name__)
 
@@ -340,7 +341,6 @@ async def build_financials(ticker: str, *, quarters: int = MAX_QUARTERS) -> dict
     a company page full of dashes reads as a company that reported nothing,
     which is a different and much worse claim than "we could not resolve this".
     """
-    from config import settings
     from services.bist import equity_service, macro_service
 
     code = ticker.strip().upper().rsplit(":", 1)[-1]
@@ -365,7 +365,7 @@ async def build_financials(ticker: str, *, quarters: int = MAX_QUARTERS) -> dict
     return build_payload(
         fund,
         cpi_series=cpi_series,
-        key_configured=bool(settings.TCMB_EVDS_API_KEY),
+        key_configured=bool(provider_keys.evds_key()),
         equity=equity,
         quarters=quarters,
     )

@@ -26,6 +26,8 @@ import BistMarketNote from './BistMarketNote';
 import BistPageShell from './BistPageShell';
 import BistRibbon from './BistRibbon';
 import ReturnCell from './ReturnCell';
+import ProviderKeyNotice from '@/components/ui/ProviderKeyNotice';
+import { providerNotice } from '@/lib/provider-keys';
 
 /**
  * The index filters, in the order a reader reaches for them.
@@ -225,6 +227,13 @@ export default function BistStocksPage() {
         refreshFailed={isError && !!data}
         asOf={data?.as_of}
         onRetry={() => refetch()}
+      />
+
+      <ProviderKeyNotice
+        notice={providerNotice(
+          'evds',
+          Boolean(data?.real_return) && !data!.real_return!.deflatable_windows.includes('1y')
+        )}
       />
 
       <BistMarketNote data={marketNote.data} isLoading={marketNote.isLoading} />

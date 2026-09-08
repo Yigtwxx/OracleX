@@ -558,7 +558,7 @@ Get real-time funding rates for the core OKX perpetuals, plus any outlier.
 
 Response shape is not declared on the route — inspect one call.
 
-### `GET /api/derivatives/open-interest/{symbol}`
+### `GET /api/derivatives/open-interest/{symbol}` · **auth optional**
 
 Open Interest
 

@@ -27,10 +27,10 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, UTC
 from typing import Optional
 
-from config import settings
 from services.bist.tradingview_client import TradingViewUnavailable
 from services.cache import bist_cache
 from services.http_client import get_json, get_json_impersonated, post_json
+from services import provider_keys
 
 logger = logging.getLogger(__name__)
 
@@ -229,11 +229,17 @@ async def fetch_cpi_series(years: int = 6) -> list[dict]:
     """
     Monthly consumer price index from the central bank's statistical service.
 
-    Returns an empty list when `TCMB_EVDS_API_KEY` is unset — the supported
-    no-key state, not a failure. Callers use the presence of a series to decide
-    whether a window can be deflated at all; see `deflator_for_window`.
+    Returns an empty list when no key is available — the supported no-key state,
+    not a failure. Callers use the presence of a series to decide whether a
+    window can be deflated at all; see `deflator_for_window`.
+
+    The key is the caller's own when they stored one, the server's otherwise;
+    `provider_keys` explains why the resolution is implicit. The cache below is
+    deliberately not keyed on it: a CPI series is public reference data, so the
+    first reader with a key fills it for everyone.
     """
-    if not settings.TCMB_EVDS_API_KEY:
+    api_key = provider_keys.evds_key()
+    if not api_key:
         return []
 
     key = f"cpi:{years}"
@@ -258,7 +264,7 @@ async def fetch_cpi_series(years: int = 6) -> list[dict]:
     try:
         body = await get_json(
             f"{EVDS_BASE}/{query}",
-            headers={"key": settings.TCMB_EVDS_API_KEY},
+            headers={"key": api_key},
             timeout=25.0,
         )
         items = body.get("items", []) if isinstance(body, dict) else []

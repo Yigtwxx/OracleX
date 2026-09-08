@@ -2456,6 +2456,57 @@ export async function testLLMSettings(
   });
 }
 
+// ── Per-user data provider keys ──────────────────────────────────────────────
+// The optional market-data upstreams, not the AI providers. Same write-only
+// discipline: a key is sent on save and never returned.
+
+export interface DataProviderSetting {
+  provider: string;
+  label: string;
+  /** The environment variable the server reads for this upstream. */
+  env_var: string;
+  /** "user" upstreams accept a per-reader key; "server" ones are .env only. */
+  scope: 'user' | 'server';
+  /** What the reader gains by supplying a key, in their own terms. */
+  benefit: string;
+  signup_url: string;
+  placeholder: string;
+  editable: boolean;
+  /** Whether *anything* is carrying this upstream — the reader's key or the server's. */
+  configured: boolean;
+  user_configured: boolean;
+  server_configured: boolean;
+  /** Who is carrying it. Only "none" is worth prompting about. */
+  source: 'user' | 'server' | 'none';
+  /** Last four characters of the reader's own key, for display only. */
+  key_hint: string;
+}
+
+export interface DataProviderSettings {
+  providers: DataProviderSetting[];
+  encryption_available: boolean;
+}
+
+export async function getDataProviderSettings(): Promise<DataProviderSettings> {
+  return apiFetch<DataProviderSettings>('/api/profile/data-providers');
+}
+
+export async function updateDataProviderKey(
+  provider: string,
+  apiKey: string
+): Promise<DataProviderSettings> {
+  return apiFetch<DataProviderSettings>('/api/profile/data-providers', {
+    method: 'PUT',
+    body: JSON.stringify({ provider, api_key: apiKey }),
+  });
+}
+
+export async function deleteDataProviderKey(provider: string): Promise<DataProviderSettings> {
+  return apiFetch<DataProviderSettings>(`/api/profile/data-providers/${provider}`, {
+    method: 'DELETE',
+  });
+}
+
 // ==========================================
 // ADMIN
 //

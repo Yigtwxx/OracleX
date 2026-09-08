@@ -22,6 +22,8 @@ import {
   formatSignedPercent,
   toneClass,
 } from '@/lib/bist-format';
+import ProviderKeyNotice from '@/components/ui/ProviderKeyNotice';
+import { providerNotice } from '@/lib/provider-keys';
 import {
   type IpoBasis,
   type IpoWindow,
@@ -107,6 +109,10 @@ export default function BistIpoPage() {
         </div>
       ) : data ? (
         <>
+          <ProviderKeyNotice
+            notice={providerNotice('evds', data.inflation.reason === 'cpi_key_missing')}
+          />
+
           <IpoNote board={data} basis={basis} note={note.data?.note} isLoading={note.isLoading} />
 
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">

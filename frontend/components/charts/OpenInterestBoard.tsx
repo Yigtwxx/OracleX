@@ -8,6 +8,8 @@ import { AlertTriangle, Info, RefreshCw } from 'lucide-react';
 import { useOpenInterest } from '@/hooks/queries';
 import type { OpenInterestBoard as Board } from '@/lib/api';
 import { compactUsd, FALLBACK, readPalette, type Palette } from '@/lib/chart-palette';
+import ProviderKeyNotice from '@/components/ui/ProviderKeyNotice';
+import { providerNotice } from '@/lib/provider-keys';
 import {
   aggregateChangePct,
   oiToMarketCapRatio,
@@ -385,14 +387,9 @@ export default function OpenInterestBoard({ className = '' }: OpenInterestBoardP
             <Info className="w-3 h-3" />
           </span>
 
-          {shallow && (
-            <span
-              className="px-1.5 py-0.5 rounded text-2xs bg-surface-2 text-fg-subtle"
-              title="Served from the exchanges' own statistics endpoints, which keep about thirty days. A free Coinalyze API key (COINALYZE_API_KEY) extends this to the full daily history."
-            >
-              30d
-            </span>
-          )}
+          {/* Was a dead `30d` chip whose tooltip named the env var and left the
+              reader with nowhere to go. Same fact, now a way to act on it. */}
+          <ProviderKeyNotice notice={providerNotice('coinalyze', shallow)} variant="chip" />
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
