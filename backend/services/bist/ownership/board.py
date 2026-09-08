@@ -604,6 +604,98 @@ def _summarise(
     )
 
 
+def _merge_by_ticker(positions: list[Position]) -> list[Position]:
+    """
+    One row per company, summing the disclosure lines that reach it.
+
+    A group holds a company through whatever vehicle happens to be on the
+    register, and the alias index is what turns those vehicles back into one
+    holder: Anadolu Efes appears on CCOLA's card as both "Anadolu Efes
+    Biracılık" (40.12%) and "Efes Pazarlama" (10.14%), Zorlu on ZOREN's as
+    itself and as Korteks. Left unmerged the card listed the company twice at
+    two partial stakes, neither of which is the group's holding, said "2
+    pozisyon" for one company, and drew two allocation segments for it — and
+    since both keys were the ticker, React discarded one of every pair.
+
+    Summing is the whole point of tracking a group rather than a legal entity:
+    50.26% of Coca-Cola İçecek is the fact, and it appears on no single line of
+    the source. The merged row says how many lines it came from, so a reader
+    who checks against the register finds the arithmetic rather than a
+    discrepancy.
+    """
+    merged: dict[str, Position] = {}
+    lines: dict[str, int] = {}
+
+    for position in positions:
+        held = merged.get(position.ticker)
+        if held is None:
+            merged[position.ticker] = position
+            lines[position.ticker] = 1
+            continue
+
+        lines[position.ticker] += 1
+        merged[position.ticker] = held.model_copy(
+            update={
+                "stake_pct": _sum_known(held.stake_pct, position.stake_pct),
+                "value_try": _sum_known(held.value_try, position.value_try),
+                # A sum of a reported figure and one marked to market is marked
+                # at best; claiming "reported" for it would overstate what the
+                # source actually published.
+                "value_basis": _merged_basis(held.value_basis, position.value_basis),
+                "previous_stake_pct": _sum_known(
+                    held.previous_stake_pct, position.previous_stake_pct
+                ),
+                "delta_pct": _sum_known(held.delta_pct, position.delta_pct),
+                "since": _earliest(held.since, position.since),
+                # Unknown for any line is unknown for the sum: a stake whose
+                # entry date predates the first snapshot makes the whole
+                # holding's "since" a lower bound.
+                "at_baseline": held.at_baseline or position.at_baseline,
+                "note": _joined_note(held.note, position.note),
+            }
+        )
+
+    out: list[Position] = []
+    for ticker, position in merged.items():
+        count = lines[ticker]
+        if count == 1:
+            out.append(position)
+            continue
+        out.append(
+            position.model_copy(
+                update={"note": _joined_note(position.note, f"{count} bildirim satırı toplandı")}
+            )
+        )
+    return out
+
+
+def _sum_known(*values: float | None) -> float | None:
+    """The sum of the values that are known, or None when none of them are."""
+    known = [v for v in values if v is not None]
+    return sum(known) if known else None
+
+
+def _merged_basis(*bases: str) -> str:
+    if all(basis == "reported" for basis in bases):
+        return "reported"
+    if any(basis in ("reported", "marked") for basis in bases):
+        return "marked"
+    return "unknown"
+
+
+def _earliest(*dates: str | None) -> str | None:
+    known = [d for d in dates if d]
+    return min(known) if known else None
+
+
+def _joined_note(*notes: str | None) -> str | None:
+    kept: list[str] = []
+    for note in notes:
+        if note and note not in kept:
+            kept.append(note)
+    return " · ".join(kept) if kept else None
+
+
 def _positions_for(
     entity: registry.EntityConfig, payload: dict[str, Any], index: registry.AliasIndex
 ) -> list[Position]:
@@ -612,7 +704,9 @@ def _positions_for(
         positions.extend(_shareholder_positions(entity.id, payload, index))
     if entity.fund_code:
         positions.extend(_fund_positions(entity.id, payload))
-    return positions
+    # Merged here rather than in each source, so a company an entity holds both
+    # as a shareholder and through its fund is also one row.
+    return _merge_by_ticker(positions)
 
 
 def _source_health(
