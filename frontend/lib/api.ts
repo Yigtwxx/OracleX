@@ -2401,6 +2401,12 @@ export interface LLMSettings {
   configured: boolean;
   /** Whether the stored provider authenticates with a key at all. */
   requires_key: boolean;
+  /**
+   * Where to reach a self-hosted provider. Ollama runs on the reader's own
+   * machine, not the server's, so without this a hosted install points at its
+   * own unreachable localhost. Blank means "use the server's setting".
+   */
+  base_url: string;
   use_for_chat: boolean;
   use_for_news: boolean;
   use_for_reports: boolean;
@@ -2411,12 +2417,15 @@ export interface LLMSettings {
   keyless_providers: string[];
   /** Each provider's default model id, for the model field's placeholder. */
   provider_defaults: Record<string, string>;
+  /** The providers that accept `base_url`; the others have a fixed endpoint. */
+  self_hosted_providers: string[];
 }
 
 export interface LLMSettingsUpdate {
   provider: string;
   model?: string;
   api_key?: string;
+  base_url?: string;
   use_for_chat?: boolean;
   use_for_news?: boolean;
   use_for_reports?: boolean;
@@ -2448,11 +2457,12 @@ export async function deleteLLMSettings(): Promise<{ success: boolean }> {
 export async function testLLMSettings(
   provider: string,
   model: string,
-  apiKey = ''
+  apiKey = '',
+  baseUrl = ''
 ): Promise<LLMTestResult> {
   return apiFetch<LLMTestResult>('/api/profile/llm/test', {
     method: 'POST',
-    body: JSON.stringify({ provider, model, api_key: apiKey }),
+    body: JSON.stringify({ provider, model, api_key: apiKey, base_url: baseUrl }),
   });
 }
 

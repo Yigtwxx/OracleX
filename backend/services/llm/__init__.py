@@ -31,6 +31,7 @@ from services.llm.client import (
 from services.llm.presets import (
     PRESETS,
     keyless_provider_names,
+    self_hosted_provider_names,
     preset_names,
     provider_default_models,
 )
@@ -44,6 +45,7 @@ __all__ = [
     "build_provider",
     "provider_for",
     "keyless_provider_names",
+    "self_hosted_provider_names",
     "preset_names",
     "provider_default_models",
     "cooldown_remaining",

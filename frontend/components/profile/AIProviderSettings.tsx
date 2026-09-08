@@ -57,6 +57,7 @@ export default function AIProviderSettings() {
   const [provider, setProvider] = useState('');
   const [model, setModel] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [baseUrl, setBaseUrl] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | undefined>(undefined);
   const [models, setModels] = useState<string[]>([]);
@@ -68,6 +69,11 @@ export default function AIProviderSettings() {
     // provider's default. Carrying the old id over is how `mistral-medium-3-5`
     // ended up sitting under a selected `ollama`.
     setModel(next === settings?.provider ? settings.model : '');
+    // Same rule as the model: returning to the saved provider restores what was
+    // saved, moving anywhere else clears it. An endpoint belongs to one
+    // provider, and carrying a tunnel address onto a cloud preset is how a
+    // reader ends up staring at a field the server is going to ignore.
+    setBaseUrl(next === settings?.provider ? settings.base_url : '');
     // The list came from testing the previous provider and does not describe
     // this one.
     setModels([]);
@@ -80,6 +86,7 @@ export default function AIProviderSettings() {
       setSettings(data);
       setProvider(data.provider || data.supported_providers[0] || '');
       setModel(data.model);
+      setBaseUrl(data.base_url);
     } catch {
       setMessage({ ok: false, text: 'Could not load settings.' });
     }
@@ -93,6 +100,9 @@ export default function AIProviderSettings() {
   // point of the form is to change providers — gating on what is already saved
   // is what made Ollama unreachable once a cloud key had been stored.
   const needsKey = !(settings?.keyless_providers ?? []).includes(provider);
+  // Derived from the dropdown for the same reason as `needsKey`: the field has
+  // to appear the moment a reader selects Ollama, not only once it is saved.
+  const acceptsEndpoint = (settings?.self_hosted_providers ?? []).includes(provider);
   // The toggles act on what is saved, so they follow the saved provider.
   const savedUsable = settings ? settings.configured || !settings.requires_key : false;
 
@@ -110,7 +120,7 @@ export default function AIProviderSettings() {
     setBusy(true);
     setMessage(undefined);
     try {
-      const result = await testLLMSettings(provider, model, apiKey);
+      const result = await testLLMSettings(provider, model, apiKey, baseUrl);
       setModels(result.models ?? []);
       setMessage(
         result.ok
@@ -132,6 +142,9 @@ export default function AIProviderSettings() {
         provider,
         model,
         api_key: apiKey || undefined,
+        // Always sent, unlike the key: an endpoint is not a secret, and the
+        // empty string is how a reader goes back to the server's own Ollama.
+        base_url: acceptsEndpoint ? baseUrl : '',
         use_for_chat: overrides.use_for_chat ?? settings.use_for_chat,
         use_for_news: overrides.use_for_news ?? settings.use_for_news,
         use_for_reports: overrides.use_for_reports ?? settings.use_for_reports,
@@ -248,10 +261,36 @@ export default function AIProviderSettings() {
             </label>
           ) : (
             <p className="self-end pb-2 text-base text-fg-muted">
-              <code className="text-fg">{provider}</code> runs on this machine and takes no API key.
+              <code className="text-fg">{provider}</code> takes no API key.
             </p>
           )}
         </div>
+
+        {acceptsEndpoint && (
+          <label className="block">
+            <span className="label mb-1.5 block">Endpoint</span>
+            <input
+              type="url"
+              inputMode="url"
+              value={baseUrl}
+              onChange={(e) => setBaseUrl(e.target.value)}
+              placeholder="https://your-tunnel.example.com"
+              autoComplete="off"
+              spellCheck={false}
+              className={`${INPUT_CLASS} font-mono`}
+            />
+            {/* The single most confusing thing about selecting Ollama here, and
+                the reason this field exists: the model runs on the reader's
+                computer, but the request is made by the server. Saying it once,
+                plainly, beats a reader concluding the feature is broken when
+                their local daemon is running perfectly. */}
+            <p className="mt-1 max-w-2xl text-xs text-fg-subtle">
+              {provider === 'ollama'
+                ? 'Ollama runs on your computer, but this server is what calls it — so it needs an address it can reach from the internet. Expose your machine with a tunnel (Cloudflare Tunnel, ngrok, Tailscale Funnel) and paste the address it gives you. Leave blank to use this server’s own Ollama, if it has one.'
+                : 'Your OpenAI-compatible endpoint — a self-hosted vLLM, LM Studio or a proxy. It has to be reachable from this server. Leave blank to use the one set in the server’s environment.'}
+            </p>
+          </label>
+        )}
 
         <div>
           <p className="label mb-1">{needsKey ? 'Use my key for' : 'Use this provider for'}</p>

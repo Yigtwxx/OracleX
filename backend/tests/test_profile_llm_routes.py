@@ -168,3 +168,85 @@ def test_test_endpoint_never_echoes_the_key(client, monkeypatch):
         json={"provider": "groq", "api_key": "gsk_supersecret"},
     )
     assert "gsk_supersecret" not in response.text
+
+
+# ── Per-user endpoint ────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def public_dns(monkeypatch):
+    """Resolve any host publicly; name resolution is tested in test_llm_base_url."""
+    import ipaddress
+
+    from services.llm import base_url as rules
+
+    monkeypatch.setattr(
+        rules, "_resolved_addresses", lambda host: [ipaddress.ip_address("93.184.216.34")]
+    )
+
+
+def test_get_advertises_which_providers_accept_an_endpoint(client, monkeypatch):
+    """Without this the form cannot tell a reader the one thing that makes
+    selecting Ollama on a hosted install actually work."""
+
+    async def none_settings(_user_id):
+        return None
+
+    monkeypatch.setattr(profile_router.llm_settings_service, "get_settings", none_settings)
+
+    body = client.get("/api/profile/llm", headers=AUTH).json()
+    assert body["self_hosted_providers"] == ["ollama", "custom"]
+    assert body["base_url"] == ""
+
+
+def test_put_passes_the_endpoint_through(client, monkeypatch, public_dns):
+    captured = {}
+
+    async def save(_user_id, **kwargs):
+        captured.update(kwargs)
+        return {"provider": "ollama", "base_url": kwargs["base_url"]}
+
+    monkeypatch.setattr(profile_router.llm_settings_service, "save_settings", save)
+
+    response = client.put(
+        "/api/profile/llm",
+        json={"provider": "ollama", "base_url": "https://tunnel.example.com"},
+        headers=AUTH,
+    )
+
+    assert response.status_code == 200
+    assert captured["base_url"] == "https://tunnel.example.com"
+
+
+def test_put_400s_on_an_unreachable_endpoint(client, monkeypatch):
+    """
+    The SSRF refusal has to reach the reader as a 400 they can act on, not as a
+    500 that reads like the server broke.
+    """
+
+    async def save(_user_id, **kwargs):
+        from services.llm.base_url import validate
+
+        validate(kwargs.get("base_url"))
+        return {}
+
+    monkeypatch.setattr(profile_router.llm_settings_service, "save_settings", save)
+
+    response = client.put(
+        "/api/profile/llm",
+        json={"provider": "ollama", "base_url": "http://169.254.169.254/"},
+        headers=AUTH,
+    )
+    assert response.status_code == 400
+
+
+def test_test_endpoint_refuses_an_unreachable_endpoint_without_dialling(client):
+    """`/test` is pressed before saving, so it is the first place to refuse."""
+    response = client.post(
+        "/api/profile/llm/test",
+        json={"provider": "ollama", "model": "m", "base_url": "http://127.0.0.1:11434"},
+        headers=AUTH,
+    )
+    assert response.status_code == 200
+    assert response.json()["ok"] is False
+    assert "public internet" in response.json()["error"]

@@ -14,6 +14,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFil
 from pydantic import BaseModel
 
 from dependencies.auth import AuthUser, get_current_user, require_admin
+from services.llm.base_url import InvalidBaseURL
+from services.llm.base_url import validate as validate_base_url
 from services import (
     llm,
     llm_settings_service,
@@ -119,6 +121,9 @@ class LLMSettingsUpdate(BaseModel):
     provider: str
     model: str = ""
     api_key: Optional[str] = None
+    # Only meaningful for the self-hosted presets. Omitted keeps the stored one;
+    # an empty string clears it.
+    base_url: Optional[str] = None
     use_for_chat: Optional[bool] = None
     use_for_news: Optional[bool] = None
     use_for_reports: Optional[bool] = None
@@ -137,6 +142,7 @@ class LLMTestRequest(BaseModel):
     provider: str
     model: str = ""
     api_key: str = ""
+    base_url: str = ""
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -414,6 +420,7 @@ _EMPTY_LLM_SETTINGS = {
     "key_hint": "",
     "configured": False,
     "requires_key": True,
+    "base_url": "",
     "use_for_chat": False,
     "use_for_news": False,
     "use_for_reports": False,
@@ -435,6 +442,10 @@ async def get_llm_settings(user: AuthUser = Depends(get_current_user)):
         # Shown as the model field's placeholder, so "blank = default" says what
         # the default actually is.
         "provider_defaults": llm.provider_default_models(),
+        # The presets whose endpoint a reader may name. Ollama runs on their own
+        # machine, so without this the form cannot tell them the one thing that
+        # makes selecting it work.
+        "self_hosted_providers": llm.self_hosted_provider_names(),
     }
 
 
@@ -454,12 +465,17 @@ async def update_llm_settings(data: LLMSettingsUpdate, user: AuthUser = Depends(
             provider=data.provider,
             model=data.model,
             api_key=data.api_key,
+            base_url=data.base_url,
             use_for_chat=data.use_for_chat,
             use_for_news=data.use_for_news,
             use_for_reports=data.use_for_reports,
             use_for_notes=data.use_for_notes,
         )
-    except (llm_settings_service.UnknownProvider, llm_settings_service.KeyRequired) as e:
+    except (
+        llm_settings_service.UnknownProvider,
+        llm_settings_service.KeyRequired,
+        InvalidBaseURL,
+    ) as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
@@ -479,9 +495,20 @@ async def test_llm_settings(data: LLMTestRequest, user: AuthUser = Depends(get_c
     Exists so a user cannot save a broken key, silently fall back to the server
     chain, and believe their own key is working.
     """
-    provider = llm.build_provider(data.provider, data.model, data.api_key)
+    # Validated here too: /test is the button a reader presses *before* saving,
+    # so it is the first place an unreachable endpoint should be refused rather
+    # than dialled.
+    try:
+        candidate_base_url = validate_base_url(data.base_url)
+    except InvalidBaseURL as e:
+        return {"ok": False, "error": str(e)}
+
+    provider = llm.build_provider(data.provider, data.model, data.api_key, candidate_base_url)
     if provider is None:
-        return {"ok": False, "error": "Unknown provider, or no model given for it."}
+        return {
+            "ok": False,
+            "error": "Unknown provider, or no model or endpoint given for it.",
+        }
 
     if not await provider.health():
         return {
