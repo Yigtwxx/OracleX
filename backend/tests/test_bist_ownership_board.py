@@ -26,6 +26,7 @@ from services.bist.kap_service import Disclosure
 from services.bist.ownership import board, registry, snapshots
 from services.bist.ownership.errors import BoardUnavailable, EntityNotFound, TickerNotCovered
 from services.bist.ownership.isyatirim_client import CompanyCard, IsYatirimUnavailable, Shareholder
+from models.bist_ownership import Position, SourceRef
 from services.bist.ownership.registry import EntityConfig
 from services.bist.tradingview_client import EquityRow
 from services.cache import bist_cache
@@ -446,3 +447,162 @@ async def test_a_second_day_reveals_entries_exits_and_resizes(stubbed):
     result = await board.get_board()
     assert result.tracking_since == "2020-01-01"
     assert {m.kind for m in result.latest_stake_moves} == {"add", "exit", "new"}
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# One company, several disclosure lines
+#
+# A group holds a company through whichever vehicle is on the register, and the
+# alias index is what turns those back into one holder: CCOLA's card names both
+# Anadolu Efes Biracılık (40.12%) and Efes Pazarlama (10.14%), ZOREN's names
+# Zorlu Holding and Korteks. Unmerged, the card showed the company twice at two
+# partial stakes, counted it as two positions, drew two allocation segments —
+# and keyed both on the ticker, so React kept one of each pair.
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def _group_entity() -> EntityConfig:
+    """One holder reached by two of KCHOL's shareholder rows."""
+    return EntityConfig(
+        id="koc-group",
+        name="Koç grubu",
+        category="other",
+        order=5,
+        aliases=("Family Danışmanlık Gayrimenkul Ve Ticaret Anonim Ş", "Vehbi Koç Vakfı"),
+        sources={"shareholders": {}},
+    )
+
+
+async def test_two_disclosure_lines_for_one_company_become_one_position(stubbed):
+    stubbed.setattr(registry, "load_entities", lambda: [_group_entity()])
+    await board.refresh_board(spacing=0)
+
+    detail = await board.get_entity("koc-group")
+
+    assert [p.ticker for p in detail.positions] == ["KCHOL"]
+    position = detail.positions[0]
+    # 51.04% is the group's holding and appears on no single line of the source,
+    # which is the whole reason the board tracks a group rather than a company.
+    assert position.stake_pct == pytest.approx(0.4375 + 0.0729)
+    assert position.value_try == pytest.approx(500e9 * (0.4375 + 0.0729))
+    assert "2 bildirim" in (position.note or ""), "the arithmetic has to be checkable"
+
+
+async def test_the_merged_card_counts_companies_and_keys_stay_unique(stubbed):
+    stubbed.setattr(registry, "load_entities", lambda: [_group_entity()])
+    await board.refresh_board(spacing=0)
+
+    detail = await board.get_entity("koc-group")
+
+    assert detail.entity.positions_count == 1, "one company, not two register lines"
+    keys = [slice_.key for slice_ in detail.entity.allocation]
+    assert keys == ["KCHOL"]
+    assert len(keys) == len(set(keys))
+    assert detail.positions[0].weight_pct == pytest.approx(1.0)
+
+
+class TestMergeByTicker:
+    """The seams of the merge, away from the board that calls it."""
+
+    def _position(self, ticker: str, **over) -> Position:
+        base = {
+            "ticker": ticker,
+            "name": ticker,
+            "stake_pct": 0.1,
+            "value_try": 100.0,
+            "value_basis": "marked",
+            "source": SourceRef(kind="isyatirim_shareholders", label="İş Yatırım"),
+        }
+        base.update(over)
+        return Position(**base)
+
+    def test_a_single_line_is_returned_untouched(self):
+        only = self._position("THYAO")
+        assert board._merge_by_ticker([only]) == [only]
+
+    def test_unknown_stays_unknown_rather_than_becoming_zero(self):
+        merged = board._merge_by_ticker(
+            [
+                self._position("THYAO", stake_pct=None, value_try=None, value_basis="unknown"),
+                self._position("THYAO", stake_pct=None, value_try=None, value_basis="unknown"),
+            ]
+        )
+        assert merged[0].stake_pct is None
+        assert merged[0].value_try is None
+        assert merged[0].value_basis == "unknown"
+
+    def test_one_known_line_carries_the_sum(self):
+        merged = board._merge_by_ticker(
+            [
+                self._position("THYAO", stake_pct=0.2, value_try=None),
+                self._position("THYAO", stake_pct=None, value_try=50.0),
+            ]
+        )
+        assert merged[0].stake_pct == pytest.approx(0.2)
+        assert merged[0].value_try == pytest.approx(50.0)
+
+    def test_a_reported_figure_summed_with_a_marked_one_is_marked(self):
+        """
+        The weaker of the two claims. A fund reports a lira figure and a
+        shareholder stake is marked at the board's market cap; calling the sum
+        "reported" would say the source published a number it never did.
+        """
+        merged = board._merge_by_ticker(
+            [
+                self._position("THYAO", value_basis="reported"),
+                self._position("THYAO", value_basis="marked"),
+            ]
+        )
+        assert merged[0].value_basis == "marked"
+
+    def test_two_reported_lines_stay_reported(self):
+        merged = board._merge_by_ticker(
+            [
+                self._position("THYAO", value_basis="reported"),
+                self._position("THYAO", value_basis="reported"),
+            ]
+        )
+        assert merged[0].value_basis == "reported"
+
+    def test_history_takes_the_earliest_entry_and_the_weaker_certainty(self):
+        merged = board._merge_by_ticker(
+            [
+                self._position(
+                    "THYAO",
+                    since="2026-03-01",
+                    at_baseline=False,
+                    previous_stake_pct=0.08,
+                    delta_pct=0.02,
+                ),
+                self._position(
+                    "THYAO",
+                    since="2020-01-01",
+                    at_baseline=True,
+                    previous_stake_pct=0.05,
+                    delta_pct=0.05,
+                ),
+            ]
+        )
+        assert merged[0].since == "2020-01-01"
+        # One line predating the first snapshot makes the whole holding's entry
+        # date a lower bound, so the flag survives the merge.
+        assert merged[0].at_baseline is True
+        assert merged[0].previous_stake_pct == pytest.approx(0.13)
+        assert merged[0].delta_pct == pytest.approx(0.07)
+
+    def test_an_existing_note_is_kept_beside_the_merge_note(self):
+        merged = board._merge_by_ticker(
+            [
+                self._position("THYAO", note="Dünkü tablo; bugünkü kart alınamadı"),
+                self._position("THYAO"),
+            ]
+        )
+        assert "Dünkü tablo" in merged[0].note
+        assert "2 bildirim satırı toplandı" in merged[0].note
+
+    def test_different_companies_are_left_alone_and_keep_their_order(self):
+        merged = board._merge_by_ticker(
+            [self._position("THYAO"), self._position("KCHOL"), self._position("THYAO")]
+        )
+        assert [p.ticker for p in merged] == ["THYAO", "KCHOL"]
+        assert merged[0].stake_pct == pytest.approx(0.2)
