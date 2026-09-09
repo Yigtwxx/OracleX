@@ -55,7 +55,10 @@ export default defineConfig({
         test: {
           name: 'components',
           environment: 'jsdom',
-          include: ['components/**/*.test.tsx'],
+          // `hooks/` joins the jsdom project rather than `unit`: a hook is
+          // only observable through a render, and its lifecycle — mount,
+          // StrictMode's double mount, unmount — is the part worth asserting.
+          include: ['components/**/*.test.tsx', 'hooks/**/*.test.tsx'],
           setupFiles: ['./vitest.setup.ts'],
         },
       },
