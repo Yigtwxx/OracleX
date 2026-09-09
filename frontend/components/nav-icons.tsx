@@ -109,6 +109,9 @@ export const NAV_ICONS: Record<NavKey, NavIcon> = {
   // already uses everywhere a reader has seen it.
   'bist-ipo': Rocket,
   'bist-macro': Landmark,
+  // The same User the global realm's Profile carries: one component at two
+  // addresses, so one glyph. See the gesture note in globals.css.
+  'bist-profile': User,
 };
 
 export interface RealmIcon {

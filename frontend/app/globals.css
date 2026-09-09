@@ -239,6 +239,12 @@
      orange in saturation. Last in the set and the least often visited, so it
      takes the quietest of the remaining stops. */
   --nav-bist-ipo: #e08fb0;
+  /* The widest genuine gap left in this set — 78deg between the Makro lime
+     (#b8d95c) and the Hisseler green (#5bd6a0) — taken at its midpoint. It is
+     also the largest separation available from the Halka Arz rose it actually
+     sits beside in the row, which is the only adjacency a reader compares at
+     14px. */
+  --nav-bist-profile: #78d770;
 
   /* Heatmap is the one tab that cannot be a single stop: the board it opens is
      a yellow→orange→red ramp, so the tab carries the ramp itself. Stop 2 is
@@ -1466,6 +1472,725 @@ body {
     opacity: 1;
     transform: scale(1);
   }
+}
+
+/* ── Borsa İstanbul realm gestures ────────────────────────────────────────
+ * The same contract as the global realm's fourteen above: one one-shot gesture
+ * per tab, transform and opacity only, small enough to play out inside the 56px
+ * bar, and `:nth-child` indices that are a real dependency on lucide 0.312's
+ * path order. Everything said up there about `backwards` fill, `view-box`
+ * origins and why nothing loops applies unchanged here.
+ *
+ * The realm went a release with a still bar while the global one moved, which
+ * read as the Turkish side being the unfinished half of the app rather than as
+ * a deliberately quieter one.
+ *
+ * Two tabs share a glyph with a global-realm tab, and they are handled
+ * differently on purpose. Macro renders Landmark, which Ownership already owns,
+ * and reuses its construction gesture outright — same building, same way of
+ * putting it up, and a second gesture for one shape would be a difference the
+ * reader has no way to interpret. VİOP Haritası renders Layers, which
+ * Derivatives owns, and does *not*: the two realms are never on screen
+ * together, and the page here is a futures book and a spot profile on one axis
+ * rather than a stack of plates, which is a sequence rather than a spread. */
+
+/* Genel Bakış — the needle sweeps its dial and settles.
+ *
+ * lucide's Gauge is two children and the needle is the first, which is the only
+ * reason this gesture exists: an arc that cannot be told apart from its needle
+ * can only be spun whole, and a spinning dial is a loading spinner rather than
+ * a reading.
+ *
+ * The pivot is the needle's own tail at (12,14) in lucide's canvas, not the
+ * icon's centre — about the centre the needle would orbit the dial instead of
+ * turning on its mounting, which is the difference between an instrument and a
+ * clock hand.
+ *
+ * The angles are a real instrument's: rest points up-right at roughly 45°, so
+ * -98° drops it past the low end of the arc, +28° carries it past the high end,
+ * and the two frames after that are the needle overshooting and settling the
+ * way a damped pointer does. Both extremes stay inside the arc drawn by child
+ * 2, which spans about 250°.
+ *
+ * No fill mode: the last frame is the rest angle, so the needle resolves back
+ * into the icon rather than parking somewhere. */
+@keyframes nav-fx-needle {
+  0% {
+    transform: rotate(0deg);
+  }
+  18% {
+    transform: rotate(-98deg);
+  }
+  55% {
+    transform: rotate(28deg);
+  }
+  78% {
+    transform: rotate(-11deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+.nav-tab[data-nav='bist-overview']:hover svg path:nth-child(1) {
+  transform-origin: 12px 14px;
+  animation: nav-fx-needle 780ms ease-in-out;
+}
+
+/* Hisseler — the axis draws, then two candles print on it, body before wicks.
+ *
+ * The order is the whole reading, and it is the order a tape actually arrives
+ * in: there is no candle before there is an axis to put it on, and a candle's
+ * body is its open and close while the wicks are the extremes it reached
+ * afterwards. Printing the wicks first would be drawing a range before there
+ * was a trade in it.
+ *
+ * lucide's CandlestickChart is seven children in left-to-right, top-to-bottom
+ * order — wick, body, wick for the left candle, the same three for the right,
+ * and the axis last. The axis being child 7 while it has to move first is the
+ * same inversion Chains has, and the delays carry it.
+ *
+ * Each part scales about its own join rather than its centre: a wick grows out
+ * of the body edge it is attached to (origins at y=9 and y=15 on the left, y=5
+ * and y=13 on the right), so it extends rather than inflating away from the
+ * candle it belongs to. The bodies do scale about their own centres, with a
+ * small overshoot, because a body has no join — it is the thing the wicks are
+ * measured from.
+ *
+ * 38 is the axis path's own length rounded up: it runs 3,3 down to 3,21 and
+ * across to 21,21, so exactly 36 units. Under the length the dash repeats and
+ * the stroke grows from both ends at once, which is not how an axis is drawn. */
+@keyframes nav-fx-axis {
+  from {
+    stroke-dashoffset: 38;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes nav-fx-print {
+  0% {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+  60% {
+    opacity: 1;
+    transform: scaleY(1.16);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+@keyframes nav-fx-wick {
+  0% {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+.nav-tab[data-nav='bist-stocks']:hover svg path:nth-child(7) {
+  stroke-dasharray: 38;
+  animation: nav-fx-axis 240ms cubic-bezier(0.35, 0, 0.2, 1) backwards;
+}
+.nav-tab[data-nav='bist-stocks']:hover svg rect:nth-child(2) {
+  transform-origin: 9px 12px;
+  animation: nav-fx-print 200ms 220ms ease-out backwards;
+}
+.nav-tab[data-nav='bist-stocks']:hover svg path:nth-child(1) {
+  transform-origin: 9px 9px;
+  animation: nav-fx-wick 160ms 380ms ease-out backwards;
+}
+.nav-tab[data-nav='bist-stocks']:hover svg path:nth-child(3) {
+  transform-origin: 9px 15px;
+  animation: nav-fx-wick 160ms 380ms ease-out backwards;
+}
+.nav-tab[data-nav='bist-stocks']:hover svg rect:nth-child(5) {
+  transform-origin: 17px 9px;
+  animation: nav-fx-print 200ms 360ms ease-out backwards;
+}
+.nav-tab[data-nav='bist-stocks']:hover svg path:nth-child(4) {
+  transform-origin: 17px 5px;
+  animation: nav-fx-wick 160ms 520ms ease-out backwards;
+}
+.nav-tab[data-nav='bist-stocks']:hover svg path:nth-child(6) {
+  transform-origin: 17px 13px;
+  animation: nav-fx-wick 160ms 520ms ease-out backwards;
+}
+
+/* Finansallar — the corner folds, then the four cells fill in, reading order.
+ *
+ * The sheet itself never moves. It is the page, and a page that jumps while its
+ * contents are being written is the whole icon wobbling rather than a statement
+ * being filled in — the same reason Home animates only its door.
+ *
+ * The cells are 2-unit horizontal dashes, so each scales about its own left end
+ * (x=8 or x=14 at its own y) and grows rightward. About their centres they
+ * would open outward from the middle like a zip, which is not how a figure is
+ * written into a cell.
+ *
+ * 12 is the fold path's own length rounded up — 4 units down, a ~3.1-unit
+ * quarter arc, 4 across.
+ *
+ * The first cell starts while the fold is still finishing. That overlap is
+ * deliberate and is the one place in this realm where two things move at once:
+ * the fold is the page's own edge rather than content, so there is no sequence
+ * for the eye to lose, and holding the cells until 220ms put a visible dead
+ * beat in the middle of a gesture that is meant to read as filling. */
+@keyframes nav-fx-fold {
+  from {
+    stroke-dashoffset: 12;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes nav-fx-cell {
+  0% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+.nav-tab[data-nav='bist-financials']:hover svg path:nth-child(2) {
+  stroke-dasharray: 12;
+  animation: nav-fx-fold 220ms ease-out backwards;
+}
+.nav-tab[data-nav='bist-financials']:hover svg path:nth-child(3) {
+  transform-origin: 8px 13px;
+  animation: nav-fx-cell 160ms 180ms ease-out backwards;
+}
+.nav-tab[data-nav='bist-financials']:hover svg path:nth-child(4) {
+  transform-origin: 14px 13px;
+  animation: nav-fx-cell 160ms 270ms ease-out backwards;
+}
+.nav-tab[data-nav='bist-financials']:hover svg path:nth-child(5) {
+  transform-origin: 8px 17px;
+  animation: nav-fx-cell 160ms 360ms ease-out backwards;
+}
+.nav-tab[data-nav='bist-financials']:hover svg path:nth-child(6) {
+  transform-origin: 14px 17px;
+  animation: nav-fx-cell 160ms 450ms ease-out backwards;
+}
+
+/* Isı Haritası — the treemap redistributes: one diagonal takes weight while the
+ * other gives it up, then they trade back and settle.
+ *
+ * This is the tab's own subject rather than a generic four-tile stagger. A
+ * treemap's tiles are only ever the same size for as long as the numbers behind
+ * them are, and what a reader watches it do is exactly this — one pair swelling
+ * at the other's expense. Dashboard's tiles pulse in sequence because a
+ * dashboard is panels loading; these two gestures must not be swapped.
+ *
+ * Each tile scales about its own *outer* corner — (3,3), (21,3), (21,21),
+ * (3,21) for lucide's clockwise order from top-left — so the grid's outer edges
+ * stay pinned and all the movement happens across the middle gutter, which is
+ * where a treemap's boundaries actually are. About their centres the four would
+ * breathe independently and the redistribution would not read at all.
+ *
+ * 1.22 is what the 4-unit gutter allows: a 7-unit tile grows 1.54 units toward
+ * the centre and its neighbour is shrinking away from the same gutter, so the
+ * two never touch. */
+@keyframes nav-fx-weight-up {
+  0% {
+    transform: scale(1);
+  }
+  38% {
+    transform: scale(1.22);
+  }
+  70% {
+    transform: scale(0.86);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes nav-fx-weight-down {
+  0% {
+    transform: scale(1);
+  }
+  38% {
+    transform: scale(0.8);
+  }
+  70% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.nav-tab[data-nav='bist-heatmap']:hover svg rect:nth-child(1) {
+  transform-origin: 3px 3px;
+  animation: nav-fx-weight-up 620ms ease-in-out;
+}
+.nav-tab[data-nav='bist-heatmap']:hover svg rect:nth-child(2) {
+  transform-origin: 21px 3px;
+  animation: nav-fx-weight-down 620ms ease-in-out 50ms;
+}
+.nav-tab[data-nav='bist-heatmap']:hover svg rect:nth-child(3) {
+  transform-origin: 21px 21px;
+  animation: nav-fx-weight-up 620ms ease-in-out 100ms;
+}
+.nav-tab[data-nav='bist-heatmap']:hover svg rect:nth-child(4) {
+  transform-origin: 3px 21px;
+  animation: nav-fx-weight-down 620ms ease-in-out 150ms;
+}
+
+/* Fonlar — the slice is pulled out of the pie and put back.
+ *
+ * lucide's PieChart is exactly two children, and they are the two halves of the
+ * comparison the tab is about: child 2 is a filled wedge, child 1 the ring of
+ * everything else. That split is what makes an exploded pie available here at
+ * all; most of the icons in this bar are one shape that can only be moved
+ * whole.
+ *
+ * The wedge leaves along its own bisector. It spans twelve o'clock to three, so
+ * its bisector is up-right at 45° and the displacement is the same magnitude on
+ * both axes — pulled out any other way it slides *across* the ring it came from
+ * instead of away from it, and the gap it should leave behind never opens.
+ *
+ * 1.5 units, not more: the wedge's far corner already sits at (22,2), and the
+ * canvas edge is only two units past it. The svg is `overflow: visible` so this
+ * would not be clipped, but a slice that leaves the pie's own bounding circle
+ * stops reading as part of it.
+ *
+ * It holds out for a third of the gesture before returning. A slice that
+ * bounces straight back reads as a wobble; the pause is what makes it a
+ * separation. */
+@keyframes nav-fx-explode {
+  0% {
+    transform: translate(0, 0);
+  }
+  30% {
+    transform: translate(1.5px, -1.5px);
+  }
+  62% {
+    transform: translate(1.5px, -1.5px);
+  }
+  86% {
+    transform: translate(-0.35px, 0.35px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+.nav-tab[data-nav='bist-funds']:hover svg path:nth-child(2) {
+  animation: nav-fx-explode 700ms ease-in-out;
+}
+
+/* Konumlanma — the dish sweeps a full turn and the two contacts flare as the
+ * beam crosses them.
+ *
+ * The beam is lucide's last child, the 5.66-unit stroke from the centre out to
+ * the north-east rim, and it rotates about the dish's own centre (12,12) rather
+ * than the icon's box. Its rest bearing is 45° above the horizontal, which is
+ * where the delays below are measured from.
+ *
+ * The flare delays are geometry, not taste. Turning clockwise from that rest
+ * bearing, the beam reaches the lower contact at (12,18) after 135° and the
+ * upper-left one at (4,6) after 262°, which on a 900ms turn is 337ms and 654ms.
+ * Get these wrong and the icon flashes at nothing, which is worse than not
+ * flashing at all — a radar that lights up where its beam is not is a broken
+ * instrument rather than a stylised one.
+ *
+ * `linear`, and a whole 360°. A sweep that eases is a dial being turned by
+ * hand, and an angle that is not a multiple of a full turn would snap the beam
+ * back across the dish the instant the animation stopped filling.
+ *
+ * The flare is Analysis's `nav-fx-fire` unchanged. Both are a contact lighting
+ * up when something reaches it, and a second keyframe list saying the same
+ * thing is a second thing to keep in step. */
+@keyframes nav-fx-sweep {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.nav-tab[data-nav='bist-smart-money']:hover svg path:nth-child(8) {
+  transform-origin: 12px 12px;
+  animation: nav-fx-sweep 900ms linear;
+}
+.nav-tab[data-nav='bist-smart-money']:hover svg path:nth-child(5) {
+  transform-origin: 12px 18px;
+  animation: nav-fx-fire 300ms ease-out 337ms;
+}
+.nav-tab[data-nav='bist-smart-money']:hover svg path:nth-child(2) {
+  transform-origin: 4px 6px;
+  animation: nav-fx-fire 300ms ease-out 654ms;
+}
+
+/* KAP — the megaphone shouts twice.
+ *
+ * Both children move together and about the same point, which is the whole
+ * reason the rule selects `path` rather than a child index: the handle is
+ * welded to the underside of the cone, and rotating one without the other takes
+ * the megaphone apart.
+ *
+ * The pivot is the cone's narrow end at (3,12.5) — the end a hand holds. lucide
+ * draws this megaphone opening to the *right* (three units tall at x=3, twelve
+ * at x=21), so that narrow end is the mouthpiece and everything projects away
+ * from it.
+ *
+ * The `scaleX` is the announcement itself. There is no room in a two-path icon
+ * for the sound rings the gesture wants, and adding them as pseudo-elements was
+ * already tried on Admin and read as a speck twitching beside the glyph; the
+ * cone lengthening away from the mouthpiece as it rocks is the same idea inside
+ * the icon's own geometry. Two beats, because a disclosure is called out rather
+ * than said once. */
+@keyframes nav-fx-shout {
+  0% {
+    transform: rotate(0deg) scaleX(1);
+  }
+  22% {
+    transform: rotate(-7deg) scaleX(1.1);
+  }
+  46% {
+    transform: rotate(-1deg) scaleX(1);
+  }
+  68% {
+    transform: rotate(-7deg) scaleX(1.1);
+  }
+  100% {
+    transform: rotate(0deg) scaleX(1);
+  }
+}
+.nav-tab[data-nav='bist-kap']:hover svg path {
+  transform-origin: 3px 12.5px;
+  animation: nav-fx-shout 660ms ease-in-out;
+}
+
+/* VİOP — the hourglass is turned over.
+ *
+ * The tab is about the one thing that separates a futures contract from the
+ * spot board: it expires. Turning the glass is that, and it is the only gesture
+ * here that acts on the whole icon rather than a part, because an hourglass has
+ * no part that means anything on its own.
+ *
+ * It works without a fill mode for the same reason the realm mark's quarter
+ * turn does: lucide's Hourglass has exact 180° rotational symmetry about
+ * (12,12) — the two bars swap, the two funnels swap — so the finished frame is
+ * pixel-identical to the resting one. Half a turn animates in full view and
+ * then resolves into the icon rather than parking upside down.
+ *
+ * The wind-up at 12% is what stops it reading as a spin. A weight is lifted
+ * against its own hinge before it goes over, and the small counter-rotation is
+ * the hand taking it. */
+@keyframes nav-fx-turn {
+  0% {
+    transform: rotate(0deg);
+  }
+  12% {
+    transform: rotate(-14deg);
+  }
+  100% {
+    transform: rotate(180deg);
+  }
+}
+.nav-tab[data-nav='bist-viop']:hover svg {
+  animation: nav-fx-turn 720ms cubic-bezier(0.34, 1.06, 0.64, 1);
+}
+
+/* Sahiplik — the annexes are built onto the tower and then the floors light up,
+ * bottom to top.
+ *
+ * lucide's Building2 is the tower, its two side wings, and four window lines in
+ * top-to-bottom order. The windows fire in reverse child order on purpose: a
+ * building fills from the ground floor up, and running 4→7 instead would read
+ * as it emptying from the top.
+ *
+ * The wings enter from their own sides rather than dropping in. They are
+ * attached to the tower's flanks, not stacked on it, and Ownership's fall is
+ * already the gesture for a thing that is stacked — reusing it here would make
+ * two different structures look like the same one being built.
+ *
+ * Each window is a 4-unit horizontal line scaled about its left end at x=10, so
+ * it fills across rather than opening from its middle. */
+@keyframes nav-fx-annex-l {
+  0% {
+    opacity: 0;
+    transform: translateX(-3.2px);
+  }
+  70% {
+    opacity: 1;
+    transform: translateX(0.5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes nav-fx-annex-r {
+  0% {
+    opacity: 0;
+    transform: translateX(3.2px);
+  }
+  70% {
+    opacity: 1;
+    transform: translateX(-0.5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes nav-fx-floor {
+  0% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+.nav-tab[data-nav='bist-ownership']:hover svg path:nth-child(2) {
+  animation: nav-fx-annex-l 300ms ease-out backwards;
+}
+.nav-tab[data-nav='bist-ownership']:hover svg path:nth-child(3) {
+  animation: nav-fx-annex-r 300ms ease-out 90ms backwards;
+}
+.nav-tab[data-nav='bist-ownership']:hover svg path:nth-child(7) {
+  transform-origin: 10px 18px;
+  animation: nav-fx-floor 150ms 240ms ease-out backwards;
+}
+.nav-tab[data-nav='bist-ownership']:hover svg path:nth-child(6) {
+  transform-origin: 10px 14px;
+  animation: nav-fx-floor 150ms 320ms ease-out backwards;
+}
+.nav-tab[data-nav='bist-ownership']:hover svg path:nth-child(5) {
+  transform-origin: 10px 10px;
+  animation: nav-fx-floor 150ms 400ms ease-out backwards;
+}
+.nav-tab[data-nav='bist-ownership']:hover svg path:nth-child(4) {
+  transform-origin: 10px 6px;
+  animation: nav-fx-floor 150ms 480ms ease-out backwards;
+}
+
+/* VİOP Haritası — the two books come off the axis one at a time and close
+ * together.
+ *
+ * Layers is also Derivatives' glyph in the global realm, and this is
+ * deliberately not that gesture. Derivatives fans its top and bottom plates
+ * apart at the same instant, which says "a stack"; this page is a futures book
+ * and a spot volume profile read against one axis, so the plates leave in turn
+ * and return as a pair — a comparison being set up and then laid back down.
+ *
+ * lucide's Layers is the top plate, then the *bottom* rule, then the middle
+ * one, so the indices below are not in visual order. The middle rule never
+ * moves: it is the axis both books are measured on, and it is what the other
+ * two are seen to move against.
+ *
+ * The top plate also tilts. `rotateX` about the icon's own middle, with a
+ * perspective short enough to exaggerate it, is what makes it read as lifting
+ * off the stack toward the reader rather than sliding up the page — without it
+ * a plate that only translates is indistinguishable from the flat rule below
+ * doing the same thing in the other direction. */
+@keyframes nav-fx-deal-top {
+  0% {
+    transform: perspective(60px) translateY(0) rotateX(0deg);
+  }
+  40% {
+    transform: perspective(60px) translateY(-2.6px) rotateX(28deg);
+  }
+  70% {
+    transform: perspective(60px) translateY(-2.6px) rotateX(28deg);
+  }
+  100% {
+    transform: perspective(60px) translateY(0) rotateX(0deg);
+  }
+}
+@keyframes nav-fx-deal-bottom {
+  0% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(2.6px);
+  }
+  70% {
+    transform: translateY(2.6px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+.nav-tab[data-nav='bist-viop-map']:hover svg path:nth-child(1) {
+  animation: nav-fx-deal-top 620ms ease-in-out;
+}
+.nav-tab[data-nav='bist-viop-map']:hover svg path:nth-child(2) {
+  animation: nav-fx-deal-bottom 620ms ease-in-out 130ms;
+}
+
+/* Radar — the reticle locks on: the ring contracts around the target and the
+ * four ticks fly in from outside to meet it.
+ *
+ * Konumlanma is the sweep that finds something; this is what happens to the one
+ * name it found, which is why the two tabs carry different glyphs and different
+ * gestures despite both being radar in ordinary speech.
+ *
+ * The ticks arrive from *beyond* their resting positions rather than growing
+ * out of the ring, so the gesture closes inward on the centre. Each carries its
+ * own axis — the two horizontal ticks travel in x, the two vertical in y — and
+ * they land together at 190ms, after the ring has already begun to contract.
+ * A lock is one event.
+ *
+ * The ring's overshoot past 1 before it settles is the snap. It contracts to
+ * 0.86 first, which is the reticle closing, and the rebound is what a
+ * mechanical sight does when it catches. */
+@keyframes nav-fx-lock-ring {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(0.86);
+  }
+  72% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes nav-fx-lock-tick {
+  0% {
+    opacity: 0;
+    transform: translate(calc(var(--nav-fx-x) * 3.4px), calc(var(--nav-fx-y) * 3.4px));
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+.nav-tab[data-nav='bist-radar']:hover svg circle:nth-child(1) {
+  transform-origin: 12px 12px;
+  animation: nav-fx-lock-ring 540ms ease-out;
+}
+.nav-tab[data-nav='bist-radar']:hover svg line {
+  animation: nav-fx-lock-tick 260ms 150ms ease-out backwards;
+}
+.nav-tab[data-nav='bist-radar']:hover svg line:nth-child(2) {
+  --nav-fx-x: 1;
+  --nav-fx-y: 0;
+}
+.nav-tab[data-nav='bist-radar']:hover svg line:nth-child(3) {
+  --nav-fx-x: -1;
+  --nav-fx-y: 0;
+}
+.nav-tab[data-nav='bist-radar']:hover svg line:nth-child(4) {
+  --nav-fx-x: 0;
+  --nav-fx-y: -1;
+}
+.nav-tab[data-nav='bist-radar']:hover svg line:nth-child(5) {
+  --nav-fx-x: 0;
+  --nav-fx-y: 1;
+}
+
+/* Halka Arz — the rocket crouches, climbs its own diagonal and comes back down,
+ * with the exhaust flaring under it.
+ *
+ * lucide draws this rocket on a 45° axis — nose at the top right, exhaust at
+ * the bottom left — so the climb has to be the same magnitude in x and -y or it
+ * flies sideways through its own hull.
+ *
+ * The crouch before it goes is what makes it a launch rather than a drift. It
+ * is one unit down the same axis, held for under a fifth of the gesture: long
+ * enough to read as loading, too short to look like a stumble.
+ *
+ * The flame carries the climb in its own keyframes rather than taking a second
+ * animation. Two animations on one element both writing `transform` do not
+ * compose — the later one wins outright and the flame would be left behind by
+ * the hull it is attached to. So `nav-fx-thrust` is `nav-fx-launch` with the
+ * scale multiplied in, and the two lists have to be kept in step by hand.
+ *
+ * The flame scales about its own outer tip at (3,21), away from the rocket:
+ * about its centre it would grow up into the hull, which is a fire inside the
+ * vehicle rather than behind it. */
+@keyframes nav-fx-launch {
+  0% {
+    transform: translate(0, 0);
+  }
+  18% {
+    transform: translate(-1px, 1px);
+  }
+  55% {
+    transform: translate(3px, -3px);
+  }
+  78% {
+    transform: translate(1.4px, -1.4px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+@keyframes nav-fx-thrust {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  18% {
+    transform: translate(-1px, 1px) scale(0.82);
+  }
+  55% {
+    transform: translate(3px, -3px) scale(1.5);
+  }
+  78% {
+    transform: translate(1.4px, -1.4px) scale(1.18);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+.nav-tab[data-nav='bist-ipo']:hover svg path:nth-child(1) {
+  transform-origin: 3px 21px;
+  animation: nav-fx-thrust 740ms ease-in-out;
+}
+.nav-tab[data-nav='bist-ipo']:hover svg path:nth-child(n + 2) {
+  animation: nav-fx-launch 740ms ease-in-out;
+}
+
+/* Profil — the same User, assembled the same way. Both realms point at one
+   component at two addresses, so a second gesture for one glyph would be a
+   difference with nothing behind it. See Profile above for why each part needs
+   its own `fill-box` origin. */
+.nav-tab[data-nav='bist-profile']:hover svg path:nth-child(1) {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: nav-fx-build-body 620ms ease-out;
+}
+.nav-tab[data-nav='bist-profile']:hover svg circle:nth-child(2) {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nav-fx-build-head 620ms ease-out;
+}
+
+/* Makro — the same Landmark, put up the same way. See Ownership above for why
+   `backwards` is what makes the stagger a construction rather than a demolition
+   played in reverse. */
+.nav-tab[data-nav='bist-macro']:hover svg line:nth-child(1) {
+  animation: nav-fx-fall 380ms linear 0ms backwards;
+}
+.nav-tab[data-nav='bist-macro']:hover svg line:nth-child(2) {
+  animation: nav-fx-fall 380ms linear 90ms backwards;
+}
+.nav-tab[data-nav='bist-macro']:hover svg line:nth-child(3) {
+  animation: nav-fx-fall 380ms linear 140ms backwards;
+}
+.nav-tab[data-nav='bist-macro']:hover svg line:nth-child(4) {
+  animation: nav-fx-fall 380ms linear 190ms backwards;
+}
+.nav-tab[data-nav='bist-macro']:hover svg line:nth-child(5) {
+  animation: nav-fx-fall 380ms linear 240ms backwards;
+}
+.nav-tab[data-nav='bist-macro']:hover svg polygon:nth-child(6) {
+  animation: nav-fx-fall 380ms linear 350ms backwards;
 }
 
 /* Gestures are the first thing to go for anyone who has asked for less motion.

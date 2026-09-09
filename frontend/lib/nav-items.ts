@@ -42,7 +42,8 @@ export type NavKey =
   | 'bist-viop-map'
   | 'bist-radar'
   | 'bist-macro'
-  | 'bist-ipo';
+  | 'bist-ipo'
+  | 'bist-profile';
 
 export interface NavItem {
   key: NavKey;
@@ -264,6 +265,20 @@ export const BIST_NAV_ITEMS: NavItem[] = [
     href: '/bist/halka-arz',
     label: 'Halka Arz',
     tint: 'var(--nav-bist-ipo)',
+  },
+  // Last, as in the global set, and for the same reason: every tab before it is
+  // the market, and this one is you.
+  //
+  // '/bist/profil' rather than the '/profile' the global tab points at, and not
+  // a redirect to it either. The realm is read off the path, so the shared
+  // route would have swapped the whole bar to Kripto / Nasdaq under a reader
+  // who only meant to open their own settings — the same stranding the admin
+  // panel already carries two addresses to avoid.
+  {
+    key: 'bist-profile',
+    href: '/bist/profil',
+    label: 'Profil',
+    tint: 'var(--nav-bist-profile)',
   },
 ];
 
