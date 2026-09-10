@@ -377,7 +377,11 @@ never touch the network. Its own gates are `ruff` and `pytest` from
 ## Git
 
 One version for the whole repository, declared in `backend/pyproject.toml` and
-mirrored in `frontend/package.json`, `backend/main.py` and the README badge.
+mirrored in **seven** places: `frontend/package.json`, `backend/main.py`, the
+README badge, `mcp-server/oracle_x_mcp/server.py`, and the `version:` in all
+three `agent-skill/*/SKILL.md`. This paragraph said four for several releases
+and the three it omitted duly went stale; `scripts/build_repo_facts.py` checks
+the set and is what to trust — run it rather than this list.
 Conventional Commits, imperative subject under 72 characters, and a body that
 explains why rather than what. Do not commit, push, tag or open a PR unless
 explicitly asked.

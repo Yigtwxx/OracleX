@@ -14,7 +14,7 @@
     <a href="#the-reasoning-layer"><img src="https://img.shields.io/badge/AI_Engine-13_providers%20%7C%20local_first-000000?style=flat-square&logo=ollama&logoColor=white" alt="AI Engine" /></a>
     <a href="#core-capabilities"><img src="https://img.shields.io/badge/Memory-ChromaDB_RAG_v5-FF6F00?style=flat-square&logo=databricks&logoColor=white" alt="RAG" /></a>
     <br/>
-    <a href="https://github.com/Yigtwxx/OracleX/releases/latest"><img src="https://img.shields.io/badge/Release-v1.6.0-brightgreen?style=flat-square" alt="Release" /></a>
+    <a href="https://github.com/Yigtwxx/OracleX/releases/latest"><img src="https://img.shields.io/badge/Release-v1.6.1-brightgreen?style=flat-square" alt="Release" /></a>
     <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey?style=flat-square" alt="Platform" />
     <a href="#quality-gates"><img src="https://img.shields.io/badge/CI-ruff%20%7C%20pytest%20%7C%20tsc%20%7C%20vitest-2088FF?style=flat-square&logo=githubactions&logoColor=white" alt="CI" /></a>
     <img src="https://img.shields.io/badge/Keys-encrypted_at_rest-success?style=flat-square" alt="Encrypted keys" />
@@ -2126,7 +2126,7 @@ Shipped in **v1.6.0**:
       there to sit in front of. With [`docs/DEPLOY.md`](docs/DEPLOY.md) for the
       settings whose defaults are wrong on a server and right on a laptop.
 
-Shipped, unreleased:
+Shipped in **v1.6.1**:
 
 - [x] **Track record** — `/track-record`, public and unauthenticated, scoring
       every directional call the news pipeline has made against what the price
@@ -2151,6 +2151,38 @@ Shipped, unreleased:
       genuinely do not carry. The curated event catalogue escaped it by writing
       plain tickers; the news pipeline does not, and this was the first caller
       to hand it those symbols.
+
+- [x] **Three unauthenticated holes closed** — every background job shares one
+      registry and the poll routes fetched by id alone, so a chat job id read
+      through `/api/analysis/jobs/{id}` returned somebody else's question and
+      the model's answer. The rule existed, on `Job.owner_id`, and was applied
+      correctly in one router out of five; it lives in `readable_job` now, where
+      a caller has to name the kind it expects. `POST /api/rag/initialize` had
+      no dependency at all while re-embedding the whole corpus, and `next` was
+      two versions behind an unauthenticated RCE through the image optimizer —
+      an endpoint this app has no use for and had not turned off.
+
+- [x] **Boards that say when they are broken** — the overview never read
+      `isError` from any of its queries, so a failed fetch drew six blank
+      panels: an empty table, a breadth strip reading zero, a distribution with
+      no bars. On a markets page that is a claim about the market. The RAG
+      stats route had the same shape, answering `news_count: 0` for a store it
+      could not reach — to an agent instructed to call it exactly when results
+      look thin.
+
+- [x] **Prices that arrive when the socket opens** — the server has always sent
+      a snapshot on connect and the client parsed it and threw it away, so the
+      board sat on REST prices until the first per-symbol tick. Its keys are
+      why: the snapshot carries the exchange's own `BTC/USDT` and updates carry
+      `BTCUSDT`, and there were four spellings of that normalisation across
+      three files, two of them in different orders.
+
+- [x] **A holdings board that refreshes** — the BIST ownership rebuild was
+      never scheduled, so past twenty-six hours of uptime it served `stale` for
+      the life of the process and only the admin button could clear it. The
+      RAG corpus had the opposite problem: seeded over HTTP from `start.sh` on
+      every single launch, re-indexing a year of history per bellwether that
+      was already there.
 
 Planned:
 
