@@ -44,6 +44,15 @@ export default function OverviewPage({
   const isLoading = isCrypto ? cryptoMarket.isLoading || fearGreed.isLoading : nasdaq.isLoading;
   const isFetching = isCrypto ? cryptoMarket.isFetching || fearGreed.isFetching : nasdaq.isFetching;
 
+  // Only the query that carries the board. Fear & Greed is one card on it, and
+  // a reading nobody could fetch is not a reason to withhold two hundred
+  // prices — its own gauge already handles having no data.
+  const board = isCrypto ? cryptoMarket : nasdaq;
+  // `&& !marketData` because React Query hands back the last good payload while
+  // a refetch is failing. A stale board is worth more than an apology, so the
+  // message is for the case where there is genuinely nothing to draw.
+  const boardUnavailable = board.isError && !marketData;
+
   // Build fearGreedData from the correct source
   const fearGreedData: FearGreedData | null = useMemo(() => {
     if (isCrypto) {
@@ -123,75 +132,109 @@ export default function OverviewPage({
       />
 
       <div className="max-w-[1800px] mx-auto px-4 py-4 space-y-4">
-        {/* ===== TRENDING / GAINERS / LOSERS CARDS ===== */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
-          {/* Fear & Greed Card */}
-          <div className="lg:col-span-1 surface p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Activity className="w-3.5 h-3.5 text-fg-muted" />
-              <h3 className="label">Fear &amp; Greed Index</h3>
-            </div>
-            <FearGreedGauge data={fearGreedData} isLoading={isLoading} size="sm" />
+        {boardUnavailable ? (
+          // Reported rather than rendered as an empty board, for the reason
+          // `ChainsPage` states: six blank panels — no rows, a breadth strip
+          // reading zero, a distribution with no bars — say "the market is
+          // empty", which is a claim about the world rather than a gap in the
+          // data. Nothing below this consulted `isError` at all, so a 500 on
+          // `/api/market-overview` left exactly that.
+          <div className="surface p-6 text-center">
+            <p className="text-base text-fg">
+              The {isCrypto ? 'crypto' : 'stock'} market board is unavailable.
+            </p>
+            <p className="mt-1 text-sm text-fg-subtle">
+              The overview could not be loaded, so no prices, breadth or distribution are being
+              shown.
+            </p>
+            <button
+              onClick={handleRefresh}
+              className="mt-3 px-3 py-1.5 bg-surface-2 border border-line rounded-md text-sm text-fg-muted hover:text-fg hover:border-line-strong transition-colors"
+            >
+              Try again
+            </button>
           </div>
+        ) : (
+          <>
+            {/* ===== TRENDING / GAINERS / LOSERS CARDS ===== */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
+              {/* Fear & Greed Card */}
+              <div className="lg:col-span-1 surface p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Activity className="w-3.5 h-3.5 text-fg-muted" />
+                  <h3 className="label">Fear &amp; Greed Index</h3>
+                </div>
+                <FearGreedGauge data={fearGreedData} isLoading={isLoading} size="sm" />
+              </div>
 
-          <AssetListCard
-            title="Trending"
-            icon={Flame}
-            data={marketData?.coins.slice(0, 3) || []}
-            isLoading={isLoading}
-            marketType={marketType}
-            type="trending"
-          />
+              <AssetListCard
+                title="Trending"
+                icon={Flame}
+                data={marketData?.coins.slice(0, 3) || []}
+                isLoading={isLoading}
+                marketType={marketType}
+                type="trending"
+              />
 
-          <AssetListCard
-            title="Top Gainers"
-            icon={TrendingUp}
-            data={topGainers}
-            isLoading={isLoading}
-            marketType={marketType}
-            type="gainer"
-          />
+              <AssetListCard
+                title="Top Gainers"
+                icon={TrendingUp}
+                data={topGainers}
+                isLoading={isLoading}
+                marketType={marketType}
+                type="gainer"
+              />
 
-          <AssetListCard
-            title="Top Losers"
-            icon={TrendingDown}
-            data={topLosers}
-            isLoading={isLoading}
-            marketType={marketType}
-            type="loser"
-          />
-        </div>
+              <AssetListCard
+                title="Top Losers"
+                icon={TrendingDown}
+                data={topLosers}
+                isLoading={isLoading}
+                marketType={marketType}
+                type="loser"
+              />
+            </div>
 
-        {/* ===== ASSET TABLE ===== */}
-        {/* `scroll-mt` clears the sticky stats bar. Without it, scrolling the
+            {/* ===== ASSET TABLE ===== */}
+            {/* `scroll-mt` clears the sticky stats bar. Without it, scrolling the
             table into view parks its header — and the filter chip that explains
             why the list is short — underneath that bar. */}
-        <div ref={tableRef} className="scroll-mt-14">
-          <AssetTable
-            marketData={marketData}
-            marketType={marketType}
-            isLoading={isLoading}
-            changeFilter={changeFilter}
-            onClearChangeFilter={() => setChangeFilter(null)}
-          />
-        </div>
+            <div ref={tableRef} className="scroll-mt-14">
+              <AssetTable
+                marketData={marketData}
+                marketType={marketType}
+                isLoading={isLoading}
+                changeFilter={changeFilter}
+                onClearChangeFilter={() => setChangeFilter(null)}
+              />
+            </div>
 
-        {/* ===== MARKET INTERNALS =====
+            {/* ===== MARKET INTERNALS =====
             Three readings the totals in the stats bar cannot give: how many
             moved, how the moves are spread, and which names contradict their
             own week. All derived from the payload the table above already
             renders. */}
-        <MarketBreadthStrip marketData={marketData} marketType={marketType} isLoading={isLoading} />
+            <MarketBreadthStrip
+              marketData={marketData}
+              marketType={marketType}
+              isLoading={isLoading}
+            />
 
-        <ChangeDistribution
-          marketData={marketData}
-          marketType={marketType}
-          isLoading={isLoading}
-          selected={changeFilter}
-          onSelect={handleBucketSelect}
-        />
+            <ChangeDistribution
+              marketData={marketData}
+              marketType={marketType}
+              isLoading={isLoading}
+              selected={changeFilter}
+              onSelect={handleBucketSelect}
+            />
 
-        <DivergenceBoard marketData={marketData} marketType={marketType} isLoading={isLoading} />
+            <DivergenceBoard
+              marketData={marketData}
+              marketType={marketType}
+              isLoading={isLoading}
+            />
+          </>
+        )}
       </div>
     </div>
   );

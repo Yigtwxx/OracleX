@@ -1,10 +1,10 @@
 import { StrictMode } from 'react';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useWebSocketPrices } from './useWebSocketPrices';
+import { normalizePriceSymbol, useWebSocketPrices } from './useWebSocketPrices';
 
 /**
- * The lifecycle, not the price mapping.
+ * The lifecycle, and the two wire formats that reach it.
  *
  * Every bug this file guards against was a socket the page had already given
  * up on still being treated as the live one. They are invisible in a browser
@@ -70,6 +70,11 @@ class FakeWebSocket {
     this.readyState = FakeWebSocket.CLOSED;
     if (this.closeFailed) this.onerror?.(new Event('error'));
     this.onclose?.(new Event('close'));
+  }
+
+  /** Hand the hook a server message. */
+  deliver(payload: unknown): void {
+    this.onmessage?.(new MessageEvent('message', { data: JSON.stringify(payload) }));
   }
 
   /** The other kind of close: the connection dropped on its own. */
@@ -224,5 +229,141 @@ describe('useWebSocketPrices', () => {
 
     expect(result.current.getPrice('BTC/USDT')?.price).toBe(64000);
     expect(result.current.prices.BTC.direction).toBe('up');
+  });
+});
+
+/**
+ * The connect-time snapshot, which was parsed and dropped.
+ *
+ * `routers/websocket.py` writes the streamer's price cache down the socket
+ * before its broadcast loop starts, and the handler here logged the symbol
+ * count and did nothing else. Nothing broke visibly, because the table falls
+ * back to the REST price until a per-symbol tick arrives — so the board was
+ * quietly as stale as the last overview fetch instead of as fresh as the
+ * socket.
+ *
+ * The keys are the trap. That cache is keyed by the ccxt market symbol the
+ * exchange is subscribed with (`BTC/USDT`), while `price_update` has already
+ * stripped the slash (`BTCUSDT`). Applying the update path's normaliser to
+ * snapshot keys stores rows nothing ever looks up, and a missing key here is
+ * indistinguishable from "no live price yet".
+ */
+describe('useWebSocketPrices snapshot', () => {
+  function connected() {
+    const rendered = render();
+    const [socket] = FakeWebSocket.instances;
+    act(() => {
+      socket.accept();
+    });
+    return { ...rendered, socket };
+  }
+
+  it('seeds prices from the snapshot', () => {
+    const { result, socket } = connected();
+
+    act(() => {
+      socket.deliver({ type: 'snapshot', prices: { 'BTC/USDT': 64000, 'ETH/USDT': 3200 } });
+    });
+
+    expect(result.current.prices.BTC.price).toBe(64000);
+    expect(result.current.prices.ETH.price).toBe(3200);
+  });
+
+  it('keys the snapshot the same way an update is keyed', () => {
+    // The regression. Both wire spellings of the same pair must land on one
+    // key, or the lookup that reads the update path misses every snapshot row.
+    const { result, socket } = connected();
+
+    act(() => {
+      socket.deliver({ type: 'snapshot', prices: { 'BTC/USDT': 64000 } });
+    });
+
+    expect(Object.keys(result.current.prices)).toEqual(['BTC']);
+    expect(result.current.getPrice('BTCUSDT')?.price).toBe(64000);
+  });
+
+  it('does not flash a snapshot', () => {
+    // A flash means "this just moved". The snapshot is the state that was
+    // already true when the socket opened.
+    const { result, socket } = connected();
+
+    act(() => {
+      socket.deliver({ type: 'snapshot', prices: { 'BTC/USDT': 64000 } });
+    });
+
+    expect(result.current.prices.BTC.flashClass).toBe('');
+    expect(result.current.prices.BTC.direction).toBe('none');
+  });
+
+  it('reports no 24h change rather than a flat one', () => {
+    // The snapshot carries a price and nothing else. Zero would read as "this
+    // asset is unchanged on the day", which is a different claim.
+    const { result, socket } = connected();
+
+    act(() => {
+      socket.deliver({ type: 'snapshot', prices: { 'BTC/USDT': 64000 } });
+    });
+
+    expect(result.current.prices.BTC.change_24h).toBeNull();
+  });
+
+  it('lets a live update that arrived first win', () => {
+    // The server writes the snapshot before entering its loop, but nothing
+    // makes the two atomic — and the update carries a direction and a change
+    // the snapshot cannot.
+    const { result, socket } = connected();
+
+    act(() => {
+      socket.deliver({
+        type: 'price_update',
+        symbol: 'BTCUSDT',
+        price: 64500,
+        change_24h: 2.1,
+        direction: 'up',
+      });
+      socket.deliver({ type: 'snapshot', prices: { 'BTC/USDT': 64000 } });
+    });
+
+    expect(result.current.prices.BTC.price).toBe(64500);
+    expect(result.current.prices.BTC.change_24h).toBe(2.1);
+  });
+
+  it('skips entries that are not finite numbers', () => {
+    const { result, socket } = connected();
+
+    act(() => {
+      socket.deliver({
+        type: 'snapshot',
+        prices: { 'BTC/USDT': 64000, 'ETH/USDT': null, 'SOL/USDT': 'nope' },
+      });
+    });
+
+    expect(Object.keys(result.current.prices)).toEqual(['BTC']);
+  });
+
+  it('survives a snapshot message with no prices', () => {
+    const { result, socket } = connected();
+
+    act(() => {
+      socket.deliver({ type: 'snapshot' });
+    });
+
+    expect(result.current.prices).toEqual({});
+  });
+});
+
+describe('normalizePriceSymbol', () => {
+  it('folds both wire spellings onto one key', () => {
+    expect(normalizePriceSymbol('BTC/USDT')).toBe('BTC');
+    expect(normalizePriceSymbol('BTCUSDT')).toBe('BTC');
+  });
+
+  it('only strips the quote at the end', () => {
+    // An unanchored replace would eat the first occurrence wherever it fell.
+    expect(normalizePriceSymbol('USDTC/USDT')).toBe('USDTC');
+  });
+
+  it('leaves a pair quoted in something else alone', () => {
+    expect(normalizePriceSymbol('BTC/USD')).toBe('BTCUSD');
   });
 });
