@@ -345,6 +345,26 @@ class Settings(BaseSettings):
     # Form 4 providers rather than risking the ban.
     SEC_USER_AGENT: str = ""
 
+    # ── BIST ownership board ────────────────────────────────────────────────
+    # Its own schedule rather than the global board's: the two share a shape
+    # and nothing else. This one walks a hundred İş Yatırım company cards half
+    # a second apart plus the registry's KAP fund reports, and its upstreams
+    # are Turkish disclosure rather than SEC filings and on-chain wallets, so
+    # tuning one cadence must not move the other.
+    #
+    # Nightly, and that is what `BOARD_STALE_AFTER_SECONDS` in
+    # `services/bist/ownership/board.py` was written against: 26 hours is a day
+    # plus two hours of slack, so a run that starts late still clears the flag
+    # before the next one is due. An hour past the daily figure changes nothing
+    # a reader would see — shareholder structure moves on KAP disclosures, not
+    # on a clock — so the hour is chosen to be quiet rather than timely.
+    BIST_OWNERSHIP_REFRESH_HOUR: int = 3
+    # Same reasoning as OWNERSHIP_REFRESH_TIMEZONE, and doubly so here: the
+    # whole board is one exchange's disclosure, and "overnight" means overnight
+    # in Istanbul. Separate from that setting so moving the global board off
+    # Turkish time does not silently move this one to 03:00 somewhere else.
+    BIST_OWNERSHIP_REFRESH_TIMEZONE: str = "Europe/Istanbul"
+
     # ── Background scheduler intervals (minutes) ────────────────────────────
     NEWS_FETCH_INTERVAL_MINUTES: int = 2
     RAG_INDEX_INTERVAL_MINUTES: int = 30
