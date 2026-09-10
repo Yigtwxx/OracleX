@@ -33,7 +33,7 @@ export const VERSION = '1.6.0';
 export const API = {
   paths: 185,
   operations: 211,
-  authRequired: 143,
+  authRequired: 144,
   routers: 27,
   websockets: [
     '/ws/prices',
@@ -270,8 +270,8 @@ export const TESTS = {
   suites: [
     {
       name: 'backend',
-      tests: 3494,
-      files: 164,
+      tests: 3503,
+      files: 165,
     },
     {
       name: 'mcp-server',
@@ -284,5 +284,5 @@ export const TESTS = {
       files: 64,
     },
   ],
-  total: 4644,
+  total: 4653,
 } as const;
