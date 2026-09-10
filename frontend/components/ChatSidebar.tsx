@@ -64,8 +64,14 @@ export default function ChatSidebar({
       )}
 
       {/* Sidebar Container */}
+      {/* `md:z-auto` is what keeps the header's menus usable. The drawer needs
+          z-50 while it is fixed on mobile, but `transform` gives it a stacking
+          context even once it is static — and Chrome honours z-index on any
+          element that creates one, so a desktop column left at z-50 tied with
+          the header's own z-50 and won on DOM order, painting over the realm
+          switcher's fixed menu where the two overlap. */}
       <div
-        className={`fixed md:static inset-y-0 left-0 z-50 w-64 bg-surface border-r border-line transform transition-transform duration-200 ease-out flex flex-col ${
+        className={`fixed md:static inset-y-0 left-0 z-50 md:z-auto w-64 bg-surface border-r border-line transform transition-transform duration-200 ease-out flex flex-col ${
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
