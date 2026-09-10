@@ -59,7 +59,11 @@ async def initialize_rag():
     try:
         from services.rag_v2_service import initialize_rag_v2
 
-        stats = await initialize_rag_v2(symbols=["BTC", "ETH", "SOL"])
+        # No symbol list here. `rag_bellwethers` is the one curated set and
+        # exists because services had each grown their own idea of "the
+        # important coins"; this hardcoded three was that drift, and it left
+        # the admin rebuild indexing a narrower corpus than the boot seed.
+        stats = await initialize_rag_v2()
         return {"success": True, "stats": stats}
     except Exception as e:
         logger.error("RAG initialize failed: %s", e)
