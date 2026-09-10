@@ -15,7 +15,7 @@ import {
 import { MarketOverview } from '@/lib/api';
 import { HistogramBucket, inBucket } from '@/lib/market-breadth';
 import SparklineChart from './SparklineChart';
-import { useWebSocketPrices } from '@/hooks/useWebSocketPrices';
+import { normalizePriceSymbol, useWebSocketPrices } from '@/hooks/useWebSocketPrices';
 import AssetDetailModal from './AssetDetailModal';
 import AssetLogo from '@/components/ui/AssetLogo';
 import { getAssetName, formatPrice, formatVolume } from './overview-utils';
@@ -121,8 +121,10 @@ export default function AssetTable({
 
   const getRealTimePrice = (symbol: string) => {
     if (marketType !== 'crypto') return undefined;
-    const normalizedSymbol = symbol.replace('USDT', '').replace('/', '').toUpperCase();
-    return wsPrices[normalizedSymbol];
+    // Shared with the hook that fills `wsPrices`. This used to apply the same
+    // two replacements in the other order, which is survivable for `BTCUSDT`
+    // and not for anything the streamer keys with a slash.
+    return wsPrices[normalizePriceSymbol(symbol)];
   };
 
   // The column choice is a stored preference, so it is read on the client only
@@ -408,195 +410,202 @@ export default function AssetTable({
         </div>
 
         <div className="divide-y divide-line">
-          {isLoading
-            ? [...Array(8)].map((_, i) => (
-                <div key={i} className="grid gap-2 px-4 py-3" style={gridStyle}>
-                  <div className="flex justify-center">
-                    <div className="w-4 h-4 rounded bg-surface-2 shimmer" />
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-full bg-surface-2 shimmer" />
-                    <div className="space-y-1.5">
-                      <div className="w-20 h-3 rounded bg-surface-2 shimmer" />
-                      <div className="w-10 h-2.5 rounded bg-surface-2 shimmer" />
-                    </div>
-                  </div>
-                  {[...Array(6 + visibleColumns.length)].map((_, j) => (
-                    <div key={j} className="h-4 rounded bg-surface-2 shimmer ml-auto w-16" />
-                  ))}
+          {isLoading ? (
+            [...Array(8)].map((_, i) => (
+              <div key={i} className="grid gap-2 px-4 py-3" style={gridStyle}>
+                <div className="flex justify-center">
+                  <div className="w-4 h-4 rounded bg-surface-2 shimmer" />
                 </div>
-              ))
-            : visibleCoins.length === 0
-              ? narrowed && (
-                  <div className="px-4 py-10 text-center">
-                    <p className="text-base text-fg-muted">
-                      {searching
-                        ? `No ${noun} match “${query.trim()}”${changeFilter ? ` in ${changeFilter.label}` : ''}.`
-                        : `No ${noun} changed ${changeFilter?.label} in the last 24h.`}
-                    </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full bg-surface-2 shimmer" />
+                  <div className="space-y-1.5">
+                    <div className="w-20 h-3 rounded bg-surface-2 shimmer" />
+                    <div className="w-10 h-2.5 rounded bg-surface-2 shimmer" />
                   </div>
-                )
-              : visibleCoins.map((coin, index) => {
-                  // Real series both ways — CoinGecko for coins, Yahoo's spark
-                  // endpoint for stocks. A row the source has no week of history
-                  // for shows `--` rather than a fabricated series.
-                  const sparklineData = coin.sparkline ?? [];
-                  const change7d = coin.change_7d;
+                </div>
+                {[...Array(6 + visibleColumns.length)].map((_, j) => (
+                  <div key={j} className="h-4 rounded bg-surface-2 shimmer ml-auto w-16" />
+                ))}
+              </div>
+            ))
+          ) : visibleCoins.length === 0 ? (
+            // Every empty table says why, including the one nobody asked
+            // for. `narrowed &&` used to guard this whole branch, so an
+            // unfiltered empty list — a failed fetch, a payload with no
+            // rows — rendered `false`: no message, no retry, just a header
+            // over nothing. A table that shows an empty market without
+            // saying so is making a claim about the market.
+            <div className="px-4 py-10 text-center">
+              <p className="text-base text-fg-muted">
+                {searching
+                  ? `No ${noun} match “${query.trim()}”${changeFilter ? ` in ${changeFilter.label}` : ''}.`
+                  : changeFilter
+                    ? `No ${noun} changed ${changeFilter.label} in the last 24h.`
+                    : `No ${noun} to show.`}
+              </p>
+            </div>
+          ) : (
+            visibleCoins.map((coin, index) => {
+              // Real series both ways — CoinGecko for coins, Yahoo's spark
+              // endpoint for stocks. A row the source has no week of history
+              // for shows `--` rather than a fabricated series.
+              const sparklineData = coin.sparkline ?? [];
+              const change7d = coin.change_7d;
 
-                  const rtPrice = getRealTimePrice(coin.symbol);
-                  const displayPrice = rtPrice?.price || coin.price;
-                  const flashClass = rtPrice?.flashClass || '';
-                  const turnover = turnoverPct(coin);
+              const rtPrice = getRealTimePrice(coin.symbol);
+              const displayPrice = rtPrice?.price || coin.price;
+              const flashClass = rtPrice?.flashClass || '';
+              const turnover = turnoverPct(coin);
 
-                  return (
-                    <div
-                      key={coin.symbol}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setSelectedAsset(coin.symbol)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          setSelectedAsset(coin.symbol);
-                        }
-                      }}
-                      className="grid gap-2 px-4 py-2.5 hover:bg-surface-2 transition-colors cursor-pointer"
-                      style={gridStyle}
-                    >
-                      <div className="flex items-center justify-center text-sm font-mono tabnum text-fg-subtle">
-                        {pageStart + index + 1}
-                      </div>
+              return (
+                <div
+                  key={coin.symbol}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedAsset(coin.symbol)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedAsset(coin.symbol);
+                    }
+                  }}
+                  className="grid gap-2 px-4 py-2.5 hover:bg-surface-2 transition-colors cursor-pointer"
+                  style={gridStyle}
+                >
+                  <div className="flex items-center justify-center text-sm font-mono tabnum text-fg-subtle">
+                    {pageStart + index + 1}
+                  </div>
 
-                      <div className="flex items-center gap-3 min-w-0">
-                        <AssetLogo
-                          symbol={coin.symbol}
-                          providedLogo={coin.logo}
-                          marketType={marketType}
-                          className="w-7 h-7 rounded-full object-cover bg-surface-2 shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <p className="text-base text-fg truncate">
-                            {getAssetName(coin.symbol, coin.name)}
-                          </p>
-                          <p className="text-xs text-fg-subtle">{coin.symbol}</p>
-                        </div>
-                      </div>
-
-                      <div
-                        className={`flex items-center justify-end font-mono text-base text-fg rounded px-1.5 price-cell ${flashClass}`}
-                      >
-                        {formatPrice(displayPrice)}
-                      </div>
-
-                      <div className="flex items-center justify-end">
-                        <span
-                          className={`flex items-center gap-0.5 text-base font-mono tabnum ${coin.change_24h >= 0 ? 'text-up' : 'text-down'}`}
-                        >
-                          {coin.change_24h >= 0 ? (
-                            <ArrowUp className="w-3 h-3" />
-                          ) : (
-                            <ArrowDown className="w-3 h-3" />
-                          )}
-                          {Math.abs(coin.change_24h).toFixed(2)}%
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-end">
-                        {change7d == null ? (
-                          <span className="text-base font-mono tabnum text-fg-subtle">--</span>
-                        ) : (
-                          <span
-                            className={`text-base font-mono tabnum ${change7d >= 0 ? 'text-up' : 'text-down'}`}
-                          >
-                            {change7d >= 0 ? '+' : ''}
-                            {change7d.toFixed(2)}%
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-end text-base font-mono tabnum text-fg-muted">
-                        {formatVolume(coin.market_cap)}
-                      </div>
-
-                      <div className="flex items-center justify-end text-base font-mono tabnum text-fg-muted">
-                        {formatVolume(coin.volume_24h)}
-                      </div>
-
-                      {visibleColumns.map((column) => {
-                        switch (column.key) {
-                          case 'range24h':
-                            return (
-                              <div key={column.key} className="flex items-center justify-end">
-                                <RangeCell
-                                  low={coin.low_24h}
-                                  high={coin.high_24h}
-                                  price={displayPrice}
-                                  title={`24h ${formatPrice(coin.low_24h)} – ${formatPrice(coin.high_24h)}`}
-                                />
-                              </div>
-                            );
-                          case 'turnover':
-                            return (
-                              <div
-                                key={column.key}
-                                className="flex items-center justify-end text-base font-mono tabnum text-fg-muted"
-                              >
-                                {turnover === undefined ? '--' : `${turnover.toFixed(1)}%`}
-                              </div>
-                            );
-                          case 'high24h':
-                            return (
-                              <div
-                                key={column.key}
-                                className="flex items-center justify-end text-base font-mono tabnum text-fg-muted"
-                              >
-                                {coin.high_24h == null ? '--' : formatPrice(coin.high_24h)}
-                              </div>
-                            );
-                          case 'low24h':
-                            return (
-                              <div
-                                key={column.key}
-                                className="flex items-center justify-end text-base font-mono tabnum text-fg-muted"
-                              >
-                                {coin.low_24h == null ? '--' : formatPrice(coin.low_24h)}
-                              </div>
-                            );
-                          case 'range52w':
-                            return (
-                              <div key={column.key} className="flex items-center justify-end">
-                                <RangeCell
-                                  low={coin.fifty_two_week_low}
-                                  high={coin.fifty_two_week_high}
-                                  price={displayPrice}
-                                  title={
-                                    coin.fifty_two_week_low != null &&
-                                    coin.fifty_two_week_high != null
-                                      ? `52W ${formatPrice(coin.fifty_two_week_low)} – ${formatPrice(coin.fifty_two_week_high)}`
-                                      : '52W range unavailable'
-                                  }
-                                />
-                              </div>
-                            );
-                        }
-                      })}
-
-                      <div className="flex items-center justify-end">
-                        {sparklineData.length > 1 && (
-                          <SparklineChart
-                            data={sparklineData}
-                            // A 7-day series is coloured by its own direction. It
-                            // used to follow change_24h, which was consistent only
-                            // because the series was derived from that number —
-                            // with real data an asset is routinely up on the day
-                            // and down on the week.
-                            positive={sparklineData[sparklineData.length - 1] >= sparklineData[0]}
-                          />
-                        )}
-                      </div>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <AssetLogo
+                      symbol={coin.symbol}
+                      providedLogo={coin.logo}
+                      marketType={marketType}
+                      className="w-7 h-7 rounded-full object-cover bg-surface-2 shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-base text-fg truncate">
+                        {getAssetName(coin.symbol, coin.name)}
+                      </p>
+                      <p className="text-xs text-fg-subtle">{coin.symbol}</p>
                     </div>
-                  );
-                })}
+                  </div>
+
+                  <div
+                    className={`flex items-center justify-end font-mono text-base text-fg rounded px-1.5 price-cell ${flashClass}`}
+                  >
+                    {formatPrice(displayPrice)}
+                  </div>
+
+                  <div className="flex items-center justify-end">
+                    <span
+                      className={`flex items-center gap-0.5 text-base font-mono tabnum ${coin.change_24h >= 0 ? 'text-up' : 'text-down'}`}
+                    >
+                      {coin.change_24h >= 0 ? (
+                        <ArrowUp className="w-3 h-3" />
+                      ) : (
+                        <ArrowDown className="w-3 h-3" />
+                      )}
+                      {Math.abs(coin.change_24h).toFixed(2)}%
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-end">
+                    {change7d == null ? (
+                      <span className="text-base font-mono tabnum text-fg-subtle">--</span>
+                    ) : (
+                      <span
+                        className={`text-base font-mono tabnum ${change7d >= 0 ? 'text-up' : 'text-down'}`}
+                      >
+                        {change7d >= 0 ? '+' : ''}
+                        {change7d.toFixed(2)}%
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-end text-base font-mono tabnum text-fg-muted">
+                    {formatVolume(coin.market_cap)}
+                  </div>
+
+                  <div className="flex items-center justify-end text-base font-mono tabnum text-fg-muted">
+                    {formatVolume(coin.volume_24h)}
+                  </div>
+
+                  {visibleColumns.map((column) => {
+                    switch (column.key) {
+                      case 'range24h':
+                        return (
+                          <div key={column.key} className="flex items-center justify-end">
+                            <RangeCell
+                              low={coin.low_24h}
+                              high={coin.high_24h}
+                              price={displayPrice}
+                              title={`24h ${formatPrice(coin.low_24h)} – ${formatPrice(coin.high_24h)}`}
+                            />
+                          </div>
+                        );
+                      case 'turnover':
+                        return (
+                          <div
+                            key={column.key}
+                            className="flex items-center justify-end text-base font-mono tabnum text-fg-muted"
+                          >
+                            {turnover === undefined ? '--' : `${turnover.toFixed(1)}%`}
+                          </div>
+                        );
+                      case 'high24h':
+                        return (
+                          <div
+                            key={column.key}
+                            className="flex items-center justify-end text-base font-mono tabnum text-fg-muted"
+                          >
+                            {coin.high_24h == null ? '--' : formatPrice(coin.high_24h)}
+                          </div>
+                        );
+                      case 'low24h':
+                        return (
+                          <div
+                            key={column.key}
+                            className="flex items-center justify-end text-base font-mono tabnum text-fg-muted"
+                          >
+                            {coin.low_24h == null ? '--' : formatPrice(coin.low_24h)}
+                          </div>
+                        );
+                      case 'range52w':
+                        return (
+                          <div key={column.key} className="flex items-center justify-end">
+                            <RangeCell
+                              low={coin.fifty_two_week_low}
+                              high={coin.fifty_two_week_high}
+                              price={displayPrice}
+                              title={
+                                coin.fifty_two_week_low != null && coin.fifty_two_week_high != null
+                                  ? `52W ${formatPrice(coin.fifty_two_week_low)} – ${formatPrice(coin.fifty_two_week_high)}`
+                                  : '52W range unavailable'
+                              }
+                            />
+                          </div>
+                        );
+                    }
+                  })}
+
+                  <div className="flex items-center justify-end">
+                    {sparklineData.length > 1 && (
+                      <SparklineChart
+                        data={sparklineData}
+                        // A 7-day series is coloured by its own direction. It
+                        // used to follow change_24h, which was consistent only
+                        // because the series was derived from that number —
+                        // with real data an asset is routinely up on the day
+                        // and down on the week.
+                        positive={sparklineData[sparklineData.length - 1] >= sparklineData[0]}
+                      />
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 

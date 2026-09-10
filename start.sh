@@ -308,34 +308,30 @@ fi
 # ─────────────────────────────────────────────────────────────────
 # RAG 2.0 INITIALIZATION
 # ─────────────────────────────────────────────────────────────────
-print_section "RAG 2.0 INITIALIZATION"
+print_section "RAG 2.0"
 
-print_status "info" "RAG 2.0 tarihi verileri yükleniyor..."
-print_status "wait" "Bu işlem biraz zaman alabilir (BTC, ETH, SOL için 365 günlük veri)"
+# The backend seeds its own corpus now. `services/rag_v2_service.ensure_seeded`
+# runs in the boot warm-up and builds a year of history only when there is not
+# one already — so this reports rather than triggers.
+#
+# It used to POST /api/rag/initialize from here. That route is admin-only now,
+# because an open endpoint that re-embeds the whole corpus is a way for anyone
+# to pin the embedding model, and a shell script has no token to present. The
+# call also ran unconditionally, re-indexing an index that was already there on
+# every launch.
+RAG_STATS=$(curl -s http://localhost:8000/api/rag/stats 2>/dev/null)
 
-# Wait for backend to be fully ready
-sleep 3
-
-# Initialize RAG 2.0 via API endpoint
-RAG_INIT_RESPONSE=$(curl -s -X POST http://localhost:8000/api/rag/initialize 2>/dev/null)
-
-# Check response
-if echo "$RAG_INIT_RESPONSE" | grep -q '"success":true' 2>/dev/null; then
-    # Extract stats from response
-    EVENTS=$(echo "$RAG_INIT_RESPONSE" | grep -o '"events_indexed":[0-9]*' | grep -o '[0-9]*')
-    PRICES=$(echo "$RAG_INIT_RESPONSE" | grep -o '"prices_indexed":[0-9]*' | grep -o '[0-9]*')
-    print_status "success" "RAG 2.0 initialized"
-    print_status "info" "  ├─ Market Events indexed: ${EVENTS:-0}"
-    print_status "info" "  └─ Price History indexed: ${PRICES:-0}"
-else
-    # Check if already initialized by comparing stats
-    RAG_STATS=$(curl -s http://localhost:8000/api/rag/stats 2>/dev/null)
-    if echo "$RAG_STATS" | grep -q '"status":"healthy"' 2>/dev/null; then
-        print_status "success" "RAG 2.0 already initialized ${GRAY}(cached)${NC}"
+if echo "$RAG_STATS" | grep -q '"status":"healthy"' 2>/dev/null; then
+    EVENTS=$(echo "$RAG_STATS" | grep -o '"events_count":[0-9]*' | grep -o '[0-9]*')
+    PRICES=$(echo "$RAG_STATS" | grep -o '"prices_count":[0-9]*' | grep -o '[0-9]*')
+    if [ "${EVENTS:-0}" -gt 0 ] || [ "${PRICES:-0}" -gt 0 ]; then
+        print_status "success" "RAG 2.0 corpus ready ${GRAY}(${EVENTS:-0} events, ${PRICES:-0} prices)${NC}"
     else
-        print_status "warning" "RAG 2.0 initialization may need manual trigger"
-        print_status "info" "  Run: curl -X POST http://localhost:8000/api/rag/initialize"
+        print_status "info" "RAG 2.0 corpus empty — the backend is building it in the background"
+        print_status "wait" "Bu işlem biraz zaman alabilir; terminal bu sırada kullanılabilir"
     fi
+else
+    print_status "warning" "RAG 2.0 store unavailable — AI answers will run without historical context"
 fi
 
 # ─────────────────────────────────────────────────────────────────

@@ -306,9 +306,21 @@ which is what the standing `@next/next/no-img-element` warnings are, and
 reaches sharp at all. Adopting `next/image` means revisiting that override
 against whatever range the then-current `next` declares.
 
-Next itself is held at 15.5.21 on purpose. Dependabot proposes 16.x, which
-removes `next lint` and breaks the lint gate outright; 15.5.21 closes the same
-fourteen advisories and still accepts React 18.
+That fact retires the override; it does not retire the route. `/_next/image` is
+part of the server whether or not a page links to it, so the AVIF RCE in
+GHSA-2xp9-vwfh-vxw4 was live on an endpoint nothing here would ever have
+called, with neither the Caddyfile nor the rewrites filtering it. `images:
+{ unoptimized: true }` in `next.config.js` turns it off, and rests on the same
+fact as the `sharp` entry — adopting `next/image` means removing both together.
+
+Next is held on 15.x on purpose, and *within* 15.x that is not a reason to sit
+on a version. Dependabot proposes 16.x, which removes `next lint` and breaks the
+lint gate outright, so those PRs get closed — but the standing note here used to
+say 15.5.21 "closes the same fourteen advisories" and stayed after two
+unauthenticated RCEs landed against everything up to 15.5.23. Because the only
+open proposal was the majors being declined, nothing surfaced the patch that
+fixed them. A `next` advisory is worth checking against the newest 15.x before
+assuming this paragraph still covers it; 15.5.25 is where the pin sits now.
 
 ## Style
 

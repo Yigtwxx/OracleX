@@ -33,7 +33,7 @@ export const VERSION = '1.6.0';
 export const API = {
   paths: 185,
   operations: 211,
-  authRequired: 143,
+  authRequired: 144,
   routers: 27,
   websockets: [
     '/ws/prices',
@@ -157,7 +157,7 @@ export const SKILLS = [
     examples: 4,
     generated: {
       file: 'references/endpoints.md',
-      lines: 1030,
+      lines: 1051,
       endpoints: 67,
       groups: 14,
     },
@@ -270,8 +270,8 @@ export const TESTS = {
   suites: [
     {
       name: 'backend',
-      tests: 3457,
-      files: 162,
+      tests: 3507,
+      files: 165,
     },
     {
       name: 'mcp-server',
@@ -280,9 +280,9 @@ export const TESTS = {
     },
     {
       name: 'frontend',
-      tests: 1122,
-      files: 64,
+      tests: 1146,
+      files: 66,
     },
   ],
-  total: 4607,
+  total: 4681,
 } as const;

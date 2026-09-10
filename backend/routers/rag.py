@@ -1,14 +1,40 @@
 """
 RAG Multi-Agent Router
 Handles all RAG agent endpoints: v2 (Core), v3 (Insights), v4 (Reasoning), v5 (Proactive).
+
+Two conventions here that the rest of this file used to break, both for the
+same underlying reason: this surface has no frontend caller. It is read by the
+MCP server and the agent skills, so a failure produces no blank panel anyone
+notices — which makes the log line and the status code the only signals there
+are.
+
+So every handler reports through `logger` rather than `print`. `print` writes
+straight to stdout and bypasses the `LOG_LEVEL` handler `main.py` configures,
+which meant a total RAG outage left no line at the configured level anywhere.
+
+And no handler returns `str(e)` to the caller. A ChromaDB or embedding error
+carries paths and host detail that a caller has no business seeing, and the
+exception text is in the log for whoever is actually debugging it.
 """
 
+import logging
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, HTTPException
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from dependencies.auth import require_admin
+
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
+
+# Every RAG path ends at the same vector store, so a failure is the same
+# failure: the store is unreachable or the embedding model will not load. 503
+# rather than 500 — this is an upstream that may be back shortly, and it is
+# what the rest of the codebase answers for the same situation.
+_UNAVAILABLE = HTTPException(status_code=503, detail="The RAG index is unavailable right now")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -16,17 +42,28 @@ router = APIRouter()
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-@router.post("/api/rag/initialize")
+@router.post("/api/rag/initialize", dependencies=[Depends(require_admin)])
 async def initialize_rag():
-    """Initialize RAG 2.0 with historical data (run once)."""
+    """
+    Initialize RAG 2.0 with historical data (run once).
+
+    Admin-only, and it was the one expensive rebuild in the codebase that was
+    not. This embeds the whole historical corpus: it pins the embedding model
+    and holds the event loop for as long as that takes, so an open endpoint was
+    a way for any unauthenticated caller to keep the terminal busy by asking
+    twice. Its siblings — `/api/admin/ownership/refresh`, the BIST board
+    rebuild — have been behind `require_admin` since they were written, and the
+    radar scan is rate-limited; this is the same reasoning applied to the same
+    shape of operation.
+    """
     try:
         from services.rag_v2_service import initialize_rag_v2
 
         stats = await initialize_rag_v2(symbols=["BTC", "ETH", "SOL"])
         return {"success": True, "stats": stats}
     except Exception as e:
-        print(f"Error initializing RAG: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("RAG initialize failed: %s", e)
+        raise _UNAVAILABLE from e
 
 
 @router.get("/api/rag/stats")
@@ -37,7 +74,13 @@ async def get_rag_statistics():
 
         return get_rag_stats()
     except Exception as e:
-        return {"status": f"error: {str(e)}", "news_count": 0, "events_count": 0, "prices_count": 0}
+        # Not a 200 with zeroes. `agent-skill/oracle-x-api/references/recipes.md`
+        # tells an agent to call this "when a query comes back thin", so an
+        # unreachable store answering `news_count: 0` reads as "the corpus is
+        # legitimately empty" — the agent then reports a confident absence of
+        # evidence rather than an outage it could have retried.
+        logger.error("RAG stats failed: %s", e)
+        raise _UNAVAILABLE from e
 
 
 @router.get("/api/rag/query")
@@ -70,8 +113,8 @@ async def query_rag_context(
 
         return {"query": q, "symbol": symbol, "results": results}
     except Exception as e:
-        print(f"Error querying RAG: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error querying RAG: %s", e)
+        raise _UNAVAILABLE from e
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -90,8 +133,8 @@ async def get_price_insights(symbol: str):
 
         return await get_price_movement_reason(symbol.upper())
     except Exception as e:
-        print(f"Error getting insights: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error getting insights: %s", e)
+        raise _UNAVAILABLE from e
 
 
 class NewsSimilarityRequest(BaseModel):
@@ -110,8 +153,8 @@ async def find_news_similarity(request: NewsSimilarityRequest):
 
         return await find_historical_news_similarity(request.title, request.summary)
     except Exception as e:
-        print(f"Error finding news similarity: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error finding news similarity: %s", e)
+        raise _UNAVAILABLE from e
 
 
 @router.get("/api/rag/event-at-date")
@@ -127,8 +170,8 @@ async def get_event_at_date(symbol: str = "BTC", date: str = ""):
 
         return await _get_event(symbol.upper(), date)
     except Exception as e:
-        print(f"Error getting event at date: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error getting event at date: %s", e)
+        raise _UNAVAILABLE from e
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -147,8 +190,8 @@ async def compare_two_assets(symbol_a: str, symbol_b: str):
 
         return await compare_assets(symbol_a.upper(), symbol_b.upper())
     except Exception as e:
-        print(f"Error comparing assets: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error comparing assets: %s", e)
+        raise _UNAVAILABLE from e
 
 
 class ScenarioRequest(BaseModel):
@@ -167,8 +210,8 @@ async def simulate_scenario_endpoint(request: ScenarioRequest):
 
         return await simulate_scenario(request.scenario, request.symbol.upper())
     except Exception as e:
-        print(f"Error simulating scenario: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error simulating scenario: %s", e)
+        raise _UNAVAILABLE from e
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -187,8 +230,8 @@ async def get_daily_brief():
 
         return await generate_daily_brief()
     except Exception as e:
-        print(f"Error generating daily brief: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error generating daily brief: %s", e)
+        raise _UNAVAILABLE from e
 
 
 @router.get("/api/rag/anomalies")
@@ -202,5 +245,5 @@ async def detect_market_anomalies():
 
         return await detect_anomalies()
     except Exception as e:
-        print(f"Error detecting anomalies: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error detecting anomalies: %s", e)
+        raise _UNAVAILABLE from e

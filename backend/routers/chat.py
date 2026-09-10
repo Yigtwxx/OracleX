@@ -277,9 +277,10 @@ async def get_chat_job(job_id: str, user: Optional[AuthUser] = Depends(get_optio
     its answer, and confirming that an id exists is already more than a stranger
     should learn.
     """
-    job = await analysis_jobs.get_job(job_id)
-    user_id = user.id if user else None
-    if job is None or job.kind != analysis_jobs.KIND_CHAT or job.owner_id != user_id:
+    job = await analysis_jobs.readable_job(
+        job_id, analysis_jobs.KIND_CHAT, viewer_id=user.id if user else None
+    )
+    if job is None:
         raise HTTPException(status_code=404, detail="Chat job not found")
     return job.to_dict()
 
@@ -297,9 +298,10 @@ async def cancel_chat_job(job_id: str, user: Optional[AuthUser] = Depends(get_op
     holds a question and its answer, so a stranger must not be able to confirm
     an id exists, let alone stop it. 404 rather than 403.
     """
-    job = await analysis_jobs.get_job(job_id)
-    user_id = user.id if user else None
-    if job is None or job.kind != analysis_jobs.KIND_CHAT or job.owner_id != user_id:
+    job = await analysis_jobs.readable_job(
+        job_id, analysis_jobs.KIND_CHAT, viewer_id=user.id if user else None
+    )
+    if job is None:
         raise HTTPException(status_code=404, detail="Chat job not found")
 
     cancelled = await analysis_jobs.cancel_job(job_id)

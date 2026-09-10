@@ -107,10 +107,17 @@ async def get_active_analysis_jobs():
 
 @router.get("/api/analysis/jobs/{job_id}")
 async def get_analysis_job(job_id: str):
-    """Poll a report job for its current stage and, once done, its result."""
-    from services.analysis_jobs import get_job
+    """
+    Poll a report job for its current stage and, once done, its result.
 
-    job = await get_job(job_id)
+    Reports are public — every caller asking about the same horizon gets the
+    same text — so there is no owner check here. The kind check is not
+    decoration though: every kind shares one registry, and fetching by id alone
+    made this route a reader for any job in the process, a chat turn included.
+    """
+    from services.analysis_jobs import KIND_REPORT, readable_job
+
+    job = await readable_job(job_id, KIND_REPORT)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found or expired")
     return job.to_dict()
@@ -125,10 +132,10 @@ async def cancel_analysis_job(job_id: str):
     the wrong horizon — needs a way out that is not waiting for it to finish.
     Returns the settled job, so the caller sees the outcome it asked for.
     """
-    from services.analysis_jobs import KIND_REPORT, cancel_job, get_job
+    from services.analysis_jobs import KIND_REPORT, cancel_job, readable_job
 
-    job = await get_job(job_id)
-    if job is None or job.kind != KIND_REPORT:
+    job = await readable_job(job_id, KIND_REPORT)
+    if job is None:
         raise HTTPException(status_code=404, detail="Job not found or expired")
 
     cancelled = await cancel_job(job_id)

@@ -24,11 +24,39 @@ export interface PriceUpdate {
 export interface PriceState {
   [symbol: string]: {
     price: number;
-    change_24h: number;
+    /**
+     * Null for a row seeded from the connect-time snapshot, which carries a
+     * price and nothing else. Not zero: a snapshot says "this is the last
+     * price we saw", not "this asset is flat on the day".
+     */
+    change_24h: number | null;
     direction: 'up' | 'down' | 'none';
     lastUpdate: number;
     flashClass: string;
   };
+}
+
+/**
+ * The one place a wire symbol becomes a key in `PriceState`.
+ *
+ * The two messages that reach this hook are keyed differently, and that is not
+ * a detail either side is going to change: `price_update` carries the pair
+ * with the slash already stripped (`BTCUSDT`), while the snapshot is a copy of
+ * the streamer's own cache, which is keyed by the ccxt market symbol the
+ * exchange is subscribed with (`BTC/USDT`). Feeding the second through a
+ * normaliser written for the first stores `BTCUSDT` beside `BTC` and every
+ * lookup misses — silently, since a missing key here just means "no live
+ * price" and falls back to the REST value.
+ *
+ * `AssetTable` had its own third spelling of this, applying the same two
+ * replacements in the other order. One exported function instead, so a lookup
+ * cannot disagree with a write.
+ *
+ * The quote suffix is anchored: an unanchored `replace('USDT', '')` would eat
+ * the first occurrence wherever it fell.
+ */
+export function normalizePriceSymbol(symbol: string): string {
+  return symbol.replace('/', '').toUpperCase().replace(/USDT$/, '');
 }
 
 interface UseWebSocketPricesOptions {
@@ -79,7 +107,7 @@ export function useWebSocketPrices(options: UseWebSocketPricesOptions = {}) {
   // Handle price update message
   const handlePriceUpdate = useCallback(
     (update: PriceUpdate) => {
-      const symbol = update.symbol.replace('USDT', ''); // BTCUSDT -> BTC
+      const symbol = normalizePriceSymbol(update.symbol); // BTCUSDT -> BTC
 
       setPrices((prev) => {
         const prevPrice = prev[symbol]?.price || 0;
@@ -114,6 +142,45 @@ export function useWebSocketPrices(options: UseWebSocketPricesOptions = {}) {
     [clearFlash, onPriceUpdate]
   );
 
+  /**
+   * Seed from the snapshot the server sends on connect.
+   *
+   * The backend has always sent this — `routers/websocket.py` writes the
+   * streamer's cache down the socket before its loop starts — and the handler
+   * here logged the symbol count and threw it away. The cost was invisible
+   * because there is a fallback: until the first per-symbol tick arrives for a
+   * row, the table renders the REST price, so the board looked populated while
+   * being as stale as the last overview fetch. On a quiet pair that is minutes.
+   *
+   * No flash on any of these. A flash means "this just moved"; a snapshot is
+   * the state that was already true when the socket opened, and animating it
+   * would report a market's worth of movement that nobody's connect caused.
+   *
+   * A live update that beat the snapshot in wins. That ordering is real — the
+   * server writes the snapshot before entering its broadcast loop, but nothing
+   * makes the two atomic — and it matters because the update carries a
+   * direction and a 24h change the snapshot does not.
+   */
+  const handleSnapshot = useCallback((snapshot: Record<string, number>) => {
+    const now = Date.now();
+    setPrices((prev) => {
+      const next = { ...prev };
+      for (const [wireSymbol, price] of Object.entries(snapshot)) {
+        if (typeof price !== 'number' || !Number.isFinite(price)) continue;
+        const symbol = normalizePriceSymbol(wireSymbol);
+        if (next[symbol]) continue;
+        next[symbol] = {
+          price,
+          change_24h: null,
+          direction: 'none',
+          lastUpdate: now,
+          flashClass: '',
+        };
+      }
+      return next;
+    });
+  }, []);
+
   // Connect to WebSocket
   const connect = useCallback(() => {
     if (!enabled) return;
@@ -144,9 +211,8 @@ export function useWebSocketPrices(options: UseWebSocketPricesOptions = {}) {
 
           if (data.type === 'price_update') {
             handlePriceUpdate(data as PriceUpdate);
-          } else if (data.type === 'snapshot') {
-            // Handle initial snapshot
-            console.log('📸 Received price snapshot:', Object.keys(data.prices).length, 'symbols');
+          } else if (data.type === 'snapshot' && data.prices) {
+            handleSnapshot(data.prices as Record<string, number>);
           }
         } catch (e) {
           // Ignore pong responses
@@ -190,7 +256,7 @@ export function useWebSocketPrices(options: UseWebSocketPricesOptions = {}) {
       console.error('Failed to connect WebSocket:', e);
       setError('Failed to connect');
     }
-  }, [enabled, handlePriceUpdate, pingInterval, reconnectInterval]);
+  }, [enabled, handlePriceUpdate, handleSnapshot, pingInterval, reconnectInterval]);
 
   // Disconnect from WebSocket
   const disconnect = useCallback(() => {
@@ -225,13 +291,7 @@ export function useWebSocketPrices(options: UseWebSocketPricesOptions = {}) {
   }, [enabled, connect, disconnect]);
 
   // Get price for a specific symbol
-  const getPrice = useCallback(
-    (symbol: string) => {
-      const normalizedSymbol = symbol.replace('USDT', '').replace('/', '').toUpperCase();
-      return prices[normalizedSymbol];
-    },
-    [prices]
-  );
+  const getPrice = useCallback((symbol: string) => prices[normalizePriceSymbol(symbol)], [prices]);
 
   return {
     prices,

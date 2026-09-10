@@ -174,10 +174,17 @@ REM ---------------------------------------------------------------------------
 echo.
 echo     [ RAG 2.0 INITIALIZATION ]
 echo.
+REM  The backend seeds its own corpus in the boot warm-up now
+REM  (services/rag_v2_service.ensure_seeded), building a year of history only
+REM  when there is not one already. This block reports; it no longer triggers.
+REM
+REM  It used to POST /api/rag/initialize. That route is admin-only now, because
+REM  an open endpoint that re-embeds the whole corpus is a way for anyone to
+REM  pin the embedding model - and a batch file has no token to present.
 where curl >nul 2>&1
 if errorlevel 1 (
-    echo       [!] curl not found - seed manually once the API is up:
-    echo           curl -X POST http://localhost:8000/api/rag/initialize
+    echo       [!] curl not found - cannot report the RAG corpus state.
+    echo           The backend seeds it on its own regardless.
     goto :seeded
 )
 
@@ -200,12 +207,12 @@ if not defined API_UP (
     goto :seeded
 )
 
-curl -s -X POST http://localhost:8000/api/rag/initialize >nul 2>&1
+curl -s http://localhost:8000/api/rag/stats | findstr /C:"\"status\":\"healthy\"" >nul 2>&1
 if errorlevel 1 (
-    echo       [!] RAG seed did not respond.
-    echo           Retry with: curl -X POST http://localhost:8000/api/rag/initialize
+    echo       [!] RAG store unavailable - AI answers will run without
+    echo           historical context. The backend window says why.
 ) else (
-    echo       [OK] RAG 2.0 index seeded
+    echo       [OK] RAG 2.0 corpus ready
 )
 
 :seeded

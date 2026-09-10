@@ -287,6 +287,63 @@ def start_scheduler():
                 coalesce=True,
             )
 
+        # The BIST holdings board, on its own nightly cron.
+        #
+        # This job is why `main.py`'s BIST warm-up can describe itself as
+        # covering "a fresh install or a machine that was off": without it the
+        # boot build was the *only* build, so any deployment up longer than
+        # `BOARD_STALE_AFTER_SECONDS` served `stale: true` for the rest of its
+        # life and the only way to clear it was the admin button in
+        # `routers/bist_ownership.py`. The global board next to it has had two
+        # jobs since it was written; this one had none.
+        #
+        # No live-refresh sibling, and that asymmetry is deliberate. The global
+        # board has one because a coin price reprices a treasury continuously.
+        # Nothing here moves between two nightly runs: a shareholder table is
+        # restated when a company discloses, and the intraday half of this
+        # feature is `_ownership_moves()`, which reads the KAP tape at request
+        # time on a sixty-second cache and never touches the board.
+        async def bist_ownership_refresh_job():
+            try:
+                from services.bist.ownership.board import refresh_board
+
+                report = await refresh_board()
+                log_success(
+                    "BIST ownership refresh: "
+                    f"{report.tickers_ok}/{report.tickers_total} cards "
+                    f"({report.tickers_carried} carried), "
+                    f"{report.funds_ok}/{report.funds_total} funds, "
+                    f"{report.duration_seconds:.0f}s"
+                )
+            except Exception as e:
+                # Including BoardUnavailable, which is raised when the equity
+                # board cannot be priced at all. A failed run leaves the stored
+                # board in place to be served with `stale` set, which is a
+                # better answer than an empty page.
+                log_error(f"BIST ownership refresh error: {e}")
+
+        scheduler.add_job(
+            bist_ownership_refresh_job,
+            trigger=CronTrigger(
+                hour=settings.BIST_OWNERSHIP_REFRESH_HOUR,
+                minute=0,
+                timezone=settings.BIST_OWNERSHIP_REFRESH_TIMEZONE,
+            ),
+            id="bist_ownership_refresh_job",
+            name="Refresh BIST Ownership Board",
+            replace_existing=True,
+            # `refresh_board` already serialises itself against the admin
+            # button with a module lock, so a second run would not race — it
+            # would queue, and a walk that takes minutes would then be followed
+            # immediately by an identical one. This drops it instead.
+            max_instances=1,
+            coalesce=True,
+            # The walk is around seven minutes for the index. A restart inside
+            # the hour must not skip the night; anything older than that is
+            # left to the boot warm-up, which has its own staleness check.
+            misfire_grace_time=3600,
+        )
+
         # Close the horizons that have come due, and pick up any verdict made
         # since the last pass. Deliberately not tied to the analysis itself: a
         # database round-trip inside the reply would be paid on every analysis
@@ -331,7 +388,9 @@ def start_scheduler():
             f"RAG index: every {settings.RAG_INDEX_INTERVAL_MINUTES}m, "
             f"Heatmap: every {settings.HEATMAP_REFRESH_INTERVAL_MINUTES}m, "
             f"Ownership: daily at {settings.OWNERSHIP_REFRESH_HOUR:02d}:00 "
-            f"{settings.OWNERSHIP_REFRESH_TIMEZONE})"
+            f"{settings.OWNERSHIP_REFRESH_TIMEZONE}, "
+            f"BIST ownership: daily at {settings.BIST_OWNERSHIP_REFRESH_HOUR:02d}:00 "
+            f"{settings.BIST_OWNERSHIP_REFRESH_TIMEZONE})"
         )
 
 
