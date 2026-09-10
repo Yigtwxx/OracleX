@@ -186,7 +186,7 @@ export const SKILLS = [
 export const HEALTH = {
   categories: 11,
   critical: 3,
-  upstreams: 44,
+  upstreams: 47,
   rows: [
     {
       key: 'prices_crypto',
@@ -222,7 +222,7 @@ export const HEALTH = {
       key: 'onchain',
       label: 'On-chain',
       critical: false,
-      upstreams: 11,
+      upstreams: 14,
     },
     {
       key: 'macro',
@@ -270,7 +270,7 @@ export const TESTS = {
   suites: [
     {
       name: 'backend',
-      tests: 3507,
+      tests: 3509,
       files: 165,
     },
     {
@@ -284,5 +284,5 @@ export const TESTS = {
       files: 67,
     },
   ],
-  total: 4684,
+  total: 4686,
 } as const;

@@ -79,6 +79,9 @@ CATEGORIES: tuple[Category, ...] = (
             "Blockscout",
             "Coin Metrics",
             "publicnode",
+            "MEV Blocker",
+            "Pocket Network",
+            "Tenderly",
             "Base RPC",
             "Arbitrum RPC",
             "OP Mainnet RPC",
@@ -207,6 +210,13 @@ _HOST_MAP: dict[str, str] = {
     "llamarpc.com": "onchain",
     "llama.fi": "onchain",
     "publicnode.com": "onchain",
+    # Ethereum's nodes, which are three vendors rather than one because no free
+    # endpoint here has proved durable. Unmapped, a host reports to no category
+    # at all, so a board that had quietly failed over to its last endpoint and
+    # was failing there too would leave the badge reading ok.
+    "mevblocker.io": "onchain",
+    "nodies.app": "onchain",
+    "tenderly.co": "onchain",
     "blockscout.com": "onchain",
     "coinmetrics.io": "onchain",
     # The Chains board's own nodes. Every one of these is a public RPC endpoint

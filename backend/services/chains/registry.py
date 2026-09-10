@@ -96,7 +96,28 @@ CHAINS: tuple[Chain, ...] = (
         family="evm",
         target_block_seconds=12.0,
         explorer_block_url="https://etherscan.io/block/",
-        rpc_urls=("https://ethereum-rpc.publicnode.com",),
+        # publicnode is deliberately absent from this one line, and it is the
+        # only chain it is absent from. `ethereum-rpc.publicnode.com` now
+        # answers `eth_getBlockByNumber` at any *numbered* height with
+        # `-32602 Archive request` under HTTP 403 — head-1 included, so this is
+        # a policy about numbered lookups rather than a depth limit. Only the
+        # `"latest"` tag is still served, which is exactly the shape that hides
+        # it: `fetch_evm`'s first batch asks for `latest` and succeeds, and the
+        # follow-up that asks for the stream and the cadence anchor by number
+        # fails whole. The row therefore went blank while the log read
+        # "403 Forbidden" — a permission problem, seemingly transient, when the
+        # endpoint had in fact stopped being able to answer the question.
+        #
+        # Every endpoint below was checked against the batch this adapter really
+        # sends rather than pinged: `eth.drpc.org` serves numbered blocks but
+        # 500s on a batch of more than three, and `eth.merkle.io` and
+        # `1rpc.io/eth` rate-limit a single refresh. A node that answers
+        # `eth_blockNumber` proves nothing about either.
+        rpc_urls=(
+            "https://rpc.mevblocker.io",
+            "https://eth-pokt.nodies.app",
+            "https://gateway.tenderly.co/public/mainnet",
+        ),
     ),
     Chain(
         key="base",

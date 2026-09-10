@@ -12,6 +12,7 @@ import pytest
 from services.chains import bitcoin, evm, solana
 from services.chains.registry import BY_KEY, CHAINS, EVM_TRANSFER_GAS, FEE_SYMBOLS
 from services.chains.service import _price_the_fee, _empty_row
+from services.health_registry import category_for_url
 
 
 class TestRegistry:
@@ -22,6 +23,27 @@ class TestRegistry:
         for chain in CHAINS:
             if chain.family in ("evm", "solana"):
                 assert chain.rpc_urls, f"{chain.key} has no RPC endpoint"
+
+    def test_ethereum_is_not_left_on_one_endpoint(self):
+        """
+        The row readers look at first was the one row with nothing behind it,
+        and its single endpoint stopped serving numbered blocks — see the
+        comment on the entry. A sole endpoint means any such policy change takes
+        the row out whole, which is what happened; Base and BNB sat behind the
+        same vendor and had somewhere to fall.
+        """
+        assert len(BY_KEY["ethereum"].rpc_urls) > 1
+
+    def test_every_rpc_host_reports_to_a_health_category(self):
+        """
+        An upstream whose host maps to no category is invisible to the health
+        badge: it can fail every refresh and `/api/system/health` still reads
+        ok. Adding an endpoint without adding its host is the easy half of the
+        change to forget, so the registry checks itself.
+        """
+        for chain in CHAINS:
+            for url in chain.rpc_urls:
+                assert category_for_url(url) is not None, f"{url} maps to no category"
 
     def test_keys_are_unique(self):
         keys = [c.key for c in CHAINS]
