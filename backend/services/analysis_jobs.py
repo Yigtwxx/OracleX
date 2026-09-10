@@ -297,10 +297,50 @@ async def start_job(timeframe: str, user_id: Optional[str] = None) -> Job:
     return await start(key, KIND_REPORT, STAGES, runner, owner_id=user_id)
 
 
+# Kinds whose result belongs to the account that asked for it rather than to
+# everyone. A report about AAPL reads the same for every caller and a Polymarket
+# verdict is about a public market, so those are keyed only by kind; a chat turn
+# holds the reader's own question and is not.
+OWNED_KINDS = frozenset({KIND_CHAT})
+
+
 async def get_job(job_id: str) -> Optional[Job]:
     async with _get_lock():
         _prune()
         return _jobs.get(job_id)
+
+
+async def readable_job(job_id: str, kind: str, *, viewer_id: Optional[str] = None) -> Optional[Job]:
+    """
+    Fetch a job only if this route and this caller are allowed to see it.
+
+    Every kind shares one registry, and `to_dict()` serialises `result` and
+    `partial_result` — so a poll route that fetches by id alone will happily
+    hand back a job belonging to a different feature. Four of them did:
+    `/api/analysis/jobs/{id}`, `/api/news/analysis/jobs/{id}` and both
+    Polymarket poll routes checked neither kind nor owner, which made any of
+    them a reader for a chat turn's question and the model's answer. The rule
+    was written down — on `Job.owner_id`, and correctly applied in
+    `routers/chat.py` — and that is exactly why it was missed elsewhere: a
+    convention in a docstring is enforced once per author who reads it.
+
+    So the check lives here, and a caller has to name the kind it expects
+    rather than remember to compare it. `viewer_id` is required in practice for
+    anything in `OWNED_KINDS`; passing it for a public kind is harmless and is
+    ignored, so a route that becomes owned later gets the check by changing one
+    frozenset rather than by auditing its callers.
+
+    Returns None for every failure — missing, expired, wrong kind, wrong owner
+    — because the caller answers 404 to all four. Distinguishing them would
+    confirm to a stranger that an id exists, which for a chat turn is already
+    more than they should learn.
+    """
+    job = await get_job(job_id)
+    if job is None or job.kind != kind:
+        return None
+    if kind in OWNED_KINDS and job.owner_id != viewer_id:
+        return None
+    return job
 
 
 async def cancel_job(job_id: str) -> Optional[Job]:

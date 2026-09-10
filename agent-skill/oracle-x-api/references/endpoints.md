@@ -228,6 +228,11 @@ Get News Analysis Job
 
 Poll a running analysis. 404 once the job has aged out of retention.
 
+Scoped to its own kind: the job registry is shared process-wide, so a poll
+that fetched by id alone answered for any job in it — including a chat
+turn's question and answer. A news note is public once produced, so the
+kind is the whole check.
+
 Parameters:
 - `job_id` (path, string, required)
 
@@ -299,6 +304,11 @@ Response shape is not declared on the route — inspect one call.
 Get Analysis Job
 
 Poll a report job for its current stage and, once done, its result.
+
+Reports are public — every caller asking about the same horizon gets the
+same text — so there is no owner check here. The kind check is not
+decoration though: every kind shares one registry, and fetching by id alone
+made this route a reader for any job in the process, a chat turn included.
 
 Parameters:
 - `job_id` (path, string, required)
@@ -933,6 +943,11 @@ Get Polymarket Analysis Job
 
 Poll a running analysis. 404 once the job has aged out of retention.
 
+Scoped to its own kind, and to this kind rather than the origin trace's:
+the two are started by the same click over the same market and would
+otherwise read each other's output. The shared registry means fetching by
+id alone reached every other feature's jobs as well, a chat turn included.
+
 Parameters:
 - `job_id` (path, string, required)
 
@@ -964,6 +979,12 @@ Response shape is not declared on the route — inspect one call.
 Get Polymarket Origin Job
 
 Poll a running origin trace. 404 once the job has aged out of retention.
+
+The verdict's counterpart, and scoped to `KIND_POLYMARKET_ORIGIN` for the
+reason that kind exists at all: the two runs share a slug and a click, so a
+poll that did not name its kind would hand back whichever of them the id
+happened to belong to — and, the registry being shared, any other feature's
+job as well.
 
 Parameters:
 - `job_id` (path, string, required)

@@ -151,10 +151,17 @@ async def start_news_analysis(
 
 @router.get("/api/news/analysis/jobs/{job_id}")
 async def get_news_analysis_job(job_id: str):
-    """Poll a running analysis. 404 once the job has aged out of retention."""
-    from services.analysis_jobs import get_job
+    """
+    Poll a running analysis. 404 once the job has aged out of retention.
 
-    job = await get_job(job_id)
+    Scoped to its own kind: the job registry is shared process-wide, so a poll
+    that fetched by id alone answered for any job in it — including a chat
+    turn's question and answer. A news note is public once produced, so the
+    kind is the whole check.
+    """
+    from services.analysis_jobs import KIND_NEWS, readable_job
+
+    job = await readable_job(job_id, KIND_NEWS)
     if not job:
         raise HTTPException(status_code=404, detail="Analysis job not found or expired")
     return job.to_dict()

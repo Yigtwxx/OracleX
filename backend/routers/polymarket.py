@@ -158,10 +158,17 @@ async def start_polymarket_analysis(
 
 @router.get("/api/polymarket/analysis/jobs/{job_id}")
 async def get_polymarket_analysis_job(job_id: str):
-    """Poll a running analysis. 404 once the job has aged out of retention."""
-    from services.analysis_jobs import get_job
+    """
+    Poll a running analysis. 404 once the job has aged out of retention.
 
-    job = await get_job(job_id)
+    Scoped to its own kind, and to this kind rather than the origin trace's:
+    the two are started by the same click over the same market and would
+    otherwise read each other's output. The shared registry means fetching by
+    id alone reached every other feature's jobs as well, a chat turn included.
+    """
+    from services.analysis_jobs import KIND_POLYMARKET, readable_job
+
+    job = await readable_job(job_id, KIND_POLYMARKET)
     if not job:
         raise HTTPException(status_code=404, detail="Analysis job not found or expired")
     return job.to_dict()
@@ -211,10 +218,18 @@ async def start_polymarket_origin(
 
 @router.get("/api/polymarket/origin/jobs/{job_id}")
 async def get_polymarket_origin_job(job_id: str):
-    """Poll a running origin trace. 404 once the job has aged out of retention."""
-    from services.analysis_jobs import get_job
+    """
+    Poll a running origin trace. 404 once the job has aged out of retention.
 
-    job = await get_job(job_id)
+    The verdict's counterpart, and scoped to `KIND_POLYMARKET_ORIGIN` for the
+    reason that kind exists at all: the two runs share a slug and a click, so a
+    poll that did not name its kind would hand back whichever of them the id
+    happened to belong to — and, the registry being shared, any other feature's
+    job as well.
+    """
+    from services.analysis_jobs import KIND_POLYMARKET_ORIGIN, readable_job
+
+    job = await readable_job(job_id, KIND_POLYMARKET_ORIGIN)
     if not job:
         raise HTTPException(status_code=404, detail="Origin job not found or expired")
     return job.to_dict()

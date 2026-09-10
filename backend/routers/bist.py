@@ -1717,8 +1717,8 @@ async def start_radar_scan(response: Response, horizon: str = Query("swing")):
 @router.get("/radar/jobs/{job_id}")
 async def get_radar_job(job_id: str):
     """Poll a scan for its stage, its progress and — once done — its result."""
-    job = await analysis_jobs.get_job(job_id)
-    if job is None or job.kind != KIND_RADAR:
+    job = await analysis_jobs.readable_job(job_id, KIND_RADAR)
+    if job is None:
         raise HTTPException(status_code=404, detail="Job not found or expired")
     return job.to_dict()
 
@@ -1747,8 +1747,8 @@ async def cancel_radar_scan(job_id: str):
     sees the outcome without another poll; the last persisted result is left
     untouched, since a cancelled scan wrote nothing.
     """
-    job = await analysis_jobs.get_job(job_id)
-    if job is None or job.kind != KIND_RADAR:
+    job = await analysis_jobs.readable_job(job_id, KIND_RADAR)
+    if job is None:
         raise HTTPException(status_code=404, detail="Job not found or expired")
     settled = await analysis_jobs.cancel_job(job_id)
     return (settled or job).to_dict()
