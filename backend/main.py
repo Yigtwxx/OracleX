@@ -352,6 +352,28 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning("RAG embedding warm-up failed (RAG will degrade): %s", e)
             readiness.fail("rag", e)
+            return
+
+        # Seed the historical corpus if there is not one, in the same task so
+        # it runs after the model it needs rather than racing it into a lazy
+        # load on the event loop.
+        #
+        # Deliberately outside the `rag` readiness step, which is already
+        # `succeed`ed above: the boot gate is waiting to let a reader in, and
+        # on a fresh install this is a year of price history per bellwether.
+        # An empty index degrades RAG answers; it does not stop the terminal
+        # from serving, and the frontend should not be held behind it.
+        #
+        # This replaces the `POST /api/rag/initialize` that `start.sh` fired
+        # after launch. That endpoint is admin-only now — an open route that
+        # re-embeds the corpus is a way to pin the embedding model — and the
+        # script had no token, so the seed 401'd. It also ran unconditionally,
+        # rebuilding an index that already existed on every single launch;
+        # `ensure_seeded` checks first, which is what the ownership warm-ups
+        # above already do.
+        from services.rag_v2_service import ensure_seeded
+
+        await ensure_seeded()
 
     _spawn(_warm_embedding_models())
 

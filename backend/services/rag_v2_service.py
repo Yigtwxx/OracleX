@@ -1282,6 +1282,48 @@ async def initialize_rag_v2(symbols: Optional[List[str]] = None) -> Dict:
     return stats
 
 
+async def ensure_seeded() -> Dict | None:
+    """
+    Build the historical corpus at boot, but only when there is not one.
+
+    `start.sh` used to do this over HTTP — `POST /api/rag/initialize` right
+    after launching the backend — which had two problems. The endpoint is now
+    admin-only, because an open route that re-embeds the whole corpus is a way
+    for anyone to pin the embedding model; a shell script has no token, so the
+    seed simply stopped happening and said `401` on the way out.
+
+    The other problem predates that and is the reason this is a *conditional*
+    seed rather than the same call moved inland. `initialize_rag_v2` is a year
+    of history per bellwether with a rate-limiting sleep between each, and the
+    script ran it on **every** launch — re-indexing a corpus that was already
+    there, every time anyone started the app. Guarding on the counts is what
+    the two ownership boards' `ensure_board()` already does, for the same
+    reason.
+
+    Returns the stats when it built something, None when there was nothing to
+    do. Never raises: an install with no vector store still serves everything
+    that is not RAG.
+    """
+    try:
+        stats = get_rag_stats()
+        if stats.get("status") != "healthy":
+            logger.warning("RAG seed skipped, store unavailable: %s", stats.get("status"))
+            return None
+        if stats.get("events_count") or stats.get("prices_count"):
+            logger.info(
+                "RAG corpus present (%s events, %s prices) — not rebuilding",
+                stats.get("events_count"),
+                stats.get("prices_count"),
+            )
+            return None
+
+        logger.info("RAG corpus empty — building historical index")
+        return await initialize_rag_v2()
+    except Exception as e:
+        logger.warning("RAG seed failed (RAG will degrade): %s", e)
+        return None
+
+
 def get_rag_stats() -> Dict:
     """Get statistics about RAG 2.0 collections."""
     try:

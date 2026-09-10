@@ -163,3 +163,85 @@ def test_no_handler_prints_or_returns_a_raw_exception():
 
     assert "print(" not in source
     assert "detail=str(e)" not in source
+
+
+# ── the boot seed ────────────────────────────────────────────────────────────
+
+
+async def test_ensure_seeded_builds_when_the_corpus_is_empty(monkeypatch):
+    """
+    The regression behind the guard.
+
+    Putting `require_admin` on `/api/rag/initialize` was right, but `start.sh`
+    was calling that endpoint after launch with no token — so the seed stopped
+    happening and said 401 on the way out. It runs in the boot warm-up now.
+    """
+    import services.rag_v2_service as rag_v2
+
+    built = False
+
+    async def _build(**_kwargs):
+        nonlocal built
+        built = True
+        return {"events_indexed": 3, "prices_indexed": 4}
+
+    monkeypatch.setattr(
+        rag_v2,
+        "get_rag_stats",
+        lambda: {"status": "healthy", "events_count": 0, "prices_count": 0, "news_count": 0},
+    )
+    monkeypatch.setattr(rag_v2, "initialize_rag_v2", _build)
+
+    result = await rag_v2.ensure_seeded()
+
+    assert built is True
+    assert result == {"events_indexed": 3, "prices_indexed": 4}
+
+
+async def test_ensure_seeded_leaves_an_existing_corpus_alone(monkeypatch):
+    """
+    The other half, and the older bug: the script ran the rebuild on *every*
+    launch, re-embedding a year of history per bellwether that was already
+    indexed. A boot seed that did the same would just move the waste inland.
+    """
+    import services.rag_v2_service as rag_v2
+
+    async def _build(**_kwargs):  # pragma: no cover — must not run
+        raise AssertionError("rebuilt a corpus that was already there")
+
+    monkeypatch.setattr(
+        rag_v2,
+        "get_rag_stats",
+        lambda: {"status": "healthy", "events_count": 12, "prices_count": 900, "news_count": 5},
+    )
+    monkeypatch.setattr(rag_v2, "initialize_rag_v2", _build)
+
+    assert await rag_v2.ensure_seeded() is None
+
+
+async def test_ensure_seeded_is_quiet_when_the_store_is_unreachable(monkeypatch):
+    """An install with no vector store still serves everything that is not RAG."""
+    import services.rag_v2_service as rag_v2
+
+    monkeypatch.setattr(
+        rag_v2,
+        "get_rag_stats",
+        lambda: {"status": "error: connection refused", "events_count": 0, "prices_count": 0},
+    )
+
+    assert await rag_v2.ensure_seeded() is None
+
+
+async def test_ensure_seeded_never_raises(monkeypatch):
+    """
+    It is awaited inside the boot warm-up. An exception there would surface as
+    a failed startup task for an index the terminal can run without.
+    """
+    import services.rag_v2_service as rag_v2
+
+    def _explode():
+        raise RuntimeError("chroma is on fire")
+
+    monkeypatch.setattr(rag_v2, "get_rag_stats", _explode)
+
+    assert await rag_v2.ensure_seeded() is None
