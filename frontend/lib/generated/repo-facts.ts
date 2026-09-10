@@ -280,9 +280,9 @@ export const TESTS = {
     },
     {
       name: 'frontend',
-      tests: 1122,
-      files: 64,
+      tests: 1130,
+      files: 65,
     },
   ],
-  total: 4653,
+  total: 4661,
 } as const;
