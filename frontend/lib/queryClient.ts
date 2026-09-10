@@ -44,8 +44,16 @@ type ErrorMeta = { silentError?: boolean } | undefined;
 
 function handleGlobalError(error: unknown, meta?: ErrorMeta) {
   const message = error instanceof Error ? error.message : 'Bir hata oluştu';
+  if (meta?.silentError) {
+    // `console.error` is not free here: the Next.js dev overlay turns one into
+    // a full-screen "Console Error" card, so a query that deliberately handles
+    // its own failure — the unread badge, the admin probe — still stopped the
+    // reader with a red box, once every poll. Keep the line for debugging, at a
+    // level the overlay ignores.
+    console.debug('[QueryClient Error]', message);
+    return;
+  }
   console.error('[QueryClient Error]', message);
-  if (meta?.silentError) return;
   toastCallback?.(`Bağlantı hatası — ${message}`);
 }
 

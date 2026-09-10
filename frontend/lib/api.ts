@@ -69,6 +69,30 @@ async function getAccessToken(): Promise<string | undefined> {
 }
 
 /**
+ * Drop a session the backend has already rejected.
+ *
+ * A 401 on a request that *did* carry a token means the token is dead —
+ * expired past refresh, or issued before the project's signing key changed.
+ * Nothing noticed that on its own: `AuthContext.user` stayed populated from the
+ * stored session, so every `enabled: Boolean(user)` query kept firing, the
+ * unread badge re-polled every twenty seconds, and each round logged
+ * `[QueryClient Error] "Not authenticated"` with no end. Signing out puts
+ * `user` at null, which disables those queries and shows the signed-out UI
+ * instead of a console that never stops.
+ *
+ * `scope: 'local'` because the round trip to GoTrue would be made with the same
+ * rejected token; the point is to drop what this browser is holding, not to end
+ * a session the server no longer honours anyway.
+ */
+async function clearRejectedSession(): Promise<void> {
+  try {
+    await getSupabase().auth.signOut({ scope: 'local' });
+  } catch {
+    // Supabase unconfigured, or nothing stored — there is no session to clear.
+  }
+}
+
+/**
  * Thin wrapper around fetch for the Oracle-X backend.
  * - Prepends the API base URL (unless an absolute URL is passed)
  * - Serialises `params` into the query string (skipping nullish values)
@@ -99,13 +123,22 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   if (init.body && !(init.body instanceof FormData) && !finalHeaders['Content-Type']) {
     finalHeaders['Content-Type'] = 'application/json';
   }
+  // Tracked rather than re-derived from the header below, because a 401 only
+  // means "this token is dead" when we are the ones who attached it.
+  let sentToken = false;
   if (!anonymous && !finalHeaders['Authorization']) {
     const token = await getAccessToken();
-    if (token) finalHeaders['Authorization'] = `Bearer ${token}`;
+    if (token) {
+      finalHeaders['Authorization'] = `Bearer ${token}`;
+      sentToken = true;
+    }
   }
 
   const response = await fetch(url, { ...init, headers: finalHeaders });
   if (!response.ok) {
+    if (response.status === 401 && sentToken) {
+      await clearRejectedSession();
+    }
     // FastAPI puts the human-readable reason in `detail`. Discarding it and
     // reporting only the status turns every message the backend wrote for the
     // user — "This email is already registered", "Too many attempts" — into
