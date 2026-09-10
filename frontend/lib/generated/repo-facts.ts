@@ -157,7 +157,7 @@ export const SKILLS = [
     examples: 4,
     generated: {
       file: 'references/endpoints.md',
-      lines: 1030,
+      lines: 1051,
       endpoints: 67,
       groups: 14,
     },
