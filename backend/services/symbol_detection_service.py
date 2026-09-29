@@ -206,6 +206,10 @@ _ACRONYM_TICKERS = frozenset(
         "FED",
         "DAO",
         "NFA",
+        # Tree of Alpha puts the desk's name in front of a republished headline,
+        # and "THE BLOCK: …" / "THE INDEPENDENT: …" were both tagged as the THE
+        # token and scored against its chart.
+        "THE",
     }
 )
 

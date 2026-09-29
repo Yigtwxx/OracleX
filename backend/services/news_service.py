@@ -285,6 +285,39 @@ async def fetch_treeofalpha_news() -> List[NewsItem]:
     return items
 
 
+TREE_OF_ALPHA_SOURCE_PREFIX = "Tree of Alpha · "
+
+
+def _dedupe_key(item: NewsItem) -> str:
+    """
+    The part of a headline that identifies the story.
+
+    Tree of Alpha republishes the desks' headlines as "DECRYPT: <headline>",
+    so keying on the raw title kept both copies and the same story was analysed
+    and scored twice. The prefix is only removed when it names the item's own
+    desk: "BREAKING: …" from a tweet is part of the headline, not a byline.
+    """
+    title = item.title
+    if item.source.startswith(TREE_OF_ALPHA_SOURCE_PREFIX):
+        desk = item.source[len(TREE_OF_ALPHA_SOURCE_PREFIX) :]
+        prefix = f"{desk}:"
+        if desk and title.upper().startswith(prefix.upper()):
+            title = title[len(prefix) :]
+    return title.strip().lower()[:50]
+
+
+def _dedupe(items: List[NewsItem]) -> List[NewsItem]:
+    """First occurrence of each story, in the order the sources were listed."""
+    seen: set[str] = set()
+    unique: List[NewsItem] = []
+    for item in items:
+        key = _dedupe_key(item)
+        if key not in seen:
+            seen.add(key)
+            unique.append(item)
+    return unique
+
+
 async def fetch_all_news() -> List[NewsItem]:
     """
     Fetch news from all sources concurrently and combine results.
@@ -346,14 +379,7 @@ async def fetch_all_news() -> List[NewsItem]:
         else:
             logger.error("News source %s fetch error: %s", name, result)
 
-    # Remove duplicates by title similarity
-    seen_titles = set()
-    unique_items = []
-    for item in all_items:
-        title_key = item.title.lower()[:50]
-        if title_key not in seen_titles:
-            seen_titles.add(title_key)
-            unique_items.append(item)
+    unique_items = _dedupe(all_items)
 
     # Sort by published date (newest first)
     unique_items.sort(key=lambda x: x.published_at, reverse=True)
