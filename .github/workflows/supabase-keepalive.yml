@@ -1,0 +1,43 @@
+name: Supabase keepalive
+
+# The free plan pauses a project after seven days without database activity, and
+# a paused project drops out of DNS entirely: the browser reports it as a bare
+# "Load failed" from supabase-js, which reads like a frontend bug rather than a
+# stopped database. A self-hosted terminal can easily go a week unopened, so
+# something other than a reader has to touch the database.
+#
+# The query goes through PostgREST rather than the auth health endpoint because
+# only a request that reaches Postgres counts as activity. RLS returns no rows to
+# the anon key, which is fine — the query still runs.
+#
+# `--fail-with-body` is deliberate: if the project has already been paused, this
+# job fails and GitHub emails the owner, which is the earliest anyone would hear.
+
+on:
+  schedule:
+    # Twice a week, so one missed run (GitHub drops scheduled runs under load)
+    # still leaves the gap well inside seven days.
+    - cron: "17 6 * * 1,4"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Query the database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::SUPABASE_URL and SUPABASE_ANON_KEY repository secrets are required"
+            exit 1
+          fi
+          curl -sS --fail-with-body --retry 3 --retry-delay 20 -m 30 -o /dev/null \
+            -w "PostgREST answered %{http_code}\n" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/profiles?select=id&limit=1"
