@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:finnhub.io)",
+      "WebFetch(domain:eodhd.com)",
+      "WebFetch(domain:twelvedata.com)",
+      "WebFetch(domain:site.financialmodelingprep.com)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:www.alphavantage.co)",
+      "WebFetch(domain:www.algolab.com.tr)",
+      "WebFetch(domain:marketstack.com)",
+      "WebFetch(domain:fintables.com)",
+      "WebFetch(domain:www.tiingo.com)",
+      "WebFetch(domain:www.findmymoat.com)"
+    ]
+  },
+  "outputStyle": "Concise"
+}
