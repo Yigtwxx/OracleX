@@ -4,6 +4,8 @@ Manages automated tasks like news fetching and data aggregation.
 """
 
 import logging
+from datetime import UTC, datetime, timedelta
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -367,6 +369,12 @@ def start_scheduler():
             track_record_score_job,
             trigger=IntervalTrigger(minutes=settings.TRACK_RECORD_SCORE_INTERVAL_MINUTES),
             id="track_record_score_job",
+            # An IntervalTrigger first fires one whole interval after start, and
+            # a backend run for a working session — or restarted by `--reload`
+            # on every save — rarely lives an hour, so the record went weeks
+            # without a pass. Two minutes rather than immediately keeps the pass
+            # clear of the boot warm-ups and of a save-reload-save burst.
+            next_run_time=datetime.now(UTC) + timedelta(minutes=2),
             name="Score Track Record",
             replace_existing=True,
             # A pass can outlast its own interval when the batch is full and the

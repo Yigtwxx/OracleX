@@ -117,3 +117,24 @@ def test_bist_ownership_job_does_not_stack_runs(registered_jobs):
 
     assert job.max_instances == 1
     assert job.coalesce is True
+
+
+def test_track_record_scores_soon_after_boot(registered_jobs):
+    """
+    The regression: an IntervalTrigger first fires one full interval after
+    start, and this job's interval is an hour. A backend that is run for a
+    working session and closed — or restarted by `--reload` on every save —
+    never reaches that hour, so the job never ran: the record went three weeks
+    without closing a horizon or ingesting a verdict while the app was used
+    daily. The first pass has to come due within minutes of boot, not after
+    the interval.
+    """
+    job = registered_jobs["track_record_score_job"]
+    # A job added before the scheduler starts carries `next_run_time` only when
+    # one was given explicitly; otherwise the trigger's one-interval default
+    # applies, which is the bug.
+    first = getattr(job, "next_run_time", None)
+
+    assert first is not None
+    delay = (first - datetime.now(first.tzinfo)).total_seconds()
+    assert delay < settings.TRACK_RECORD_SCORE_INTERVAL_MINUTES * 60 / 4
