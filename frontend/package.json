@@ -23,7 +23,7 @@
     "echarts-for-react": "^3.0.6",
     "lucide-react": "^0.312.0",
     "motion": "^13.1.0",
-    "next": "15.5.25",
+    "next": "15.5.27",
     "ogl": "^1.0.11",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -54,6 +54,7 @@
   },
   "overrides": {
     "postcss": "^8.5.26",
-    "sharp": "^0.35.0"
+    "postcss-selector-parser": "^7.1.6",
+    "sharp": "^0.35.5"
   }
 }

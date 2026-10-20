@@ -290,8 +290,8 @@ path, and it is why verdicts already on disk are picked up on the first run
 instead of the record starting empty.
 
 **`frontend/package.json` carries an `overrides` block, and an override wins
-silently.** It holds `postcss` and `sharp`, both because `next` is the thing
-asking for the vulnerable version: it pins `postcss` to exactly `8.4.31`, which
+silently.** Two of its entries, `postcss` and `sharp`, are there because `next`
+is the thing asking for the vulnerable version: it pins `postcss` to exactly `8.4.31`, which
 put a second copy beside the one the rest of the tree used and carried four
 advisories by itself, and it declares `sharp` at `^0.34.3` while the libvips
 CVEs are first patched in `0.35.0`. npm does not warn when an override overrules
@@ -313,6 +313,15 @@ called, with neither the Caddyfile nor the rewrites filtering it. `images:
 { unoptimized: true }` in `next.config.js` turns it off, and rests on the same
 fact as the `sharp` entry — adopting `next/image` means removing both together.
 
+The third entry, `postcss-selector-parser`, is there for Tailwind rather than
+`next`. Tailwind 3 asks for `^6.1.2`, GHSA-rj75-hqrm-r3gf is first patched in
+`7.1.6` and no 6.x carries the fix, so Dependabot's only proposal was Tailwind 4
+— a rewrite of the config that failed the build. 7.0's one breaking change is
+that insertions during iteration became safe; the stylesheet Tailwind generates
+from `app/globals.css` was byte-identical under both versions when the entry
+went in, and that comparison is the test to repeat on any 3.x bump. Moving to
+Tailwind 4 retires the entry.
+
 Next is held on 15.x on purpose, and *within* 15.x that is not a reason to sit
 on a version. Dependabot proposes 16.x, which removes `next lint` and breaks the
 lint gate outright, so those PRs get closed — but the standing note here used to
@@ -320,7 +329,7 @@ say 15.5.21 "closes the same fourteen advisories" and stayed after two
 unauthenticated RCEs landed against everything up to 15.5.23. Because the only
 open proposal was the majors being declined, nothing surfaced the patch that
 fixed them. A `next` advisory is worth checking against the newest 15.x before
-assuming this paragraph still covers it; 15.5.25 is where the pin sits now.
+assuming this paragraph still covers it; 15.5.27 is where the pin sits now.
 
 ## Style
 
